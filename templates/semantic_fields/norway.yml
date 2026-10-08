@@ -1,0 +1,109 @@
+# Norway semantic fields matching the legacy Norway priors (templates/prior_trees/norway.yml).
+# Option names follow the legacy (MA-derived) component map; adjust to the Norway component db.
+Name: Norway (legacy fields)
+Fields:
+- Name: Region
+  Options:
+  - 'NO'
+  Description: Region code
+  Type: null
+- Name: Age_bracket
+  Options:
+  - btw_1975_2003
+  - post_2003
+  - pre_1975
+  Description: From the GIS
+- Name: Cooling
+  Options:
+  - ACWindow
+  - ASHPCooling
+  - WindowASHP
+  - none
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: DHW
+  Options:
+  - ElectricResistanceDHW
+  - HPWH
+  - OilHeating
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Equipment
+  Options:
+  - HighEfficiencyEquipment
+  - LowEfficiencyEquipment
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: GroundSlabInsulation
+  Options:
+  - InsulatedGroundSlab
+  - UninsulatedGroundSlab
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Heating
+  Options:
+  - ASHPHeating
+  - ElectricResistance
+  - GSHPHeating
+  - OilHeating
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Lighting
+  Options:
+  - LED
+  - NoLED
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: RoofInsulation
+  Options:
+  - HighlyInsulatedRoof
+  - InsulatedRoof
+  - UninsulatedRoof
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Thermostat
+  Options:
+  - Controls
+  - NoControls
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Typology
+  Options:
+  - MFH
+  - SFH
+  Description: From the GIS
+- Name: Walls
+  Options:
+  - FullInsulationWallsCavity
+  - FullInsulationWallsCavityExterior
+  - SomeInsulationWalls
+  - UninsulatedWalls
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Weatherization
+  Options:
+  - LeakyEnvelope
+  - SomewhatLeakyEnvelope
+  - TightEnvelope
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+- Name: Windows
+  Options:
+  - DoublePaneLowE
+  - SinglePane
+  - TriplePaneLowE
+  Description: Sampled from priors
+  Type: stochastic
+  Requires_Prior: true
+Building_ID_col: building_id
+Num_Floors_col: num_floors

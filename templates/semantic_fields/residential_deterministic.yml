@@ -1,0 +1,43 @@
+# Residential Deterministic Semantic Fields Template
+# Common deterministic fields derived from GIS data for residential buildings
+
+Name: Residential Deterministic Fields
+Fields:
+  - Name: Typology
+    Options:
+      - SFH
+      - MFH
+    Description: Building typology (single-family vs multi-family)
+    GIS_Source: building_type
+    Transformation: categorical_mapping
+
+  - Name: Age_bracket
+    Options:
+      - pre_1975
+      - btw_1975_2003
+      - post_2003
+    Description: Construction age bracket
+    GIS_Source: construction_year
+    Transformation: numeric_range
+    Ranges:
+      - min: 0
+        max: 1974
+        label: pre_1975
+      - min: 1975
+        max: 2003
+        label: btw_1975_2003
+      - min: 2004
+        max: 9999
+        label: post_2003
+
+  - Name: Weatherization
+    Options:
+      - LeakyEnvelope
+      - SomewhatLeakyEnvelope
+      - TightEnvelope
+    Description: Building envelope weatherization level
+    GIS_Source: insulation_level
+    Transformation: categorical_mapping
+
+Building_ID_col: building_id
+Num_Floors_col: num_floors

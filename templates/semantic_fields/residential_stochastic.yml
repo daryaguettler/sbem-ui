@@ -1,0 +1,48 @@
+# Residential Stochastic Semantic Fields Template
+# Common stochastic fields that require prior distributions for residential buildings
+
+Name: Residential Stochastic Fields
+Fields:
+  - Name: Heating
+    Options:
+      - ElectricResistance
+      - OilHeating
+      - NaturalGasHeating
+      - NaturalGasCondensingHeating
+      - ASHPHeating
+      - GSHPHeating
+    Description: Primary heating system type
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Cooling
+    Options:
+      - ACWindow
+      - ACCentral
+      - WindowASHP
+      - ASHPCooling
+      - GSHPCooling
+    Description: Primary cooling system type
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Walls
+    Options:
+      - UninsulatedWalls
+      - SomeInsulationWalls
+      - SIP
+      - FullInsulationWallsCavity
+      - FullInsulationWallsCavityExterior
+    Description: Wall insulation level
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Windows
+    Options:
+      - SinglePane
+      - SinglePaneStormWindows
+      - DoublePaneLowE
+      - TriplePaneLowE
+    Description: Window glazing type
+    Type: stochastic
+    Requires_Prior: true

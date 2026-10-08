@@ -1,0 +1,429 @@
+# Norway priors, converted from the legacy globi fork (data/priors/Norway/priors.yaml)
+# by norway-globi/scripts/convert_legacy_priors.py. Starting point only; not calibrated.
+Name: Norway (legacy priors)
+description: Walls, roof, windows, HVAC, DHW etc. conditioned on Typology x Age_bracket.
+
+registry:
+  fields:
+  - name: Age_bracket
+    values:
+    - btw_1975_2003
+    - post_2003
+    - pre_1975
+  - name: Cooling
+    values:
+    - ACWindow
+    - ASHPCooling
+    - WindowASHP
+    - none
+  - name: DHW
+    values:
+    - ElectricResistanceDHW
+    - HPWH
+    - OilHeating
+  - name: Equipment
+    values:
+    - HighEfficiencyEquipment
+    - LowEfficiencyEquipment
+  - name: GroundSlabInsulation
+    values:
+    - InsulatedGroundSlab
+    - UninsulatedGroundSlab
+  - name: Heating
+    values:
+    - ASHPHeating
+    - ElectricResistance
+    - GSHPHeating
+    - OilHeating
+  - name: Lighting
+    values:
+    - LED
+    - NoLED
+  - name: RoofInsulation
+    values:
+    - HighlyInsulatedRoof
+    - InsulatedRoof
+    - UninsulatedRoof
+  - name: Thermostat
+    values:
+    - Controls
+    - NoControls
+  - name: Typology
+    values:
+    - MFH
+    - SFH
+  - name: Walls
+    values:
+    - FullInsulationWallsCavity
+    - FullInsulationWallsCavityExterior
+    - SomeInsulationWalls
+    - UninsulatedWalls
+  - name: Weatherization
+    values:
+    - LeakyEnvelope
+    - SomewhatLeakyEnvelope
+    - TightEnvelope
+  - name: Windows
+    values:
+    - DoublePaneLowE
+    - SinglePane
+    - TriplePaneLowE
+priors:
+  wwr:
+    sampler:
+      mean: 0.15
+      std: 0.015
+      clip_min: 0.1
+      clip_max: 0.3
+  f2f_height:
+    source_feature: Age_bracket
+    conditions:
+    - match_val: pre_1975
+      sampler:
+        min: 2.4
+        max: 2.7
+    - match_val: btw_1975_2003
+      sampler:
+        min: 2.5
+        max: 2.9
+    - match_val: post_2003
+      sampler:
+        min: 2.6
+        max: 3.0
+    fallback_prior: null
+joints:
+- target: GroundSlabInsulation
+  condition_on:
+  - Age_bracket
+  table:
+    pre_1975:
+      UninsulatedGroundSlab: 0.8
+      InsulatedGroundSlab: 0.2
+    btw_1975_2003:
+      UninsulatedGroundSlab: 0.6
+      InsulatedGroundSlab: 0.4
+    post_2003:
+      UninsulatedGroundSlab: 0.1
+      InsulatedGroundSlab: 0.9
+- target: Walls
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      UninsulatedWalls: 0.6
+      SomeInsulationWalls: 0.3
+      FullInsulationWallsCavity: 0.1
+    SFH.btw_1975_2003:
+      UninsulatedWalls: 0.3
+      SomeInsulationWalls: 0.4
+      FullInsulationWallsCavity: 0.3
+    SFH.post_2003:
+      UninsulatedWalls: 0.05
+      SomeInsulationWalls: 0.15
+      FullInsulationWallsCavity: 0.6
+      FullInsulationWallsCavityExterior: 0.2
+    MFH.pre_1975:
+      UninsulatedWalls: 0.55
+      SomeInsulationWalls: 0.35
+      FullInsulationWallsCavity: 0.1
+    MFH.btw_1975_2003:
+      UninsulatedWalls: 0.25
+      SomeInsulationWalls: 0.45
+      FullInsulationWallsCavity: 0.3
+    MFH.post_2003:
+      UninsulatedWalls: 0.05
+      SomeInsulationWalls: 0.2
+      FullInsulationWallsCavity: 0.6
+      FullInsulationWallsCavityExterior: 0.15
+  fallback:
+    UninsulatedWalls: 0.2
+    SomeInsulationWalls: 0.3
+    FullInsulationWallsCavity: 0.4
+    FullInsulationWallsCavityExterior: 0.1
+- target: RoofInsulation
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      UninsulatedRoof: 0.6
+      InsulatedRoof: 0.3
+      HighlyInsulatedRoof: 0.1
+    SFH.btw_1975_2003:
+      UninsulatedRoof: 0.3
+      InsulatedRoof: 0.5
+      HighlyInsulatedRoof: 0.2
+    SFH.post_2003:
+      UninsulatedRoof: 0.1
+      InsulatedRoof: 0.3
+      HighlyInsulatedRoof: 0.6
+    MFH.pre_1975:
+      UninsulatedRoof: 0.55
+      InsulatedRoof: 0.35
+      HighlyInsulatedRoof: 0.1
+    MFH.btw_1975_2003:
+      UninsulatedRoof: 0.25
+      InsulatedRoof: 0.5
+      HighlyInsulatedRoof: 0.25
+    MFH.post_2003:
+      UninsulatedRoof: 0.1
+      InsulatedRoof: 0.3
+      HighlyInsulatedRoof: 0.6
+  fallback:
+    UninsulatedRoof: 0.2
+    InsulatedRoof: 0.3
+    HighlyInsulatedRoof: 0.5
+- target: Windows
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      SinglePane: 0.8
+      DoublePaneLowE: 0.2
+    SFH.btw_1975_2003:
+      SinglePane: 0.4
+      DoublePaneLowE: 0.6
+    SFH.post_2003:
+      SinglePane: 0.1
+      DoublePaneLowE: 0.7
+      TriplePaneLowE: 0.2
+    MFH.pre_1975:
+      SinglePane: 0.75
+      DoublePaneLowE: 0.25
+    MFH.btw_1975_2003:
+      SinglePane: 0.35
+      DoublePaneLowE: 0.65
+    MFH.post_2003:
+      SinglePane: 0.1
+      DoublePaneLowE: 0.7
+      TriplePaneLowE: 0.2
+  fallback:
+    SinglePane: 0.3
+    DoublePaneLowE: 0.7
+- target: Weatherization
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      LeakyEnvelope: 0.6
+      SomewhatLeakyEnvelope: 0.3
+      TightEnvelope: 0.1
+    SFH.btw_1975_2003:
+      LeakyEnvelope: 0.3
+      SomewhatLeakyEnvelope: 0.5
+      TightEnvelope: 0.2
+    SFH.post_2003:
+      LeakyEnvelope: 0.1
+      SomewhatLeakyEnvelope: 0.3
+      TightEnvelope: 0.6
+    MFH.pre_1975:
+      LeakyEnvelope: 0.55
+      SomewhatLeakyEnvelope: 0.35
+      TightEnvelope: 0.1
+    MFH.btw_1975_2003:
+      LeakyEnvelope: 0.25
+      SomewhatLeakyEnvelope: 0.5
+      TightEnvelope: 0.25
+    MFH.post_2003:
+      LeakyEnvelope: 0.1
+      SomewhatLeakyEnvelope: 0.3
+      TightEnvelope: 0.6
+  fallback:
+    LeakyEnvelope: 0.4
+    SomewhatLeakyEnvelope: 0.5
+    TightEnvelope: 0.1
+- target: Heating
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      ElectricResistance: 0.4
+      OilHeating: 0.4
+      ASHPHeating: 0.15
+      GSHPHeating: 0.05
+    SFH.btw_1975_2003:
+      ElectricResistance: 0.3
+      OilHeating: 0.4
+      ASHPHeating: 0.2
+      GSHPHeating: 0.1
+    SFH.post_2003:
+      ElectricResistance: 0.2
+      OilHeating: 0.3
+      ASHPHeating: 0.3
+      GSHPHeating: 0.2
+    MFH.pre_1975:
+      ElectricResistance: 0.5
+      OilHeating: 0.35
+      ASHPHeating: 0.1
+      GSHPHeating: 0.05
+    MFH.btw_1975_2003:
+      ElectricResistance: 0.4
+      OilHeating: 0.35
+      ASHPHeating: 0.15
+      GSHPHeating: 0.1
+    MFH.post_2003:
+      ElectricResistance: 0.25
+      OilHeating: 0.3
+      ASHPHeating: 0.3
+      GSHPHeating: 0.15
+  fallback:
+    ElectricResistance: 0.35
+    OilHeating: 0.35
+    ASHPHeating: 0.2
+    GSHPHeating: 0.1
+- target: Cooling
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      none: 0.7
+      ACWindow: 0.2
+      WindowASHP: 0.05
+      ASHPCooling: 0.05
+    SFH.btw_1975_2003:
+      none: 0.6
+      ACWindow: 0.25
+      WindowASHP: 0.1
+      ASHPCooling: 0.05
+    SFH.post_2003:
+      none: 0.5
+      ACWindow: 0.3
+      WindowASHP: 0.15
+      ASHPCooling: 0.05
+    MFH.pre_1975:
+      none: 0.75
+      ACWindow: 0.15
+      WindowASHP: 0.05
+      ASHPCooling: 0.05
+    MFH.btw_1975_2003:
+      none: 0.65
+      ACWindow: 0.2
+      WindowASHP: 0.1
+      ASHPCooling: 0.05
+    MFH.post_2003:
+      none: 0.55
+      ACWindow: 0.25
+      WindowASHP: 0.15
+      ASHPCooling: 0.05
+  fallback:
+    none: 0.6
+    ACWindow: 0.25
+    WindowASHP: 0.1
+    ASHPCooling: 0.05
+- target: DHW
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      ElectricResistanceDHW: 0.7
+      OilHeating: 0.2
+      HPWH: 0.1
+    SFH.btw_1975_2003:
+      ElectricResistanceDHW: 0.6
+      OilHeating: 0.25
+      HPWH: 0.15
+    SFH.post_2003:
+      ElectricResistanceDHW: 0.5
+      OilHeating: 0.2
+      HPWH: 0.3
+    MFH.pre_1975:
+      ElectricResistanceDHW: 0.75
+      OilHeating: 0.15
+      HPWH: 0.1
+    MFH.btw_1975_2003:
+      ElectricResistanceDHW: 0.65
+      OilHeating: 0.2
+      HPWH: 0.15
+    MFH.post_2003:
+      ElectricResistanceDHW: 0.55
+      OilHeating: 0.2
+      HPWH: 0.25
+  fallback:
+    ElectricResistanceDHW: 0.6
+    OilHeating: 0.2
+    HPWH: 0.2
+- target: Lighting
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      NoLED: 0.6
+      LED: 0.4
+    SFH.btw_1975_2003:
+      NoLED: 0.4
+      LED: 0.6
+    SFH.post_2003:
+      NoLED: 0.1
+      LED: 0.9
+    MFH.pre_1975:
+      NoLED: 0.55
+      LED: 0.45
+    MFH.btw_1975_2003:
+      NoLED: 0.35
+      LED: 0.65
+    MFH.post_2003:
+      NoLED: 0.1
+      LED: 0.9
+  fallback:
+    NoLED: 0.3
+    LED: 0.7
+- target: Equipment
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      LowEfficiencyEquipment: 0.7
+      HighEfficiencyEquipment: 0.3
+    SFH.btw_1975_2003:
+      LowEfficiencyEquipment: 0.5
+      HighEfficiencyEquipment: 0.5
+    SFH.post_2003:
+      LowEfficiencyEquipment: 0.2
+      HighEfficiencyEquipment: 0.8
+    MFH.pre_1975:
+      LowEfficiencyEquipment: 0.8
+      HighEfficiencyEquipment: 0.2
+    MFH.btw_1975_2003:
+      LowEfficiencyEquipment: 0.6
+      HighEfficiencyEquipment: 0.4
+    MFH.post_2003:
+      LowEfficiencyEquipment: 0.25
+      HighEfficiencyEquipment: 0.75
+  fallback:
+    LowEfficiencyEquipment: 0.5
+    HighEfficiencyEquipment: 0.5
+- target: Thermostat
+  condition_on:
+  - Typology
+  - Age_bracket
+  table:
+    SFH.pre_1975:
+      NoControls: 0.5
+      Controls: 0.5
+    SFH.btw_1975_2003:
+      NoControls: 0.4
+      Controls: 0.6
+    SFH.post_2003:
+      NoControls: 0.2
+      Controls: 0.8
+    MFH.pre_1975:
+      NoControls: 0.5
+      Controls: 0.5
+    MFH.btw_1975_2003:
+      NoControls: 0.4
+      Controls: 0.6
+    MFH.post_2003:
+      NoControls: 0.2
+      Controls: 0.8
+  fallback:
+    NoControls: 0.4
+    Controls: 0.6
+scenarios: []

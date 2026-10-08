@@ -1,0 +1,59 @@
+Name: Custom Semantic Fields
+Fields:
+- Name: heaitng_fuel
+  Options:
+  - ng
+  - elect
+  Description: ''
+  Type: stochastic
+  Requires_Prior: true
+  GIS_Source: null
+  Transformation: null
+  Ranges: null
+  Groups: null
+- Name: insulation
+  Options:
+  - high
+  - med
+  - low
+  Description: ''
+  Type: stochastic
+  Requires_Prior: true
+  GIS_Source: null
+  Transformation: null
+  Ranges: null
+  Groups: null
+- Name: lighting
+  Options:
+  - led
+  - non_led
+  Description: ''
+  Type: stochastic
+  Requires_Prior: true
+  GIS_Source: null
+  Transformation: null
+  Ranges: null
+  Groups: null
+- Name: size_buckets
+  Options:
+  - small
+  - med
+  - large
+  Description: ''
+  Type: null
+  Requires_Prior: null
+  GIS_Source: sqft_assessor
+  Transformation: numeric_range
+  Ranges:
+  - label: small
+    min: 0
+    max: 1000
+  - label: med
+    min: 1001
+    max: 10000
+  - label: large
+    min: 10001
+    max: 999999
+  Groups: null
+Building_ID_col: building_id
+Num_Floors_col: num_floors

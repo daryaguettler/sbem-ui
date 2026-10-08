@@ -1,0 +1,64 @@
+# Residential heating priors -- a semantic_priors RegionConfig.
+#
+# `Name` and `description` are read by the template picker and ignored by the
+# sampling engine; everything below them is the real config: the field registry,
+# unconditional priors, joint (conditioned) distributions, and scenarios.
+Name: Residential Heating Priors
+description: Heating equipment conditioned on typology and construction era.
+
+registry:
+  fields:
+    - name: Typology
+      values: [SFH, MFH]
+      description: Structural typology of the building.
+    - name: Age_bracket
+      values: [pre_1975, btw_1975_2003, post_2003]
+      description: Construction-era bracket.
+    - name: Heating
+      values:
+        - ElectricResistance
+        - OilHeating
+        - NaturalGasHeating
+        - NaturalGasCondensingHeating
+        - ASHPHeating
+        - GSHPHeating
+      description: Heating equipment type.
+
+priors: {}
+
+joints:
+  # Heating is conditioned on the combination of Typology and Age_bracket, so
+  # each row below is keyed on "<Typology>.<Age_bracket>". Anything not listed
+  # falls back to the stock-wide distribution.
+  - target: Heating
+    condition_on: [Typology, Age_bracket]
+    fallback:
+      ElectricResistance: 0.15
+      OilHeating: 0.10
+      NaturalGasHeating: 0.30
+      NaturalGasCondensingHeating: 0.20
+      ASHPHeating: 0.20
+      GSHPHeating: 0.05
+    table:
+      SFH.pre_1975:
+        {ElectricResistance: 0.20, OilHeating: 0.35, NaturalGasHeating: 0.25, NaturalGasCondensingHeating: 0.10, ASHPHeating: 0.08, GSHPHeating: 0.02}
+      SFH.btw_1975_2003:
+        {ElectricResistance: 0.08, OilHeating: 0.10, NaturalGasHeating: 0.35, NaturalGasCondensingHeating: 0.25, ASHPHeating: 0.20, GSHPHeating: 0.02}
+      SFH.post_2003:
+        {ElectricResistance: 0.03, OilHeating: 0.02, NaturalGasHeating: 0.20, NaturalGasCondensingHeating: 0.35, ASHPHeating: 0.30, GSHPHeating: 0.10}
+      MFH.pre_1975:
+        {ElectricResistance: 0.20, OilHeating: 0.25, NaturalGasHeating: 0.40, NaturalGasCondensingHeating: 0.10, ASHPHeating: 0.05, GSHPHeating: 0.00}
+      MFH.btw_1975_2003:
+        {ElectricResistance: 0.10, OilHeating: 0.05, NaturalGasHeating: 0.45, NaturalGasCondensingHeating: 0.25, ASHPHeating: 0.15, GSHPHeating: 0.00}
+      MFH.post_2003:
+        {ElectricResistance: 0.08, OilHeating: 0.00, NaturalGasHeating: 0.20, NaturalGasCondensingHeating: 0.40, ASHPHeating: 0.30, GSHPHeating: 0.02}
+
+scenarios:
+  # Everything built after 2003 switches to a heat pump; older stock is untouched.
+  - name: Electrification
+    overrides:
+      Heating:
+        based_on: Age_bracket
+        equals: post_2003
+        then: ASHPHeating
+        otherwise: $keep
