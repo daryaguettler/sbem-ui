@@ -9,6 +9,7 @@ from .prior_trees import router as prior_trees_router
 from .gis import router as gis_router
 from .workspace import router as workspace_router
 from .norway import router as runner_router
+from .assist import router as assist_router
 
 __all__ = [
     "artifacts_router",
@@ -20,4 +21,5 @@ __all__ = [
     "gis_router",
     "workspace_router",
     "runner_router",
+    "assist_router",
 ]

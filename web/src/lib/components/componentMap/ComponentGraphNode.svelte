@@ -7,7 +7,6 @@
     displayName: string;
     description: string;
     linkedFields: string[];
-    color: string;
     status: 'unmapped' | 'mapped' | 'inherited';
     hiddenChildCount?: number;
     canExpand?: boolean;
@@ -16,12 +15,14 @@
 
   let { data, selected = false }: { data: ComponentNodeData; selected?: boolean } = $props();
 
-  const statusColor = $derived(
-    data.status === 'mapped' ? '#16a34a' : data.status === 'inherited' ? '#f97316' : '#ef4444'
-  );
-  const statusLabel = $derived(
-    data.status === 'mapped' ? 'Mapped' : data.status === 'inherited' ? 'Inherited' : 'Unmapped'
-  );
+  // Status is carried by border style and an icon as well as hue, so it survives
+  // colorblindness and zoomed-out views: solid = mapped, dashed = inherited, dotted = unmapped.
+  const STATUS = {
+    mapped: { color: 'var(--ok)', icon: '✓', label: 'Mapped' },
+    inherited: { color: 'var(--accent)', icon: '↳', label: 'Inherited' },
+    unmapped: { color: 'var(--err)', icon: '✕', label: 'Unmapped' },
+  } as const;
+  const status = $derived(STATUS[data.status]);
 
   function handleConfigure() {
     componentMapStore.setSelectedPath(data.path);
@@ -37,7 +38,8 @@
 <div
   class="node"
   class:selected
-  style={`--node-color:${data.color}; --status-color:${statusColor}`}
+  data-status={data.status}
+  style={`--status-color:${status.color}`}
   ondblclick={handleConfigure}
   role="button"
   tabindex="0"
@@ -68,7 +70,7 @@
       <span>{data.hiddenChildCount} hidden</span>
     {/if}
   </div>
-  <div class="status-badge">{statusLabel}</div>
+  <div class="status-badge"><span aria-hidden="true">{status.icon}</span> {status.label}</div>
 </div>
 
 <style>
@@ -76,11 +78,20 @@
     min-width: 230px;
     border: 2px solid var(--status-color);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--surface);
     padding: 10px 12px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-    color: #111827;
+    color: var(--text);
     cursor: pointer;
+  }
+
+  .node[data-status='inherited'] {
+    border-style: dashed;
+  }
+
+  .node[data-status='unmapped'] {
+    border-style: dotted;
+    border-width: 3px;
   }
 
   .status-bar {
@@ -91,7 +102,7 @@
   }
 
   .node.selected {
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   .header {
@@ -107,7 +118,7 @@
 
   .path {
     font-size: 10px;
-    color: #9ca3af;
+    color: var(--text-faint);
     font-family: monospace;
   }
 
@@ -117,9 +128,9 @@
   }
 
   .icon-btn {
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
-    color: #374151;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
     border-radius: 6px;
     padding: 2px 6px;
     font-size: 10px;
@@ -129,7 +140,7 @@
   .description {
     margin-top: 6px;
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .stats {
@@ -137,7 +148,7 @@
     gap: 10px;
     margin-top: 8px;
     font-size: 10px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .status-badge {
@@ -146,8 +157,8 @@
     font-size: 10px;
     padding: 2px 8px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--status-color) 15%, white);
-    color: var(--status-color);
+    background: color-mix(in srgb, var(--status-color) 14%, var(--surface));
+    color: var(--text);
     font-weight: 600;
   }
 </style>

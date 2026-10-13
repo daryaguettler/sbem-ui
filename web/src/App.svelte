@@ -11,7 +11,7 @@
   import GISCleaning from './lib/workflows/GISCleaning.svelte';
   import ModelExecution from './lib/workflows/ModelExecution.svelte';
   import ProjectFiles from './lib/workflows/ProjectFiles.svelte';
-  import { currentWorkflow, navigateTo } from './lib/stores/projectStore';
+  import { currentWorkflow, navigateTo, restoreLastWorkflow } from './lib/stores/projectStore';
   import { workspaceStore } from './lib/stores/workspaceStore';
   import { componentTreeStore } from './lib/stores/componentTreeStore';
   import { resetProjectArtifacts, restoreProjectArtifacts } from './lib/stores/projectArtifacts';
@@ -28,6 +28,7 @@
     loadedProjectPath = path;
     resetProjectArtifacts();
     if (path) {
+      restoreLastWorkflow(path);
       await restoreProjectArtifacts();
     }
   }
@@ -81,12 +82,14 @@
 {/if}
 
 <style>
+  /* Fixed to the viewport:the sidebar stays put and only .main scrolls. */
   .layout {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #ffffff;
-    color: #111827;
+    background: var(--bg);
+    color: var(--text);
   }
 
   .main {
@@ -103,7 +106,7 @@
     align-items: center;
     justify-content: center;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -118,15 +121,15 @@
 
   .unreachable button {
     padding: 8px 16px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    background: #ffffff;
-    color: #111827;
+    background: var(--surface);
+    color: var(--text);
     font-size: 14px;
     cursor: pointer;
   }
 
   .unreachable button:hover {
-    background: #f3f4f6;
+    background: var(--surface-3);
   }
 </style>

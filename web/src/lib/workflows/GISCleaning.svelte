@@ -240,13 +240,13 @@
 <section class="workflow">
   <div class="workflow-header">
     <h1>GIS Cleaning</h1>
-    <p class="subtitle">Upload building GIS data, map columns to GloBI requirements, and validate only what you need</p>
+    <p class="subtitle">Upload your building data, match its columns to the model's inputs, and check for missing values.</p>
   </div>
 
   <div class="workflow-content">
     <div class="panel">
       <h2>1. Upload GIS data</h2>
-      <p class="help">Supported formats: CSV and GeoJSON.</p>
+      <p class="help">CSV or GeoJSON, one row per building.</p>
       <div class="upload-row">
         <input
           type="file"
@@ -257,7 +257,7 @@
           }}
         />
         <button type="button" onclick={uploadFile} disabled={uploading || !selectedFile}>
-          {uploading ? 'Uploading...' : 'Upload file'}
+          {uploading ? 'Uploading…' : 'Upload'}
         </button>
       </div>
       {#if $gisDataset}
@@ -266,7 +266,8 @@
           <span>{$gisDataset.rowCount} rows</span>
           <span>{$gisDataset.columnCount} columns</span>
           <span class:validated={$gisDataset.validated} class:pending={!$gisDataset.validated}>
-            {$gisDataset.validated ? 'Validated' : 'Not validated'}
+            <span aria-hidden="true">{$gisDataset.validated ? '✓' : '!'}</span>
+            {$gisDataset.validated ? 'Validated' : 'Not validated yet'}
           </span>
         </div>
       {/if}
@@ -274,10 +275,8 @@
 
     {#if columns.length > 0}
       <div class="panel">
-        <h2>2. Map columns for GloBI</h2>
-        <p class="help">
-          Match your dataset columns to the core GloBI inputs. Optional columns like CT2020 can stay unmapped.
-        </p>
+        <h2>2. Match columns</h2>
+        <p class="help">Pick which of your columns holds each model input. Only required inputs must be matched.</p>
         <div class="mapping-grid">
           {#each roles as role}
             <label>
@@ -308,8 +307,9 @@
       </div>
 
       <div class="panel">
-        <h2>3. Choose columns to validate</h2>
-        <p class="help">Only selected columns are checked for missing values. Unmapped columns are ignored.</p>
+        <h2>3. Check for missing values</h2>
+        <details open={columns.length <= 12}>
+          <summary>Columns to check ({validateColumns.size} of {columns.length} selected)</summary>
         <div class="validation-grid">
           {#each columns as column}
             <label class="checkbox-row">
@@ -320,26 +320,25 @@
                   toggleValidateColumn(column.name, (event.currentTarget as HTMLInputElement).checked)}
               />
               <span>{column.name}</span>
-              <span class="null-count">{column.nullCount ?? 0} nulls</span>
+              <span class="null-count">{column.nullCount ?? 0} empty</span>
             </label>
           {/each}
         </div>
+        </details>
       </div>
 
       <div class="panel">
-        <h2>4. Validate and clean dataset</h2>
+        <h2>4. Validate</h2>
         <label class="checkbox-row drop-option">
           <input type="checkbox" bind:checked={dropIncompleteRows} />
-          <span>Drop rows missing validated column values</span>
+          <span>Drop rows with missing values in the checked columns</span>
         </label>
         {#if incompleteRowCount > 0 && !dropIncompleteRows}
-          <p class="help">
-            {incompleteRowCount} rows are missing values in the selected validation columns. Enable row dropping to remove them and continue.
-          </p>
+          <p class="help">{incompleteRowCount} rows have missing values. Tick the box above to drop them.</p>
         {/if}
         <div class="action-row">
           <button type="button" onclick={validateDataset} disabled={cleaning}>
-            {cleaning ? 'Processing...' : dropIncompleteRows ? 'Validate and drop incomplete rows' : 'Validate mapped columns'}
+            {cleaning ? 'Validating…' : dropIncompleteRows ? 'Validate & drop rows' : 'Validate'}
           </button>
           {#if $gisDataset?.validated}
             <button type="button" class="secondary" onclick={downloadCleanedDataset}>
@@ -365,7 +364,7 @@
       {#if $gisDataset?.validated}
         <WorkflowGuide
           title="GIS data is ready"
-          message="Download the cleaned dataset if needed, then continue to semantic field creation using the mapped GloBI columns."
+          message="Next, turn its columns into the building categories the model uses."
           actionLabel="Go to Semantic Fields"
           actionWorkflow="semantic-fields"
         />
@@ -373,9 +372,7 @@
     {:else}
       <WorkflowGuide
         title="Start with GIS data"
-        message="Upload a building dataset before mapping columns to GloBI requirements."
-        actionLabel="Upload GIS data above"
-        actionWorkflow="gis-cleaning"
+        message="Upload a CSV or GeoJSON of your buildings above to begin."
       />
     {/if}
 
@@ -394,7 +391,7 @@
 
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
   }
 
   .workflow-header h1 {
@@ -405,7 +402,7 @@
   .subtitle,
   .help {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -421,10 +418,10 @@
   }
 
   .panel {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
-    background: #ffffff;
+    background: var(--surface);
   }
 
   .panel h2 {
@@ -442,8 +439,8 @@
   button {
     border: none;
     border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--accent);
+    color: var(--on-accent);
     padding: 10px 16px;
     cursor: pointer;
     font-weight: 600;
@@ -459,17 +456,17 @@
     gap: 16px;
     flex-wrap: wrap;
     margin-top: 16px;
-    color: #374151;
+    color: var(--text-2);
     font-size: 14px;
   }
 
   .validated {
-    color: #047857;
+    color: var(--ok-text);
     font-weight: 600;
   }
 
   .pending {
-    color: #b45309;
+    color: var(--warn-text);
     font-weight: 600;
   }
 
@@ -484,7 +481,7 @@
     flex-direction: column;
     gap: 6px;
     font-size: 13px;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .role-label {
@@ -492,11 +489,11 @@
     align-items: center;
     gap: 8px;
     font-weight: 600;
-    color: #111827;
+    color: var(--text);
   }
 
   .role-description {
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 12px;
   }
 
@@ -509,21 +506,29 @@
   }
 
   .tag.required {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--err-bg);
+    color: var(--err-text);
   }
 
   .tag.recommended {
-    background: #fef3c7;
-    color: #b45309;
+    background: var(--warn-bg);
+    color: var(--warn-text);
   }
 
   select,
   input[type='file'] {
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     padding: 8px 10px;
     font: inherit;
+  }
+
+  details summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 10px;
   }
 
   .validation-grid {
@@ -537,24 +542,24 @@
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
   }
 
   .null-count {
     margin-left: auto;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 12px;
   }
 
   .issues {
     margin: 16px 0 0;
     padding-left: 18px;
-    color: #b45309;
+    color: var(--warn-text);
   }
 
   .error {
-    color: #dc2626;
+    color: var(--err-text);
   }
 
   .action-row {
@@ -565,9 +570,9 @@
   }
 
   .secondary {
-    background: #ffffff;
-    color: #2563eb;
-    border: 1px solid #2563eb;
+    background: var(--surface);
+    color: var(--accent);
+    border: 1px solid var(--accent);
   }
 
   .drop-option {
@@ -576,7 +581,7 @@
 
   .success {
     margin-top: 12px;
-    color: #047857;
+    color: var(--ok-text);
     font-size: 14px;
   }
 </style>

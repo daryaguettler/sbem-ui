@@ -62,14 +62,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f9fafb;
+    background: var(--surface-2);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
   .card {
     width: 420px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 32px;
   }
@@ -77,13 +77,13 @@
   h1 {
     font-size: 20px;
     font-weight: 700;
-    color: #111827;
+    color: var(--text);
     margin: 0 0 8px 0;
   }
 
   .subtitle {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
     margin: 0 0 24px 0;
     line-height: 1.5;
   }
@@ -91,7 +91,7 @@
   .mode-toggle {
     display: flex;
     gap: 4px;
-    background: #f3f4f6;
+    background: var(--surface-3);
     border-radius: 8px;
     padding: 4px;
     margin-bottom: 20px;
@@ -105,12 +105,12 @@
     border-radius: 6px;
     cursor: pointer;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .mode-toggle button.active {
-    background: #ffffff;
-    color: #111827;
+    background: var(--surface);
+    color: var(--text);
     font-weight: 600;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
@@ -127,13 +127,13 @@
     gap: 6px;
     font-size: 13px;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-2);
   }
 
   input {
     font-weight: 400;
     padding: 8px 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 14px;
   }
@@ -141,22 +141,22 @@
   .error {
     margin: 0;
     font-size: 13px;
-    color: #dc2626;
+    color: var(--err-text);
   }
 
   .submit {
     padding: 10px 16px;
     border: none;
     border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--accent);
+    color: var(--on-accent);
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
   }
 
   .submit:disabled {
-    background: #93c5fd;
+    background: var(--accent-border);
     cursor: not-allowed;
   }
 </style>

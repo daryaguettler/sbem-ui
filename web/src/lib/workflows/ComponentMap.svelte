@@ -167,7 +167,7 @@
             {#each templates as template}
               <button type="button" class="template-card" onclick={() => loadTemplate(template.filename)}>
                 <h3>{template.name}</h3>
-                <p>{template.description || 'Residential component hierarchy'}</p>
+                {#if template.description}<p>{template.description}</p>{/if}
               </button>
             {/each}
             {#if $savedAt['component-map']}
@@ -177,8 +177,8 @@
               </button>
             {/if}
             <button type="button" class="template-card scratch" onclick={startFromScratch}>
-              <h3>Start from Scratch</h3>
-              <p>Build selectors on the full Prisma component tree.</p>
+              <h3>Start from scratch</h3>
+              <p>Every component, no selectors yet.</p>
             </button>
           </div>
         {/if}
@@ -204,16 +204,22 @@
         <div class="toolbar-actions">
           <button type="button" class="secondary" onclick={() => (editorMode = 'browse')}>Change template</button>
           <button type="button" onclick={saveToProject} disabled={saving || !$componentMapStore.map}>
-            {saving ? 'Saving...' : 'Save to project'}
+            {saving ? 'Saving…' : 'Save'}
           </button>
           {#if $savedAt['component-map']}
-            <button type="button" class="secondary" onclick={loadFromProject}>Revert to saved</button>
+            <button type="button" class="secondary" onclick={loadFromProject}>Revert</button>
           {/if}
-          <button type="button" onclick={validateMap}>Validate map</button>
-          <button type="button" class="secondary" onclick={checkAgainstLibrary} disabled={checking || saving || !$componentMapStore.map}>
-            {checking ? 'Checking...' : 'Check against library'}
+          <button type="button" class="secondary" onclick={validateMap} title="Check that every selector refers to an existing semantic field">Validate</button>
+          <button
+            type="button"
+            class="secondary"
+            onclick={checkAgainstLibrary}
+            disabled={checking || saving || !$componentMapStore.map}
+            title="Saves the map, then checks that a random sample of field combinations each find a record in the Component Library"
+          >
+            {checking ? 'Checking…' : 'Save & check library'}
           </button>
-          <button type="button" onclick={exportMap} disabled={!$componentMapStore.map}>Export YAML</button>
+          <button type="button" class="secondary" onclick={exportMap} disabled={!$componentMapStore.map}>Export YAML</button>
         </div>
       </div>
 
@@ -221,7 +227,10 @@
         {formatSavedAt($savedAt['component-map'])}
         {#if check}
           · <span class:check-ok={check.ok} class:check-bad={!check.ok}>
-            {check.ok ? `all ${check.tested} sampled combinations resolve` : `${check.failed} of ${check.tested} fail: ${check.errors[0] ?? ''}`}
+            <span aria-hidden="true">{check.ok ? '✓' : '✕'}</span>
+            {check.ok
+              ? `Library check passed: ${check.tested} sampled combinations all found a record`
+              : `Library check: ${check.failed} of ${check.tested} sampled combinations have no record. ${check.errors[0] ?? ''}`}
           </span>
         {/if}
       </p>
@@ -287,7 +296,7 @@
 
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
   }
 
   .workflow-header h1 {
@@ -298,7 +307,7 @@
   .subtitle,
   .help {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -314,16 +323,16 @@
   }
 
   .panel {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
-    background: #ffffff;
+    background: var(--surface);
   }
 
   .panel h2 {
     margin: 0 0 12px;
     font-size: 18px;
-    color: #111827;
+    color: var(--text);
   }
 
   .templates-grid {
@@ -333,11 +342,11 @@
   }
 
   .template-card {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 16px;
-    background: #ffffff;
-    color: #111827;
+    background: var(--surface);
+    color: var(--text);
     font-weight: 400;
     text-align: left;
     cursor: pointer;
@@ -346,32 +355,32 @@
   .template-card h3 {
     margin: 0 0 8px;
     font-size: 16px;
-    color: #111827;
+    color: var(--text);
   }
 
   .template-card p {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 13px;
   }
 
   .template-card.scratch {
     border-style: dashed;
-    background: #f9fafb;
+    background: var(--surface-2);
   }
 
   .template-card.saved {
-    border-color: #bfdbfe;
-    background: #eff6ff;
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
   }
 
-  .check-ok { color: #15803d; }
-  .check-bad { color: #b91c1c; }
+  .check-ok { color: var(--ok-text); font-weight: 600; }
+  .check-bad { color: var(--err-text); font-weight: 600; }
 
   .saved-status {
     margin: -16px 0 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .toolbar {
@@ -391,10 +400,10 @@
 
   .view-toggle button,
   .toolbar-actions button {
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
-    background: #ffffff;
-    color: #374151;
+    background: var(--surface);
+    color: var(--text-2);
     padding: 8px 12px;
     cursor: pointer;
     font-weight: 600;
@@ -402,20 +411,20 @@
   }
 
   .view-toggle button.active {
-    border-color: #2563eb;
-    color: #2563eb;
-    background: #eff6ff;
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
   }
 
   .toolbar-actions button {
-    background: #2563eb;
-    color: #ffffff;
-    border-color: #2563eb;
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
   }
 
   .toolbar-actions .secondary {
-    background: #ffffff;
-    color: #2563eb;
+    background: var(--surface);
+    color: var(--accent);
   }
 
   .editor-layout {
@@ -430,19 +439,19 @@
   }
 
   .invalid {
-    border-color: #fecaca;
-    background: #fef2f2;
-    color: #b91c1c;
+    border-color: var(--err-border);
+    background: var(--err-bg);
+    color: var(--err-text);
   }
 
   .success {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
-    color: #166534;
+    border-color: var(--ok-border);
+    background: var(--ok-bg);
+    color: var(--ok-text);
   }
 
   .error {
-    color: #dc2626;
+    color: var(--err-text);
   }
 
   button:disabled {

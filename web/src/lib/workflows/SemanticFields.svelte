@@ -18,7 +18,10 @@
     initCategoricalGroups,
     initNumericRanges,
     parseOptionsText,
+    syncNumericRanges,
   } from '../utils/semanticFieldRules';
+  import HelpTip from '../components/HelpTip.svelte';
+  import SemanticFieldAssist from '../components/SemanticFieldAssist.svelte';
 
   let templates: SemanticFieldTemplateSummary[] = [];
   let loading = true;
@@ -99,6 +102,7 @@
   function updateOptionsFromText(value: string) {
     optionsText = value;
     const options = parseOptionsText(value);
+    const previousRanges = selectedField!.transformationRule?.numericRanges;
     let nextField = ensureTransformationRule(
       {
         ...selectedField!,
@@ -112,7 +116,7 @@
         ...nextField,
         transformationRule: {
           ...nextField.transformationRule,
-          numericRanges: initNumericRanges(options),
+          numericRanges: syncNumericRanges(previousRanges, options),
         },
       };
     }
@@ -194,6 +198,52 @@
       },
     });
     schedulePreview();
+  }
+
+  function changeType(type: SemanticField['type']) {
+    if (!selectedField) return;
+    const rule = selectedField.transformationRule;
+    const hasRule = Boolean(rule?.sourceColumn || rule?.numericRanges?.some((r) => r.min || r.max));
+    if (
+      type === 'stochastic' &&
+      hasRule &&
+      !confirm(`Switching "${selectedField.name || 'this field'}" to sampled removes its GIS rule. Continue?`)
+    ) {
+      return false;
+    }
+    updateSelectedField({
+      type,
+      requiresPrior: type === 'stochastic',
+      transformationRule: type === 'stochastic' ? undefined : selectedField.transformationRule,
+    });
+    return true;
+  }
+
+  function removeSelectedField() {
+    if (!selectedField) return;
+    if (!confirm(`Remove the field "${selectedField.name || 'Untitled field'}"?`)) return;
+    semanticFieldsStore.removeField(selectedField.id);
+  }
+
+  /** Take a reviewed AI draft into the editor; Validate/Save stay the user's call. */
+  function applyDraft(draft: SemanticField) {
+    if (!selectedField) return;
+    semanticFieldsStore.updateField(selectedField.id, { ...draft, id: selectedField.id });
+    optionsText = draft.options.join(', ');
+    validation = null;
+    schedulePreview();
+  }
+
+  function changeTemplate() {
+    semanticFieldsStore.update((state) => ({ ...state, editorMode: 'browse' }));
+  }
+
+  /** Templates and saved files replace the current fields, so ask first when there are edits. */
+  function confirmReplace(): boolean {
+    return (
+      $semanticFieldsStore.fields.length === 0 ||
+      confirm('This replaces the fields you are editing. Unsaved changes will be lost. Continue?')
+    );
   }
 
   function addField() {
@@ -334,14 +384,14 @@
 <section class="workflow">
   <div class="workflow-header">
     <h1>Semantic Fields</h1>
-    <p class="subtitle">Define transformation rules and preview deterministic semantic fields on your GIS data</p>
+    <p class="subtitle">Turn raw GIS columns into the building categories the model uses (e.g. age band, typology).</p>
   </div>
 
   <div class="workflow-content">
     {#if !$gisDataset?.validated}
       <WorkflowGuide
-        title="Load GIS data first"
-        message="Semantic field rules are applied to the cleaned GIS dataset from the previous workflow."
+        title="Validate GIS data first"
+        message="Rules are applied to your cleaned GIS data, so the preview needs it."
         actionLabel="Go to GIS Cleaning"
         actionWorkflow="gis-cleaning"
       />
@@ -349,26 +399,33 @@
 
     {#if $semanticFieldsStore.editorMode === 'browse'}
       <div class="panel">
-        <h2>Choose a starting point</h2>
+        <div class="browse-header">
+          <h2>Choose a starting point</h2>
+          {#if $semanticFieldsStore.fields.length > 0}
+            <button type="button" class="secondary" onclick={() => semanticFieldsStore.update((state) => ({ ...state, editorMode: 'edit' }))}>
+              ← Back to editing
+            </button>
+          {/if}
+        </div>
         {#if loading}
           <p>Loading templates...</p>
         {:else}
           <div class="templates-grid">
             {#each templates as template}
-              <button type="button" class="template-card" onclick={() => loadTemplate(template.filename)}>
+              <button type="button" class="template-card" onclick={() => confirmReplace() && loadTemplate(template.filename)}>
                 <h3>{template.name}</h3>
-                <p>{template.description || 'Template'}</p>
+                {#if template.description}<p>{template.description}</p>{/if}
               </button>
             {/each}
             {#if $savedAt['semantic-fields']}
-              <button type="button" class="template-card saved" onclick={loadFromProject}>
+              <button type="button" class="template-card saved" onclick={() => confirmReplace() && loadFromProject()}>
                 <h3>Saved in this project</h3>
                 <p>{formatSavedAt($savedAt['semantic-fields'])} to semantic-fields.yaml.</p>
               </button>
             {/if}
-            <button type="button" class="template-card scratch" onclick={startFromScratch}>
-              <h3>Start from Scratch</h3>
-              <p>Create fields and define numeric or categorical mapping rules.</p>
+            <button type="button" class="template-card scratch" onclick={() => confirmReplace() && startFromScratch()}>
+              <h3>Start from scratch</h3>
+              <p>An empty list; add fields one by one.</p>
             </button>
           </div>
         {/if}
@@ -387,13 +444,16 @@
             />
           </label>
           <label>
-            Building ID column
+            Building ID column <span class="from-gis">(set in GIS Cleaning)</span>
             <input value={$semanticFieldsStore.buildingIdCol} readonly />
           </label>
           <label>
-            Number of floors column
+            Number of floors column <span class="from-gis">(set in GIS Cleaning)</span>
             <input value={$semanticFieldsStore.numFloorsCol} readonly />
           </label>
+          <div class="config-actions">
+            <button type="button" class="secondary" onclick={changeTemplate}>Change template</button>
+          </div>
         </div>
       </div>
 
@@ -401,7 +461,7 @@
         <aside class="field-list">
           <div class="list-header">
             <h2>Fields</h2>
-            <button type="button" class="small" onclick={addField}>Add</button>
+            <button type="button" class="small" onclick={addField}>+ Add field</button>
           </div>
           {#if $semanticFieldsStore.fields.length === 0}
             <p class="empty">Add a field to begin.</p>
@@ -414,7 +474,7 @@
                 onclick={() => selectField(field)}
               >
                 <strong>{field.name || 'Untitled field'}</strong>
-                <span class="badge {field.type}">{field.type}</span>
+                <span class="badge {field.type}">{field.type === 'stochastic' ? 'sampled' : 'from GIS'}</span>
               </button>
             {/each}
           {/if}
@@ -423,6 +483,13 @@
         <section class="rule-editor">
           {#if selectedField}
             <h2>Edit field</h2>
+            {#key selectedField.id}
+              <SemanticFieldAssist
+                field={selectedField}
+                apiFields={semanticFieldsStore.buildApiPayload($semanticFieldsStore).fields}
+                onApply={applyDraft}
+              />
+            {/key}
             <div class="field-grid">
               <label>
                 Name
@@ -433,20 +500,22 @@
                 />
               </label>
               <label>
-                Type
+                <span>
+                  Source
+                  <HelpTip
+                    text="From GIS: computed for every building by a rule on one of your columns (e.g. age band from year built). Sampled: your data doesn't record it (e.g. heating system), so it's drawn from probabilities you set in Prior Trees."
+                  />
+                </span>
                 <select
                   value={selectedField.type}
                   onchange={(event) => {
-                    const type = (event.currentTarget as HTMLSelectElement).value as SemanticField['type'];
-                    updateSelectedField({
-                      type,
-                      requiresPrior: type === 'stochastic',
-                      transformationRule: type === 'stochastic' ? undefined : selectedField.transformationRule,
-                    });
+                    const select = event.currentTarget as HTMLSelectElement;
+                    const type = select.value as SemanticField['type'];
+                    if (changeType(type) === false) select.value = selectedField.type;
                   }}
                 >
-                  <option value="deterministic">Deterministic</option>
-                  <option value="stochastic">Stochastic</option>
+                  <option value="deterministic">From GIS data (rule)</option>
+                  <option value="stochastic">Sampled (set in Prior Trees)</option>
                 </select>
               </label>
               <label>
@@ -461,7 +530,7 @@
             {#if selectedField.type === 'deterministic'}
               <div class="field-grid">
                 <label>
-                  GIS source column
+                  GIS column
                   <select
                     value={selectedField.transformationRule?.sourceColumn || ''}
                     onchange={(event) =>
@@ -511,8 +580,8 @@
               </div>
 
               {#if selectedField.transformationRule?.type === 'numeric_range'}
-                <h3>Numeric range rules</h3>
-                <p class="help">Define how source values map onto semantic options. Example: YEARBLT &lt; 1975 → pre_1975.</p>
+                <h3>Ranges</h3>
+                <p class="help">Each option covers a range of the column's values, e.g. 0–1974 → pre_1975.</p>
                 <div class="table-wrap">
                   <table>
                     <thead>
@@ -556,14 +625,14 @@
               {/if}
 
               {#if selectedField.transformationRule?.type === 'categorical_mapping'}
-                <h3>Categorical mapping rules</h3>
-                <p class="help">Map each source value to one of the semantic field options.</p>
+                <h3>Value mapping</h3>
+                <p class="help">Pick which option each value in the column becomes.</p>
                 <div class="table-wrap">
                   <table>
                     <thead>
                       <tr>
-                        <th>Source value</th>
-                        <th>Semantic option</th>
+                        <th>Value in GIS</th>
+                        <th>Becomes</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -588,10 +657,10 @@
                 </div>
               {/if}
             {:else}
-              <p class="help">Stochastic fields are sampled later using prior trees. No GIS transformation rule is needed.</p>
+              <p class="help">Sampled fields don't need a GIS rule. Set their probabilities in Prior Trees.</p>
             {/if}
 
-            <button type="button" class="danger" onclick={() => semanticFieldsStore.removeField(selectedField.id)}>
+            <button type="button" class="danger" onclick={removeSelectedField}>
               Remove field
             </button>
           {:else}
@@ -602,7 +671,7 @@
         <aside class="preview-panel">
           <h2>Preview</h2>
           {#if previewLoading}
-            <p>Updating preview...</p>
+            <p>Updating preview…</p>
           {:else if selectedPreview}
             <div class="stats">
               <span>{selectedPreview.stats.coverage_percent}% mapped</span>
@@ -626,43 +695,61 @@
                 </tbody>
               </table>
             </div>
+          {:else if !$gisDataset?.validated}
+            <p class="empty">Validate your GIS data in step 1 to see a preview.</p>
+          {:else if selectedField?.type === 'stochastic'}
+            <p class="empty">Sampled fields have no GIS preview.</p>
+          {:else if !selectedField?.transformationRule?.sourceColumn}
+            <p class="empty">Pick a GIS column to see how buildings are classified.</p>
           {:else}
-            <p class="empty">Preview appears once rules are configured.</p>
+            <p class="empty">No preview yet. Check the rule for errors with Validate.</p>
           {/if}
         </aside>
       </div>
 
       <div class="actions">
-        <button
-          type="button"
-          onclick={saveToProject}
-          disabled={saving || $semanticFieldsStore.fields.length === 0}
-        >
-          {saving ? 'Saving...' : 'Save to project'}
-        </button>
-        {#if $savedAt['semantic-fields']}
-          <button type="button" class="secondary" onclick={loadFromProject}>Revert to saved</button>
-        {/if}
-        <button type="button" onclick={validateFields}>Validate rules</button>
-        <button type="button" onclick={exportFields} disabled={$semanticFieldsStore.fields.length === 0}>
-          Export YAML
-        </button>
-        <button
-          type="button"
-          class="secondary"
-          onclick={exportEnrichedGis}
-          disabled={!validation?.valid || $semanticFieldsStore.fields.length === 0}
-        >
-          Apply and download GIS
-        </button>
-        <button
-          type="button"
-          class="secondary"
-          onclick={saveEnrichedGis}
-          disabled={!validation?.valid || $semanticFieldsStore.fields.length === 0}
-        >
-          Apply and save GIS
-        </button>
+        <div class="action-group">
+          <button
+            type="button"
+            onclick={saveToProject}
+            disabled={saving || $semanticFieldsStore.fields.length === 0}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          {#if $savedAt['semantic-fields']}
+            <button type="button" class="secondary" onclick={() => confirmReplace() && loadFromProject()}>Revert</button>
+          {/if}
+          <button type="button" class="secondary" onclick={validateFields}>Validate</button>
+        </div>
+        <div class="action-group export-group" role="group" aria-label="Export">
+          <span class="group-label">Export</span>
+          <button
+            type="button"
+            class="secondary"
+            onclick={exportFields}
+            disabled={$semanticFieldsStore.fields.length === 0}
+          >
+            YAML
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            onclick={exportEnrichedGis}
+            disabled={!validation?.valid || $semanticFieldsStore.fields.length === 0}
+            title={validation?.valid ? 'Download your GIS data with these fields added as columns' : 'Validate the rules first'}
+          >
+            GIS with fields
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            onclick={saveEnrichedGis}
+            disabled={!validation?.valid || $semanticFieldsStore.fields.length === 0}
+            title={validation?.valid ? 'Save your GIS data with these fields added into the project (gis/buildings.geojson)' : 'Validate the rules first'}
+          >
+            Save GIS to project
+          </button>
+        </div>
       </div>
 
       <p class="saved-status">
@@ -672,8 +759,9 @@
       {#if validation}
         <div class="panel" class:invalid={!validation.valid}>
           {#if validation.valid}
-            <p>Rules are valid and ready to export.</p>
+            <p><span aria-hidden="true">✓</span> Rules are valid.</p>
           {:else}
+            <p class="problems"><span aria-hidden="true">✕</span> {validation.errors.length} problem{validation.errors.length === 1 ? '' : 's'} to fix:</p>
             <ul>
               {#each validation.errors as issue}
                 <li>{issue}</li>
@@ -699,7 +787,7 @@
 
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
   }
 
   .workflow-header h1 {
@@ -711,7 +799,7 @@
   .help,
   .empty {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -730,10 +818,10 @@
   .field-list,
   .rule-editor,
   .preview-panel {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
-    background: #ffffff;
+    background: var(--surface);
   }
 
   .config-panel {
@@ -769,18 +857,18 @@
     gap: 8px;
     padding: 10px 12px;
     margin-bottom: 8px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #ffffff;
-    color: #111827;
+    background: var(--surface);
+    color: var(--text);
     font-weight: 400;
     cursor: pointer;
     text-align: left;
   }
 
   .field-item.active {
-    border-color: #2563eb;
-    background: #eff6ff;
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
 
   .templates-grid {
@@ -790,11 +878,11 @@
   }
 
   .template-card {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 16px;
-    background: #ffffff;
-    color: #111827;
+    background: var(--surface);
+    color: var(--text);
     font-weight: 400;
     text-align: left;
     cursor: pointer;
@@ -803,21 +891,22 @@
   .template-card h3 {
     margin: 0 0 8px;
     font-size: 16px;
-    color: #111827;
+    color: var(--text);
   }
 
   .template-card p {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 13px;
   }
 
   .template-card.scratch {
     border-style: dashed;
-    background: #f9fafb;
+    background: var(--surface-2);
   }
 
   .field-grid {
+    align-items: end;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
@@ -833,7 +922,7 @@
 
   input,
   select {
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     padding: 8px 10px;
     font: inherit;
@@ -842,8 +931,8 @@
   button {
     border: none;
     border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--accent);
+    color: var(--on-accent);
     padding: 10px 16px;
     cursor: pointer;
     font-weight: 600;
@@ -855,17 +944,19 @@
   }
 
   .secondary {
-    background: #ffffff;
-    color: #2563eb;
-    border: 1px solid #2563eb;
+    background: var(--surface);
+    color: var(--accent);
+    border: 1px solid var(--accent);
   }
 
   .danger {
-    background: #dc2626;
+    background: var(--danger);
     margin-top: 12px;
   }
 
   .badge {
+    flex: none;
+    white-space: nowrap;
     font-size: 10px;
     text-transform: uppercase;
     padding: 4px 8px;
@@ -874,18 +965,25 @@
   }
 
   .badge.deterministic {
-    background: #dbeafe;
-    color: #1e40af;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
   }
 
   .badge.stochastic {
-    background: #fce7f3;
-    color: #9d174d;
+    background: color-mix(in srgb, var(--series-5) 18%, var(--surface));
+    color: var(--text);
   }
 
   .table-wrap {
     overflow: auto;
     margin-bottom: 16px;
+  }
+
+  /* Inputs inside rule tables shrink to their cell instead of forcing a scrollbar. */
+  td input,
+  td select {
+    width: 100%;
+    min-width: 0;
   }
 
   table {
@@ -896,7 +994,7 @@
 
   th,
   td {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     padding: 10px;
     text-align: left;
   }
@@ -906,34 +1004,79 @@
     gap: 12px;
     margin-bottom: 12px;
     font-size: 13px;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .actions {
     display: flex;
+    justify-content: space-between;
     gap: 12px;
     flex-wrap: wrap;
+  }
+
+  .action-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .group-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .problems {
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .from-gis {
+    font-weight: 400;
+    color: var(--text-faint);
+    font-size: 12px;
+  }
+
+  .config-actions {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+  }
+
+  .browse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .browse-header h2 {
+    margin: 0;
   }
 
   .saved-status {
     margin: -12px 0 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .template-card.saved {
-    border-color: #bfdbfe;
-    background: #eff6ff;
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
   }
 
   .invalid {
-    border-color: #fecaca;
-    background: #fef2f2;
-    color: #b91c1c;
+    border-color: var(--err-border);
+    background: var(--err-bg);
+    color: var(--err-text);
   }
 
   .error {
-    color: #dc2626;
+    color: var(--err-text);
   }
 
   @media (max-width: 1100px) {

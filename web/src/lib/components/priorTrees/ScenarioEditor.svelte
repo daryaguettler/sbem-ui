@@ -296,7 +296,7 @@
   }
 
   .scenario {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px;
     display: flex;
@@ -313,7 +313,7 @@
 
   .name input {
     padding: 6px 10px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 14px;
     font-weight: 600;
@@ -323,14 +323,14 @@
   .summary {
     flex: 1;
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
     min-width: 160px;
   }
 
   .remove {
-    border: 1px solid #fecaca;
-    background: #ffffff;
-    color: #b91c1c;
+    border: 1px solid var(--err-border);
+    background: var(--surface);
+    color: var(--err-text);
     border-radius: 6px;
     padding: 5px 10px;
     font-size: 12px;
@@ -339,7 +339,7 @@
   }
 
   .remove:hover {
-    background: #fef2f2;
+    background: var(--err-bg);
   }
 
   .overrides {
@@ -349,7 +349,7 @@
   }
 
   .override {
-    border-left: 3px solid #dbeafe;
+    border-left: 3px solid var(--accent-soft);
     padding-left: 12px;
     display: flex;
     flex-direction: column;
@@ -365,7 +365,7 @@
 
   .override-row.conditional {
     padding-left: 14px;
-    border-left: 1px dashed #e5e7eb;
+    border-left: 1px dashed var(--border);
   }
 
   label {
@@ -373,24 +373,24 @@
     flex-direction: column;
     gap: 3px;
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   select,
   .override-row input {
     padding: 6px 8px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 13px;
-    background: #ffffff;
-    color: #111827;
+    background: var(--surface);
+    color: var(--text);
     min-width: 130px;
   }
 
   .drop {
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
-    color: #b91c1c;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--err-text);
     border-radius: 6px;
     padding: 5px 9px;
     font-size: 13px;
@@ -399,14 +399,14 @@
   }
 
   .drop:hover {
-    background: #fef2f2;
+    background: var(--err-bg);
   }
 
   .add-override {
     align-self: flex-start;
-    border: 1px dashed #d1d5db;
-    background: #ffffff;
-    color: #2563eb;
+    border: 1px dashed var(--border-strong);
+    background: var(--surface);
+    color: var(--accent);
     border-radius: 6px;
     padding: 6px 12px;
     font-size: 12px;
@@ -415,16 +415,16 @@
   }
 
   .add-override:disabled {
-    color: #9ca3af;
+    color: var(--text-faint);
     cursor: not-allowed;
   }
 
   .add-override:not(:disabled):hover {
-    background: #f8fafc;
+    background: var(--surface-2);
   }
 
   .scenario footer {
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid var(--surface-3);
     padding-top: 10px;
   }
 
@@ -440,12 +440,12 @@
     flex-direction: column;
     gap: 2px;
     font-size: 12px;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .toggle small {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-faint);
     line-height: 1.4;
     max-width: 520px;
   }
@@ -458,7 +458,7 @@
 
   .add-scenario input {
     padding: 8px 10px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 13px;
     min-width: 280px;
@@ -467,8 +467,8 @@
   .add-scenario button {
     border: none;
     border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--accent);
+    color: var(--on-accent);
     padding: 9px 16px;
     font-size: 13px;
     font-weight: 600;
@@ -478,9 +478,9 @@
   .hint {
     margin: 0;
     font-size: 13px;
-    color: #92400e;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
+    color: var(--warn-text);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
     border-radius: 8px;
     padding: 10px 12px;
   }

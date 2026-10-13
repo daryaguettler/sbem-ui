@@ -17,11 +17,14 @@
   const NODE_HEIGHT = 38;
   const PADDING = 16;
 
-  const KIND_STYLES: Record<string, { fill: string; stroke: string; ink: string; label: string }> = {
-    context: { fill: '#f3f4f6', stroke: '#9ca3af', ink: '#374151', label: 'From GIS' },
-    compound: { fill: '#ede9fe', stroke: '#7c3aed', ink: '#5b21b6', label: 'Join key' },
-    conditional: { fill: '#dbeafe', stroke: '#2563eb', ink: '#1e40af', label: 'Conditioned' },
-    unconditional: { fill: '#dcfce7', stroke: '#16a34a', ink: '#166534', label: 'Unconditioned' },
+  // Colors are CSS variables (set via style, since SVG presentation attributes can't
+  // resolve var()), tinted toward the surface so they follow light/dark mode.
+  const tint = (hue: string) => `color-mix(in srgb, ${hue} 16%, var(--surface))`;
+  const KIND_STYLES: Record<string, { fill: string; stroke: string; dash: string; label: string }> = {
+    context: { fill: 'var(--surface-3)', stroke: 'var(--text-faint)', dash: 'none', label: 'From GIS' },
+    compound: { fill: tint('var(--series-7)'), stroke: 'var(--series-7)', dash: '4 3', label: 'Join key' },
+    conditional: { fill: tint('var(--series-1)'), stroke: 'var(--series-1)', dash: 'none', label: 'Conditioned' },
+    unconditional: { fill: tint('var(--series-3)'), stroke: 'var(--series-3)', dash: 'none', label: 'Unconditioned' },
   };
 
   interface Placed {
@@ -77,14 +80,14 @@
     <svg viewBox="0 0 {width} {height}" width={width} height={height} role="img" aria-label="Prior sampling dependency graph">
       <defs>
         <marker id="prior-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
-          <path d="M 0 0 L 8 4 L 0 8 z" fill="#9ca3af" />
+          <path d="M 0 0 L 8 4 L 0 8 z" style="fill: var(--text-faint)" />
         </marker>
       </defs>
 
       {#each graph.edges as edge}
         {@const path = edgePath(edge.from, edge.to)}
         {#if path}
-          <path d={path} fill="none" stroke="#9ca3af" stroke-width="2" marker-end="url(#prior-arrow)" />
+          <path d={path} fill="none" style="stroke: var(--text-faint)" stroke-width="2" marker-end="url(#prior-arrow)" />
         {/if}
       {/each}
 
@@ -97,15 +100,14 @@
             width={NODE_WIDTH}
             height={NODE_HEIGHT}
             rx={node.kind === 'compound' ? 16 : 6}
-            fill={style.fill}
-            stroke={style.stroke}
+            style="fill: {style.fill}; stroke: {style.stroke}; stroke-dasharray: {style.dash};"
             stroke-width="1.5"
           />
-          <text x={node.x + 10} y={node.y + 16} font-size="12" font-weight="600" fill={style.ink}>
+          <text x={node.x + 10} y={node.y + 16} font-size="12" font-weight="600" style="fill: var(--text)">
             {displayName(node.name)}
             <title>{node.name}</title>
           </text>
-          <text x={node.x + 10} y={node.y + 29} font-size="10" fill={style.ink} opacity="0.75">
+          <text x={node.x + 10} y={node.y + 29} font-size="10" style="fill: var(--text-muted)">
             {style.label}
           </text>
         </g>
@@ -116,7 +118,7 @@
   <ul class="legend">
     {#each Object.values(KIND_STYLES) as style}
       <li>
-        <span class="swatch" style="background: {style.fill}; border-color: {style.stroke};"></span>
+        <span class="swatch" style="background: {style.fill}; border-color: {style.stroke}; border-style: {style.dash === 'none' ? 'solid' : 'dashed'};"></span>
         {style.label}
       </li>
     {/each}
@@ -127,9 +129,9 @@
 <style>
   .graph {
     overflow: auto;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--surface);
     padding: 4px;
   }
 
@@ -142,7 +144,7 @@
     padding: 0;
     list-style: none;
     font-size: 12px;
-    color: #4b5563;
+    color: var(--text-2);
   }
 
   .legend li {
@@ -159,12 +161,12 @@
   }
 
   .note {
-    color: #9ca3af;
+    color: var(--text-faint);
   }
 
   .empty {
     margin: 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 </style>

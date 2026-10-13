@@ -6,6 +6,8 @@
    * building up. Preview asks the runner how many draws each package changes.
    */
   import { onMount } from 'svelte';
+  import RunnerNotice from '../components/RunnerNotice.svelte';
+  import WorkflowGuide from '../components/WorkflowGuide.svelte';
   import { fetchSavedArtifact, formatSavedAt, saveArtifact } from '../api/artifacts';
   import { fetchRunnerStatus, runJob } from '../api/runner';
   import { markSaved, savedAt } from '../stores/projectArtifacts';
@@ -83,7 +85,7 @@
   function label(m: Measure): string {
     const target = m.to ?? Object.entries(m.map ?? {}).map(([a, b]) => `${a}→${b}`).join(', ');
     const when = conditions(m)
-      .map((c) => `${c.field} ${c.in ? '∈' : '∉'} ${(c.in ?? c.not_in ?? []).join('/')}`)
+      .map((c) => `${c.field} ${c.in ? 'is' : 'is not'} ${(c.in ?? c.not_in ?? []).join(' or ')}`)
       .join(', ');
     return `${m.field} → ${target}${when ? `  if ${when}` : ''}`;
   }
@@ -179,7 +181,8 @@
   <div class="workflow-header">
     <div>
       <h1>Retrofits</h1>
-      <p class="subtitle">{formatSavedAt($savedAt['retrofits'])}{dirty ? ' · unsaved changes' : ''}</p>
+      <p class="subtitle">Bundle upgrades into packages, e.g. “oil boiler → heat pump where built before 1975”.</p>
+      <p class="saved-line">{formatSavedAt($savedAt['retrofits'])}{dirty ? ' · unsaved changes' : ''}</p>
     </div>
     <div class="actions">
       {#if runnerAvailable}
@@ -193,13 +196,28 @@
 
   <div class="workflow-content">
     {#if error}<p class="error">{error}</p>{/if}
+    {#if !loading && !runnerAvailable}
+      <RunnerNotice feature="Previewing how many buildings each package changes" />
+    {/if}
 
     {#if loading}
       <p class="muted">Loading…</p>
     {:else if fieldNames.length === 0}
-      <p class="muted">Define semantic fields first.</p>
+      <WorkflowGuide
+        title="Define semantic fields first"
+        message="Each measure changes a semantic field, e.g. Heating from oil to heat pump."
+        actionLabel="Go to Semantic Fields"
+        actionWorkflow="semantic-fields"
+      />
     {:else}
       <div class="panel">
+        <h2>Packages</h2>
+        {#if doc.packages.length === 0}
+          <div class="empty">
+            <p>No packages yet. A package is a set of measures applied together, and is compared against the baseline.</p>
+            <button type="button" onclick={addPackage}>+ Add package</button>
+          </div>
+        {/if}
         {#each doc.packages as pkg, p}
           <div class="package">
             <div class="package-head">
@@ -241,17 +259,20 @@
                   <button type="button" class="icon" title="Cancel" onclick={() => (adding = null)}>×</button>
                 </span>
               {:else}
-                <button type="button" class="link" onclick={() => openAdd(p)}>+ measure</button>
+                <button type="button" class="link" onclick={() => openAdd(p)}>+ Add measure</button>
               {/if}
             </div>
           </div>
         {/each}
-        <button type="button" class="link" onclick={addPackage}>+ package</button>
+        {#if doc.packages.length > 0}
+          <button type="button" class="link" onclick={addPackage}>+ Add package</button>
+        {/if}
       </div>
 
       {#if usedFields.length > 0}
         <div class="panel">
           <h2>Never downgrade</h2>
+          <p class="muted">Tick a field and order its options from worst (left) to best (right); measures then only move a building rightwards.</p>
           {#each usedFields as field}
             <div class="order-row">
               <label class="toggle">
@@ -262,9 +283,9 @@
                 <span class="order">
                   {#each doc.upgrade_order[field] as opt, i}
                     <span class="step">
-                      {#if i > 0}<button type="button" class="arrow" title="Move down" onclick={() => move(field, i, -1)}>‹</button>{/if}
+                      {#if i > 0}<button type="button" class="arrow" title="Move left (worse)" aria-label="Move {opt} left" onclick={() => move(field, i, -1)}>‹</button>{/if}
                       {opt}
-                      {#if i < doc.upgrade_order[field].length - 1}<button type="button" class="arrow" title="Move up" onclick={() => move(field, i, 1)}>›</button>{/if}
+                      {#if i < doc.upgrade_order[field].length - 1}<button type="button" class="arrow" title="Move right (better)" aria-label="Move {opt} right" onclick={() => move(field, i, 1)}>›</button>{/if}
                     </span>
                     {#if i < doc.upgrade_order[field].length - 1}<span class="lt">&lt;</span>{/if}
                   {/each}
@@ -282,40 +303,42 @@
   .workflow { display: flex; flex-direction: column; height: 100%; }
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
   .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
-  .subtitle { margin: 0; color: #6b7280; font-size: 13px; }
+  .subtitle { margin: 0; color: var(--text-muted); font-size: 14px; }
+  .saved-line { margin: 2px 0 0; color: var(--text-faint); font-size: 12px; }
+  .empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: var(--text-muted); font-size: 14px; }
   .actions { display: flex; gap: 8px; }
   .workflow-content { padding: 32px; display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
-  .panel { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
   .panel h2 { margin: 0; font-size: 15px; }
-  .package { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid #f3f4f6; }
+  .package { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--surface-3); }
   .package-head { display: flex; align-items: center; gap: 10px; }
   .name { font-size: 15px; font-weight: 600; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; min-width: 200px; }
-  .name:hover, .name:focus { border-color: #e5e7eb; outline: none; }
-  .share { font-size: 12px; color: #2563eb; }
+  .name:hover, .name:focus { border-color: var(--border); outline: none; }
+  .share { font-size: 12px; color: var(--accent); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; background: #f3f4f6; border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
-  .chip-x, .icon, .arrow { border: none; background: transparent; color: #9ca3af; cursor: pointer; font-size: 14px; padding: 0 4px; }
-  .chip-x:hover, .icon:hover, .arrow:hover { color: #111827; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-3); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
+  .chip-x, .icon, .arrow { border: none; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 14px; padding: 0 4px; }
+  .chip-x:hover, .icon:hover, .arrow:hover { color: var(--text); }
   .icon { margin-left: auto; }
   .add-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
   .add-row .icon { margin-left: 0; }
-  select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 6px; font-size: 13px; background: #fff; }
-  .link { border: none; background: transparent; color: #2563eb; cursor: pointer; font-size: 13px; padding: 4px 0; text-align: left; }
+  select { border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 13px; background: var(--surface); }
+  .link { border: none; background: transparent; color: var(--accent); cursor: pointer; font-size: 13px; padding: 4px 0; text-align: left; }
   .order-row { display: flex; align-items: center; gap: 16px; font-size: 13px; }
   .toggle { display: inline-flex; align-items: center; gap: 6px; min-width: 180px; }
   .order { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-  .step { display: inline-flex; align-items: center; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 2px 4px; }
-  .lt { color: #9ca3af; }
-  button { border: none; border-radius: 8px; background: #2563eb; color: #fff; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button.secondary { background: #fff; color: #111827; border: 1px solid #e5e7eb; }
+  .step { display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; }
+  .lt { color: var(--text-faint); }
+  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
   button.small { padding: 4px 10px; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .muted { color: #6b7280; font-size: 13px; }
-  .error { color: #b91c1c; font-size: 13px; margin: 0; }
+  .muted { color: var(--text-muted); font-size: 13px; }
+  .error { color: var(--err-text); font-size: 13px; margin: 0; }
 </style>

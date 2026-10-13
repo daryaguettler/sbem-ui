@@ -1,5 +1,6 @@
 <script lang="ts">
   import SchemaForm from '../components/componentLibrary/SchemaForm.svelte';
+  import SidePanel from '../components/SidePanel.svelte';
   import {
     fetchComponentTypes,
     fetchComponentRecords,
@@ -16,18 +17,6 @@
 
   type PanelState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; name: string };
   let panel = $state<PanelState>({ mode: 'closed' });
-  let dialog = $state<HTMLDialogElement | null>(null);
-
-  // The <dialog> is only rendered while the panel is open, so this fires on mount.
-  // showModal() gives us Escape-to-close and a focus trap for free.
-  $effect(() => {
-    if (dialog && !dialog.open) dialog.showModal();
-  });
-
-  function onDialogClick(event: MouseEvent) {
-    // A click that lands on the dialog element itself is a click on the backdrop.
-    if (event.target === dialog) closePanel();
-  }
 
   async function loadTypes() {
     loadingTypes = true;
@@ -98,52 +87,60 @@
   <header class="workflow-header">
     <h1>Component Library</h1>
     <p class="subtitle">
-      Author the real engineering-parameter records (LPD, infiltration rates, DHW efficiency, ...) that
-      the Component Map's selectors reference. Build these first -- the component map is generated from
-      them, not the other way around.
+      The engineering records (lighting power, infiltration, HVAC efficiency, schedules…) that the
+      Component Map points to.
     </p>
   </header>
 
-  <div class="body">
-    <aside class="types">
+  <div class="body" class:panel-open={panel.mode !== 'closed'}>
+    <nav class="types" aria-label="Component types">
       {#if loadingTypes}
-        <p class="hint">Loading types...</p>
+        <p class="hint">Loading types…</p>
       {:else}
         {#each types as type}
-          <button type="button" class="type-item" class:active={type === selectedType} onclick={() => selectType(type)}>
+          <button
+            type="button"
+            class="type-item"
+            class:active={type === selectedType}
+            aria-current={type === selectedType ? 'true' : undefined}
+            onclick={() => selectType(type)}
+          >
             {type}
           </button>
         {/each}
       {/if}
-    </aside>
+    </nav>
 
     <section class="records">
       {#if selectedType}
         <div class="records-header">
-          <h3>{selectedType}</h3>
-          <button type="button" onclick={openCreate}>+ New {selectedType}</button>
+          <h2>{selectedType}</h2>
+          <button type="button" class="btn" onclick={openCreate}>+ Add {selectedType}</button>
         </div>
 
         {#if error}
-          <p class="error">{error}</p>
+          <p class="error" role="alert">{error}</p>
         {/if}
 
         {#if loadingRecords}
-          <p class="hint">Loading records...</p>
+          <p class="hint">Loading records…</p>
         {:else if records.length === 0}
-          <p class="hint">No {selectedType} records yet.</p>
+          <div class="empty">
+            <p>No {selectedType} records yet.</p>
+            <button type="button" class="btn btn-secondary" onclick={openCreate}>+ Add the first one</button>
+          </div>
         {:else}
           <table>
             <thead>
-              <tr><th>Name</th><th></th></tr>
+              <tr><th>Name</th><th><span class="visually-hidden">Actions</span></th></tr>
             </thead>
             <tbody>
               {#each records as record}
-                <tr>
+                <tr class:editing={panel.mode === 'edit' && panel.name === record.Name}>
                   <td>{record.Name}</td>
                   <td class="row-actions">
-                    <button type="button" class="secondary" onclick={() => openEdit(record.Name)}>Edit</button>
-                    <button type="button" class="danger" onclick={() => removeRecord(record.Name)}>Delete</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick={() => openEdit(record.Name)}>Edit</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick={() => removeRecord(record.Name)}>Delete</button>
                   </td>
                 </tr>
               {/each}
@@ -154,94 +151,126 @@
         <p class="hint">Select a component type.</p>
       {/if}
     </section>
+
+    {#if panel.mode !== 'closed' && selectedType}
+      <div class="editor-slot">
+        <SidePanel
+          title={panel.mode === 'create' ? `New ${selectedType}` : `Edit ${panel.mode === 'edit' ? panel.name : ''}`}
+          subtitle={selectedType}
+          onClose={closePanel}
+        >
+          {#key `${panel.mode}:${panel.mode === 'edit' ? panel.name : ''}`}
+            <SchemaForm
+              componentType={selectedType}
+              mode={panel.mode === 'create' ? 'create' : 'edit'}
+              name={panel.mode === 'edit' ? panel.name : null}
+              onSaved={onSaved}
+              onCancel={closePanel}
+            />
+          {/key}
+        </SidePanel>
+      </div>
+    {/if}
   </div>
 </div>
-
-{#if panel.mode !== 'closed' && selectedType}
-  <dialog class="editor" bind:this={dialog} onclose={closePanel} onclick={onDialogClick}>
-    <div class="editor-body">
-      <header class="editor-header">
-        <h2>{panel.mode === 'create' ? `New ${selectedType}` : `Edit ${panel.mode === 'edit' ? panel.name : ''}`}</h2>
-        <button type="button" class="close" onclick={closePanel} aria-label="Close">&times;</button>
-      </header>
-      <SchemaForm
-        componentType={selectedType}
-        mode={panel.mode === 'create' ? 'create' : 'edit'}
-        name={panel.mode === 'edit' ? panel.name : null}
-        onSaved={onSaved}
-        onCancel={closePanel}
-      />
-    </div>
-  </dialog>
-{/if}
 
 <style>
   .workflow {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0;
   }
 
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
   }
 
   .workflow-header h1 {
     margin: 0 0 4px;
     font-size: 24px;
-    color: #111827;
+    color: var(--text);
   }
 
   .subtitle {
-    margin: 0;
     font-size: 14px;
-    color: #6b7280;
+    color: var(--text-muted);
     max-width: 720px;
-    line-height: 1.5;
   }
 
   .body {
+    position: relative;
     flex: 1;
     display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
+    grid-template-columns: 220px minmax(0, 1fr);
     min-height: 0;
     overflow: hidden;
   }
 
+  /* The editor docks as a third column; records stay visible beside it. */
+  .body.panel-open {
+    grid-template-columns: 220px minmax(0, 1fr) minmax(400px, 560px);
+  }
+
+  .editor-slot {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Narrow screens:the editor slides over the records as a right-hand drawer
+     (positioned inside .body, so it never escapes to a viewport corner). */
+  @media (max-width: 1100px) {
+    .body.panel-open {
+      grid-template-columns: 200px minmax(0, 1fr);
+    }
+
+    .editor-slot {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(520px, 100%);
+      box-shadow: var(--shadow-lg);
+      z-index: 5;
+    }
+  }
+
   .types {
-    border-right: 1px solid #e5e7eb;
-    padding: 16px;
+    border-right: 1px solid var(--border);
+    background: var(--surface-2);
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     overflow: auto;
   }
 
   .type-item {
     text-align: left;
-    padding: 10px 12px;
+    padding: 8px 12px;
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #374151;
+    color: var(--text-2);
     font-size: 14px;
     cursor: pointer;
   }
 
   .type-item:hover {
-    background: #f3f4f6;
+    background: var(--surface-3);
   }
 
   .type-item.active {
-    background: #eff6ff;
-    color: #2563eb;
+    background: var(--accent-soft);
+    color: var(--accent);
     font-weight: 600;
   }
 
   .records {
     padding: 24px 32px;
     overflow: auto;
+    min-width: 0;
   }
 
   .records-header,
@@ -257,10 +286,22 @@
     margin-bottom: 16px;
   }
 
-  .records-header h3 {
-    margin: 0;
+  .records-header h2 {
     font-size: 18px;
-    color: #111827;
+    color: var(--text);
+  }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 24px;
+    max-width: 960px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 14px;
   }
 
   table {
@@ -272,15 +313,19 @@
   th {
     text-align: left;
     padding: 8px;
-    border-bottom: 1px solid #e5e7eb;
-    color: #6b7280;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
     font-weight: 600;
   }
 
   td {
     padding: 8px;
-    border-bottom: 1px solid #f3f4f6;
-    color: #111827;
+    border-bottom: 1px solid var(--surface-3);
+    color: var(--text);
+  }
+
+  tr.editing td {
+    background: var(--accent-soft);
   }
 
   .row-actions {
@@ -289,83 +334,15 @@
     justify-content: flex-end;
   }
 
-  /* The create/edit form is a centered dialog rather than a narrow right-hand rail:
-     component records have a lot of fields, and relation fields open a nested form
-     inside this one, which needs the width. */
-  .editor {
-    width: min(680px, calc(100vw - 48px));
-    max-height: min(85vh, 900px);
-    padding: 0;
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 20px 45px rgba(17, 24, 39, 0.25);
-    overflow: auto;
-  }
-
-  .editor::backdrop {
-    background: rgba(17, 24, 39, 0.45);
-  }
-
-  .editor-body {
-    padding: 24px;
-  }
-
-  .editor-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-
-  .editor-header h2 {
-    margin: 0;
-    font-size: 18px;
-    color: #111827;
-  }
-
-  .close {
-    background: transparent;
-    color: #6b7280;
-    font-size: 22px;
-    line-height: 1;
-    padding: 2px 8px;
-  }
-
-  .close:hover {
-    color: #111827;
-  }
-
   .hint {
     font-size: 14px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .error {
     font-size: 13px;
-    color: #dc2626;
+    color: var(--err-text);
+    margin-bottom: 12px;
   }
 
-  button {
-    border: none;
-    border-radius: 6px;
-    background: #2563eb;
-    color: #ffffff;
-    padding: 8px 12px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  .secondary {
-    background: #ffffff;
-    color: #374151;
-    border: 1px solid #d1d5db;
-  }
-
-  .danger {
-    background: #ffffff;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-  }
 </style>

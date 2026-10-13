@@ -77,14 +77,13 @@
         {preview.keyCount === 1 ? 'combination' : 'combinations'} occur in your data, covering
         <strong>{formatPercent(preview.coverage)}</strong> of {preview.rowCount.toLocaleString()} buildings.
         {#if preview.coverage < 1}
-          The rest fall through to the fallback distribution.
+          The rest use the fallback.
         {/if}
       </p>
     {/if}
   {:else}
     <p class="preview">
-      Nothing selected — the prior will be one distribution applied to every building.
-      Pick one or more fields to condition it on.
+      Nothing selected: one distribution for every building. Pick fields to vary it by.
     </p>
   {/if}
 
@@ -140,7 +139,7 @@
   .selection-label {
     font-size: 13px;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .chosen {
@@ -157,15 +156,15 @@
     align-items: center;
     gap: 6px;
     padding: 4px 6px 4px 10px;
-    border: 1px solid #bfdbfe;
+    border: 1px solid var(--accent-border);
     border-radius: 999px;
-    background: #eff6ff;
+    background: var(--accent-soft);
     font-size: 13px;
   }
 
   .chip-name {
     font-weight: 600;
-    color: #1d4ed8;
+    color: var(--accent-hover);
   }
 
   .chip-actions {
@@ -176,7 +175,7 @@
   .chip-actions button {
     border: none;
     background: transparent;
-    color: #1d4ed8;
+    color: var(--accent-hover);
     font-size: 12px;
     line-height: 1;
     padding: 2px 3px;
@@ -185,27 +184,27 @@
   }
 
   .chip-actions button:disabled {
-    color: #93c5fd;
+    color: var(--accent-border);
     cursor: default;
   }
 
   .chip-actions button:not(:disabled):hover {
-    background: #dbeafe;
+    background: var(--accent-soft);
   }
 
   .chip-actions .remove {
-    color: #b91c1c;
+    color: var(--err-text);
   }
 
   .preview {
     margin: 0;
     font-size: 13px;
-    color: #374151;
+    color: var(--text-2);
     line-height: 1.5;
   }
 
   .preview.thin {
-    color: #92400e;
+    color: var(--warn-text);
   }
 
   .group h4 {
@@ -214,7 +213,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .options {
@@ -228,22 +227,22 @@
     flex-direction: column;
     gap: 3px;
     padding: 8px 10px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #ffffff;
+    background: var(--surface);
     text-align: left;
     cursor: pointer;
     font-weight: 400;
   }
 
   .option:hover:not(.disabled) {
-    border-color: #93c5fd;
-    background: #f8fafc;
+    border-color: var(--accent-border);
+    background: var(--surface-2);
   }
 
   .option.active {
-    border-color: #2563eb;
-    background: #eff6ff;
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
 
   .option.disabled {
@@ -254,7 +253,7 @@
   .option-name {
     font-size: 13px;
     font-weight: 600;
-    color: #111827;
+    color: var(--text);
     display: flex;
     align-items: center;
     gap: 6px;
@@ -267,23 +266,23 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--warn-bg);
+    color: var(--warn-text);
     font-size: 10px;
     font-weight: 700;
   }
 
   .option-meta {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .hint {
     margin: 0;
     font-size: 13px;
-    color: #92400e;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
+    color: var(--warn-text);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
     border-radius: 8px;
     padding: 10px 12px;
   }

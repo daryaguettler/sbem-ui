@@ -183,7 +183,7 @@
 
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
   }
 
   .workflow-header h1 {
@@ -194,7 +194,7 @@
   .subtitle,
   .help {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -207,10 +207,10 @@
   }
 
   .panel {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
-    background: #ffffff;
+    background: var(--surface);
   }
 
   .toolbar {
@@ -224,7 +224,7 @@
   .path {
     margin: 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -238,10 +238,10 @@
   }
 
   .toolbar-actions button {
-    border: 1px solid #2563eb;
+    border: 1px solid var(--accent);
     border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--accent);
+    color: var(--on-accent);
     padding: 8px 12px;
     cursor: pointer;
     font-weight: 600;
@@ -249,8 +249,8 @@
   }
 
   .toolbar-actions .secondary {
-    background: #ffffff;
-    color: #2563eb;
+    background: var(--surface);
+    color: var(--accent);
   }
 
   .toolbar-actions button:disabled {
@@ -288,31 +288,31 @@
   }
 
   .file-row:hover {
-    background: #f3f4f6;
+    background: var(--surface-3);
   }
 
   .file-row.active {
-    background: #eff6ff;
+    background: var(--accent-soft);
   }
 
   .file-name {
     font-size: 13px;
-    color: #111827;
+    color: var(--text);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     word-break: break-all;
   }
 
   .file-meta {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .badge {
     margin-left: 6px;
     padding: 1px 6px;
     border-radius: 999px;
-    background: #dbeafe;
-    color: #1d4ed8;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
     font-size: 11px;
     font-family: system-ui, sans-serif;
     white-space: nowrap;
@@ -336,7 +336,7 @@
   .viewer-header h2 {
     margin: 0;
     font-size: 16px;
-    color: #111827;
+    color: var(--text);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     word-break: break-all;
   }
@@ -344,8 +344,8 @@
   pre {
     margin: 0;
     padding: 16px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 12px;
     line-height: 1.6;
@@ -358,9 +358,9 @@
   .truncated {
     margin: 0;
     font-size: 13px;
-    color: #92400e;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
+    color: var(--warn-text);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
     border-radius: 8px;
     padding: 8px 12px;
   }
@@ -368,7 +368,7 @@
   .error {
     margin: 0;
     font-size: 13px;
-    color: #dc2626;
+    color: var(--err-text);
   }
 
   @media (max-width: 1100px) {

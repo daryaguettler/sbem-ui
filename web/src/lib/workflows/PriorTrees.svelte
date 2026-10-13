@@ -10,6 +10,7 @@
    */
   import { onMount } from 'svelte';
   import WorkflowGuide from '../components/WorkflowGuide.svelte';
+  import HelpTip from '../components/HelpTip.svelte';
   import ConditioningPicker from '../components/priorTrees/ConditioningPicker.svelte';
   import JointTableEditor from '../components/priorTrees/JointTableEditor.svelte';
   import NumericTableEditor from '../components/priorTrees/NumericTableEditor.svelte';
@@ -59,9 +60,6 @@
 
   let sampleSize = 2000;
   let sampleSeed = 0;
-
-  /** Retrofit packages moved to their own page; only the priors view remains. */
-  const tab = 'priors' as const;
 
   let loadingTemplates = true;
   let generating = false;
@@ -315,6 +313,14 @@
     }
   }
 
+  /** Templates, "start from scratch" and revert all replace the current priors. */
+  function confirmReplace(): boolean {
+    return (
+      configuredTargets.length === 0 ||
+      confirm('This replaces the priors you are editing. Unsaved changes will be lost. Continue?')
+    );
+  }
+
   async function exportYaml() {
     try {
       downloadText(await exportPriorTreeYaml(config), 'priors.yml', 'application/x-yaml');
@@ -362,41 +368,41 @@
   <div class="workflow-header">
     <h1>Prior Trees</h1>
     <p class="subtitle">
-      Generate distributions for stochastic semantic fields from your GIS data and semantic fields
+      Set how likely each value is for the fields your GIS data doesn't record (e.g. heating system).
     </p>
   </div>
 
   <div class="workflow-content">
     {#if stochasticFields.length === 0 && configuredTargets.length === 0}
       <WorkflowGuide
-        title="Add stochastic semantic fields first"
-        message="Prior trees are only needed for stochastic semantic fields such as heating or cooling systems — the ones your GIS data doesn't record. Define those fields before building priors."
+        title="No sampled fields yet"
+        message="Priors are only needed for fields marked “Sampled” in Semantic Fields, such as heating system."
         actionLabel="Go to Semantic Fields"
         actionWorkflow="semantic-fields"
       />
     {:else}
       <div class="toolbar panel">
         <div class="toolbar-group">
-          <button type="button" class="secondary" onclick={() => priorTreesStore.startFromScratch()}>
+          <button type="button" class="secondary" onclick={() => confirmReplace() && priorTreesStore.startFromScratch()}>
             Start from scratch
           </button>
           {#if !loadingTemplates}
             {#each templates as template}
-              <button type="button" class="secondary" onclick={() => loadTemplate(template.filename)}>
-                Load "{template.name}"
+              <button type="button" class="secondary" onclick={() => confirmReplace() && loadTemplate(template.filename)}>
+                Load “{template.name}”
               </button>
             {/each}
           {/if}
           {#if $savedAt['priors']}
-            <button type="button" class="secondary" onclick={loadFromProject}>Revert to saved</button>
+            <button type="button" class="secondary" onclick={() => confirmReplace() && loadFromProject()}>Revert</button>
           {/if}
         </div>
         <div class="toolbar-group">
-          <button type="button" onclick={validate} disabled={validating}>
-            {validating ? 'Validating...' : 'Validate'}
-          </button>
           <button type="button" onclick={saveToProject} disabled={saving}>
-            {saving ? 'Saving...' : 'Save to project'}
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" class="secondary" onclick={validate} disabled={validating}>
+            {validating ? 'Validating…' : 'Validate'}
           </button>
           <button type="button" class="secondary" onclick={exportYaml}>Export YAML</button>
         </div>
@@ -405,7 +411,6 @@
       <p class="saved-status">{formatSavedAt($savedAt['priors'])}</p>
 
 
-      {#if tab === 'priors'}
       <div class="panel">
         <h2>Fields needing a prior</h2>
         <div class="targets">
@@ -470,7 +475,7 @@
                 <label>
                   <span>Observed in column</span>
                   <select bind:value={observedColumn}>
-                    <option value="">Select a column...</option>
+                    <option value="">Select a column…</option>
                     {#each observedCandidates as candidate}
                       <option value={candidate.name}>
                         {candidate.name} ({candidate.presentCount.toLocaleString()} rows)
@@ -491,7 +496,7 @@
               onclick={generate}
               disabled={generating || (method === 'empirical' && !observedColumn)}
             >
-              {generating ? 'Generating...' : 'Generate prior'}
+              {generating ? 'Generating…' : 'Generate prior'}
             </button>
           </div>
 
@@ -585,11 +590,9 @@
         {/if}
       {/if}
 
-      {/if}
-
       {#if $priorTreesStore.validationErrors.length > 0}
         <div class="panel invalid">
-          <h2>Problems</h2>
+          <h2><span aria-hidden="true">✕</span> Problems to fix</h2>
           <ul>
             {#each $priorTreesStore.validationErrors as issue}
               <li>{issue}</li>
@@ -598,13 +601,13 @@
         </div>
       {:else if $priorTreesStore.valid}
         <div class="panel success">
-          <p>Every stochastic field has a valid prior. This tree will sample.</p>
+          <p><span aria-hidden="true">✓</span> Every sampled field has a valid prior.</p>
         </div>
       {/if}
 
       {#if $priorTreesStore.validationWarnings.length > 0}
         <div class="panel caution">
-          <h2>Worth checking</h2>
+          <h2><span aria-hidden="true">!</span> Worth checking</h2>
           <ul>
             {#each $priorTreesStore.validationWarnings as warning}
               <li>{warning}</li>
@@ -613,14 +616,14 @@
         </div>
       {/if}
 
-      {#if tab === 'priors' && $priorTreesStore.dependencies.nodes.length > 0}
+      {#if $priorTreesStore.dependencies.nodes.length > 0}
         <div class="panel">
           <h2>Sampling order</h2>
           <PriorTreeGraph graph={$priorTreesStore.dependencies} />
         </div>
       {/if}
 
-      {#if tab === 'priors' && configuredTargets.length > 0}
+      {#if configuredTargets.length > 0}
         <div class="panel">
           <div class="sample-header">
             <h2>Preview</h2>
@@ -630,11 +633,11 @@
                 <input type="number" min="1" max="20000" step="100" bind:value={sampleSize} />
               </label>
               <label>
-                <span>Seed</span>
+                <span>Seed <HelpTip text="The random seed. The same seed gives the same sample, so you can compare edits fairly; change it to see a different draw." /></span>
                 <input type="number" step="1" bind:value={sampleSeed} />
               </label>
               <button type="button" onclick={runSample} disabled={sampling}>
-                {sampling ? 'Sampling...' : 'Sample'}
+                {sampling ? 'Sampling…' : 'Sample'}
               </button>
             </div>
           </div>
@@ -668,7 +671,7 @@
 
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
   }
 
   .workflow-header h1 {
@@ -678,7 +681,7 @@
 
   .subtitle {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
@@ -690,7 +693,7 @@
   }
 
   .panel {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 20px;
     display: flex;
@@ -704,13 +707,13 @@
   }
 
   .target-in-title {
-    color: #2563eb;
+    color: var(--accent);
   }
 
   .panel-hint {
     margin: 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
     line-height: 1.5;
   }
 
@@ -731,52 +734,7 @@
   .saved-status {
     margin: -16px 0 0;
     font-size: 12px;
-    color: #6b7280;
-  }
-
-  .tabs {
-    display: flex;
-    gap: 4px;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: -8px;
-  }
-
-  .tabs button {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    background: transparent;
-    color: #6b7280;
-    border: none;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    padding: 8px 14px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .tabs button:hover {
-    color: #374151;
-  }
-
-  .tabs button.active {
-    color: #2563eb;
-    border-bottom-color: #2563eb;
-  }
-
-  .tab-count {
-    font-size: 11px;
-    font-weight: 600;
-    color: #6b7280;
-    background: #f3f4f6;
-    border-radius: 999px;
-    padding: 1px 7px;
-  }
-
-  .tabs button.active .tab-count {
-    color: #1d4ed8;
-    background: #dbeafe;
+    color: var(--text-muted);
   }
 
   .targets {
@@ -790,36 +748,36 @@
     flex-direction: column;
     gap: 4px;
     padding: 12px 14px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 10px;
-    background: #ffffff;
+    background: var(--surface);
     text-align: left;
     cursor: pointer;
     font-weight: 400;
   }
 
   .target:hover {
-    border-color: #93c5fd;
+    border-color: var(--accent-border);
   }
 
   .target.active {
-    border-color: #2563eb;
-    background: #eff6ff;
+    border-color: var(--accent);
+    background: var(--accent-soft);
   }
 
   .target-name {
     font-size: 14px;
     font-weight: 600;
-    color: #111827;
+    color: var(--text);
   }
 
   .target-status {
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-faint);
   }
 
   .target.configured .target-status {
-    color: #15803d;
+    color: var(--ok-text);
   }
 
   .method {
@@ -827,7 +785,7 @@
     flex-direction: column;
     gap: 14px;
     padding-top: 16px;
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid var(--surface-3);
     align-items: flex-start;
   }
 
@@ -845,7 +803,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #6b7280;
+    color: var(--text-muted);
     padding: 0 0 8px;
   }
 
@@ -865,12 +823,12 @@
 
   .radio strong {
     font-size: 13px;
-    color: #111827;
+    color: var(--text);
   }
 
   .radio small {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
     line-height: 1.4;
   }
 
@@ -887,7 +845,7 @@
     flex-direction: column;
     gap: 4px;
     font-size: 12px;
-    color: #4b5563;
+    color: var(--text-2);
   }
 
   .empirical-options select,
@@ -895,14 +853,14 @@
   .sample-controls input,
   .weight-inputs input {
     padding: 6px 10px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 13px;
   }
 
   .empirical-options small {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-faint);
   }
 
   .weight-inputs {
@@ -932,8 +890,8 @@
   button {
     border: none;
     border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
+    background: var(--accent);
+    color: var(--on-accent);
     padding: 9px 16px;
     cursor: pointer;
     font-weight: 600;
@@ -946,18 +904,18 @@
   }
 
   button.secondary {
-    background: #ffffff;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    background: var(--surface);
+    color: var(--text-2);
+    border: 1px solid var(--border-strong);
   }
 
   button.secondary:hover:not(:disabled) {
-    background: #f3f4f6;
+    background: var(--surface-3);
   }
 
   button.danger {
-    color: #b91c1c;
-    border-color: #fecaca;
+    color: var(--err-text);
+    border-color: var(--err-border);
     align-self: flex-start;
   }
 
@@ -971,35 +929,35 @@
   }
 
   .warnings {
-    color: #92400e;
+    color: var(--warn-text);
   }
 
   .hint {
     margin: 0;
     font-size: 13px;
-    color: #92400e;
-    background: #fffbeb;
-    border: 1px solid #fde68a;
+    color: var(--warn-text);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
     border-radius: 8px;
     padding: 10px 12px;
   }
 
   .invalid {
-    border-color: #fecaca;
-    background: #fef2f2;
-    color: #b91c1c;
+    border-color: var(--err-border);
+    background: var(--err-bg);
+    color: var(--err-text);
   }
 
   .caution {
-    border-color: #fde68a;
-    background: #fffbeb;
-    color: #92400e;
+    border-color: var(--warn-border);
+    background: var(--warn-bg);
+    color: var(--warn-text);
   }
 
   .success {
-    border-color: #bbf7d0;
-    background: #f0fdf4;
-    color: #166534;
+    border-color: var(--ok-border);
+    background: var(--ok-bg);
+    color: var(--ok-text);
   }
 
   .success p {
@@ -1010,12 +968,12 @@
   .notice {
     margin: 0;
     font-size: 13px;
-    color: #166534;
+    color: var(--ok-text);
   }
 
   .error {
     margin: 0;
     font-size: 13px;
-    color: #dc2626;
+    color: var(--err-text);
   }
 </style>

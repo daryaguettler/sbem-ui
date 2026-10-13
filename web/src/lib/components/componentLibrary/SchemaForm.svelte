@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import {
     fetchComponentSchema,
     fetchComponentRecords,
@@ -20,6 +21,7 @@
     mode,
     name = null,
     presetName = '',
+    trail = [],
     onSaved,
     onCancel,
   }: {
@@ -27,9 +29,14 @@
     mode: Mode;
     name?: string | null;
     presetName?: string;
+    /** Parent forms when this one was opened from a "+ New" relation button, outermost first. */
+    trail?: string[];
     onSaved: (record: Record<string, unknown>) => void;
     onCancel: () => void;
   } = $props();
+
+  const uid = $props.id();
+  const fieldId = (fieldName: string) => `${uid}-${fieldName}`;
 
   let schema = $state<ComponentTypeSchema | null>(null);
   let values = $state<Record<string, unknown>>({});
@@ -49,14 +56,23 @@
     return '';
   }
 
-  async function loadRelationOptions(field: ComponentFieldDescriptor) {
-    if (field.kind !== 'relation' || !field.relationType) return;
-    try {
-      const records = await fetchComponentRecords(field.relationType);
-      relationOptions = { ...relationOptions, [field.relationType]: records.map((r) => r.Name) };
-    } catch {
-      relationOptions = { ...relationOptions, [field.relationType]: [] };
-    }
+  /** Record names for each related type, fetched once per type and in parallel
+   * (a Year form has twelve Week fields). */
+  async function loadRelationOptions(fields: ComponentFieldDescriptor[]) {
+    const relationTypes = [
+      ...new Set(fields.filter((f) => f.kind === 'relation' && f.relationType).map((f) => f.relationType as string)),
+    ];
+    const entries = await Promise.all(
+      relationTypes.map(async (relationType) => {
+        try {
+          const records = await fetchComponentRecords(relationType);
+          return [relationType, records.map((r) => r.Name)] as const;
+        } catch {
+          return [relationType, [] as string[]] as const;
+        }
+      })
+    );
+    relationOptions = { ...relationOptions, ...Object.fromEntries(entries) };
   }
 
   async function load() {
@@ -76,8 +92,8 @@
         } else if (field.required) {
           nextValues[field.name] = defaultValueFor(field);
         }
-        await loadRelationOptions(field);
       }
+      await loadRelationOptions(schema.fields);
       values = nextValues;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load form.';
@@ -86,11 +102,12 @@
     }
   }
 
+  // Reload when the record changes; load() reads/writes local state, so keep it untracked.
   $effect(() => {
     componentType;
     mode;
     name;
-    load();
+    untrack(load);
   });
 
   function updateValue(fieldName: string, value: unknown) {
@@ -147,91 +164,144 @@
 {#if loading}
   <p class="hint">Loading form...</p>
 {:else if schema}
-  <form class="schema-form" onsubmit={(event) => { event.preventDefault(); submit(); }}>
-    {#each schema.fields as field (field.name)}
-      <label class="field" class:wide={creatingRelationFor === field.name}>
-        <span class="field-label">
-          {field.title}{#if field.required}<span class="required">*</span>{/if}
+  <!-- While a related record is being created, this form stays mounted (so its values
+       survive) but hidden, and the nested form takes its place: one form on screen at
+       a time, with a breadcrumb back up the stack. -->
+  <div class="form-frame" hidden={creatingRelationFor !== null}>
+    {#if trail.length > 0}
+      <nav class="crumbs" aria-label="Nested record">
+        <button type="button" class="btn btn-ghost btn-sm back" onclick={onCancel}>← Back</button>
+        <span class="trail">
+          {#each trail as crumb}<span>{crumb}</span><span class="sep">›</span>{/each}
+          <strong>New {componentType}</strong>
         </span>
+      </nav>
+    {/if}
 
-        {#if field.kind === 'relation'}
-          <div class="relation-row">
+    <form class="schema-form" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+      {#each schema.fields as field (field.name)}
+        <div class="field" class:checkbox-field={field.kind === 'boolean'}>
+          <label class="field-label" for={fieldId(field.name)}>
+            {field.title}{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
+          </label>
+
+          {#if field.kind === 'relation'}
+            <div class="relation-row">
+              <select
+                id={fieldId(field.name)}
+                required={field.required}
+                value={values[field.name] ?? ''}
+                onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLSelectElement).value)}
+              >
+                <option value="" disabled>Choose {field.relationType}…</option>
+                {#each relationOptions[field.relationType ?? ''] ?? [] as optionName}
+                  <option value={optionName}>{optionName}</option>
+                {/each}
+              </select>
+              <button type="button" class="btn btn-secondary btn-sm" onclick={() => openCreateRelation(field.name)}>
+                + New
+              </button>
+            </div>
+          {:else if field.kind === 'enum'}
             <select
+              id={fieldId(field.name)}
               value={values[field.name] ?? ''}
               onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLSelectElement).value)}
             >
-              <option value="" disabled>Choose {field.relationType}...</option>
-              {#each relationOptions[field.relationType ?? ''] ?? [] as optionName}
-                <option value={optionName}>{optionName}</option>
+              {#each field.options ?? [] as option}
+                <option value={option}>{option}</option>
               {/each}
             </select>
-            <button type="button" class="secondary" onclick={() => openCreateRelation(field.name)}>
-              + New {field.relationType}
-            </button>
-          </div>
-          {#if creatingRelationFor === field.name && field.relationType}
-            <div class="nested-form">
-              <SchemaForm
-                componentType={field.relationType}
-                mode="create"
-                onSaved={(record: Record<string, unknown>) => onRelationCreated(field, record)}
-                onCancel={() => (creatingRelationFor = null)}
-              />
-            </div>
+          {:else if field.kind === 'boolean'}
+            <input
+              id={fieldId(field.name)}
+              type="checkbox"
+              checked={Boolean(values[field.name])}
+              onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).checked)}
+            />
+          {:else if field.kind === 'number'}
+            <input
+              id={fieldId(field.name)}
+              type="number"
+              step="any"
+              min={field.ge ?? field.gt}
+              max={field.le ?? field.lt}
+              value={values[field.name] ?? ''}
+              oninput={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).value)}
+            />
+          {:else}
+            <input
+              id={fieldId(field.name)}
+              type="text"
+              disabled={field.name === 'Name' && mode === 'edit'}
+              value={values[field.name] ?? ''}
+              oninput={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).value)}
+            />
           {/if}
-        {:else if field.kind === 'enum'}
-          <select
-            value={values[field.name] ?? ''}
-            onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLSelectElement).value)}
-          >
-            {#each field.options ?? [] as option}
-              <option value={option}>{option}</option>
-            {/each}
-          </select>
-        {:else if field.kind === 'boolean'}
-          <input
-            type="checkbox"
-            checked={Boolean(values[field.name])}
-            onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).checked)}
-          />
-        {:else if field.kind === 'number'}
-          <input
-            type="number"
-            step="any"
-            min={field.ge ?? field.gt}
-            max={field.le ?? field.lt}
-            value={values[field.name] ?? ''}
-            oninput={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).value)}
-          />
-        {:else}
-          <input
-            type="text"
-            disabled={field.name === 'Name' && mode === 'edit'}
-            value={values[field.name] ?? ''}
-            oninput={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).value)}
-          />
-        {/if}
-      </label>
-    {/each}
+        </div>
+      {/each}
 
-    {#if error}
-      <p class="error">{error}</p>
+      {#if error}
+        <p class="error" role="alert">{error}</p>
+      {/if}
+
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" onclick={onCancel}>Cancel</button>
+        <button type="submit" class="btn" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+      </div>
+    </form>
+  </div>
+
+  {#if creatingRelationFor}
+    {@const field = schema.fields.find((f) => f.name === creatingRelationFor)}
+    {#if field?.relationType}
+      <SchemaForm
+        componentType={field.relationType}
+        mode="create"
+        trail={[...trail, mode === 'edit' && name ? name : `New ${componentType}`]}
+        onSaved={(record: Record<string, unknown>) => onRelationCreated(field, record)}
+        onCancel={() => (creatingRelationFor = null)}
+      />
     {/if}
-
-    <div class="actions">
-      <button type="button" class="secondary" onclick={onCancel}>Cancel</button>
-      <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
-    </div>
-  </form>
+  {/if}
 {/if}
 
 <style>
-  /* Two columns where there's room -- these records have a lot of fields. A field
-     whose nested "create related record" form is open takes the full width. */
+  .form-frame[hidden] {
+    display: none;
+  }
+
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-strong);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .trail {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .trail strong {
+    color: var(--text);
+  }
+
+  .sep {
+    color: var(--text-faint);
+  }
+
+  /* Two columns where the panel is wide enough, one otherwise. */
   .schema-form {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px 16px;
     align-items: start;
   }
 
@@ -240,11 +310,18 @@
     flex-direction: column;
     gap: 6px;
     font-size: 14px;
-    color: #374151;
+    color: var(--text-2);
     min-width: 0;
   }
 
-  .field.wide,
+  .checkbox-field {
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    align-items: center;
+    align-self: end;
+    min-height: 38px;
+  }
+
   .actions,
   .error {
     grid-column: 1 / -1;
@@ -252,26 +329,34 @@
 
   .field-label {
     font-weight: 600;
+    overflow-wrap: anywhere;
   }
 
   .required {
-    color: #dc2626;
+    color: var(--err-text);
     margin-left: 2px;
   }
 
   input[type='text'],
   input[type='number'],
   select {
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
-    padding: 8px 12px;
+    padding: 8px 10px;
     font: inherit;
     min-width: 0;
+    width: 100%;
+  }
+
+  input:disabled {
+    background: var(--surface-3);
+    color: var(--text-muted);
   }
 
   input[type='checkbox'] {
     width: 18px;
     height: 18px;
+    accent-color: var(--accent);
   }
 
   .relation-row {
@@ -284,51 +369,26 @@
     flex: 1;
   }
 
-  .nested-form {
-    margin-top: 8px;
-    padding: 12px;
-    border: 1px dashed #93c5fd;
-    border-radius: 8px;
-    background: #eff6ff;
-  }
-
   .hint {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .error {
-    margin: 0;
     font-size: 13px;
-    color: #dc2626;
+    color: var(--err-text);
   }
 
+  /* Pinned to the bottom of the scrolling side panel so Save is always reachable. */
   .actions {
+    position: sticky;
+    bottom: 0;
     display: flex;
     gap: 8px;
     justify-content: flex-end;
-    margin-top: 4px;
-  }
-
-  button {
-    border: none;
-    border-radius: 6px;
-    background: #2563eb;
-    color: #ffffff;
-    padding: 8px 14px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  .secondary {
-    background: #ffffff;
-    color: #374151;
-    border: 1px solid #d1d5db;
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+    margin: 4px calc(-1 * var(--panel-pad, 0px)) 0;
+    padding: 12px var(--panel-pad, 0px);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
   }
 </style>

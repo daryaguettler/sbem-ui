@@ -60,12 +60,12 @@
     height: 20px;
     border-radius: 4px;
     overflow: hidden;
-    background: #f3f4f6;
+    background: var(--surface-3);
   }
 
   /* The gap is a surface-colored border, so segments read as separate marks. */
   .segment + .segment {
-    border-left: 2px solid #ffffff;
+    border-left: 2px solid var(--surface);
   }
 
   .segment {
@@ -79,15 +79,16 @@
   .inline-label {
     font-size: 11px;
     font-weight: 600;
+    /* fixed white + shadow: legible on every series step in both themes */
     color: #ffffff;
-    text-shadow: 0 0 2px rgba(0, 0, 0, 0.45);
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
     white-space: nowrap;
   }
 
   .empty {
     padding: 0 8px;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-faint);
     line-height: 20px;
   }
 
@@ -115,11 +116,11 @@
   }
 
   .name {
-    color: #374151;
+    color: var(--text-2);
   }
 
   .share {
-    color: #6b7280;
+    color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
 </style>

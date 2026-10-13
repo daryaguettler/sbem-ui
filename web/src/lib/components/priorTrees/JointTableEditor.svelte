@@ -126,8 +126,8 @@
               {/each}
               <td class="total-col" class:off={Math.abs(total - 1) > 0.005}>{total.toFixed(2)}</td>
               <td class="actions-col">
-                <button type="button" title="Rescale this row to sum to 1" onclick={() => normalizeRow(key)}>≡</button>
-                <button type="button" title="Spread evenly" onclick={() => levelRow(key)}>÷</button>
+                <button type="button" title="Rescale this row to sum to 1" aria-label="Rescale row to sum to 1" onclick={() => normalizeRow(key)}>Σ1</button>
+                <button type="button" title="Spread evenly across all values" aria-label="Spread row evenly" onclick={() => levelRow(key)}>Even</button>
                 <button type="button" class="remove" title="Remove this combination" onclick={() => onRemoveRow(key)}>×</button>
               </td>
             </tr>
@@ -141,8 +141,7 @@
     <div class="fallback-header">
       <h4>Fallback</h4>
       <p>
-        Used for any building whose combination isn't in the table above. Without one, an
-        unlisted combination fails to sample.
+        For buildings whose combination isn't listed above. Without it, those buildings can't be sampled.
       </p>
     </div>
     <WeightBar distribution={fallback} order={values} />
@@ -180,7 +179,7 @@
 
   .filter input {
     padding: 6px 10px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 13px;
     width: 240px;
@@ -188,13 +187,13 @@
 
   .count {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .grid-scroll {
     overflow: auto;
     max-height: 460px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
   }
 
@@ -209,12 +208,12 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
     padding: 8px;
     text-align: left;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-2);
     white-space: nowrap;
   }
 
@@ -224,7 +223,7 @@
 
   tbody th,
   tbody td {
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--surface-3);
     padding: 0;
   }
 
@@ -232,7 +231,7 @@
     position: sticky;
     left: 0;
     z-index: 1;
-    background: #ffffff;
+    background: var(--surface);
     min-width: 190px;
     padding: 6px 10px !important;
     text-align: left;
@@ -241,37 +240,37 @@
 
   thead .key-col {
     z-index: 3;
-    background: #f9fafb;
+    background: var(--surface-2);
   }
 
   .key-name {
     display: block;
     font-weight: 600;
-    color: #111827;
+    color: var(--text);
   }
 
   .key-source {
     display: block;
     font-size: 10px;
-    color: #9ca3af;
+    color: var(--text-faint);
   }
 
   .key-source.estimated {
-    color: #15803d;
+    color: var(--ok-text);
   }
 
   .count-col {
     padding: 6px 8px !important;
     text-align: right;
-    color: #6b7280;
+    color: var(--text-muted);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
 
   /* A 2px surface gap keeps neighbouring heatmap fills from reading as one block. */
   .cell {
-    border-left: 2px solid #ffffff;
-    border-right: 2px solid #ffffff;
+    border-left: 2px solid var(--surface);
+    border-right: 2px solid var(--surface);
     min-width: 76px;
   }
 
@@ -287,21 +286,21 @@
   }
 
   .cell input:focus {
-    outline: 2px solid #2563eb;
+    outline: 2px solid var(--accent);
     outline-offset: -2px;
-    background: #ffffff;
-    color: #111827 !important;
+    background: var(--surface);
+    color: var(--text) !important;
   }
 
   .total-col {
     padding: 6px 10px !important;
     text-align: right;
-    color: #6b7280;
+    color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
 
   .total-col.off {
-    color: #b45309;
+    color: var(--warn-text);
     font-weight: 600;
   }
 
@@ -311,9 +310,9 @@
   }
 
   .actions-col button {
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
-    color: #4b5563;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
     border-radius: 4px;
     padding: 2px 6px;
     font-size: 12px;
@@ -322,17 +321,17 @@
   }
 
   .actions-col button:hover {
-    background: #f3f4f6;
+    background: var(--surface-3);
   }
 
   .actions-col .remove {
-    color: #b91c1c;
+    color: var(--err-text);
   }
 
   .empty {
     margin: 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .fallback {
@@ -340,9 +339,9 @@
     flex-direction: column;
     gap: 10px;
     padding: 14px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
-    background: #f9fafb;
+    background: var(--surface-2);
   }
 
   .fallback-header h4 {
@@ -353,7 +352,7 @@
   .fallback-header p {
     margin: 0;
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
     line-height: 1.5;
   }
 
@@ -368,12 +367,12 @@
     flex-direction: column;
     gap: 3px;
     font-size: 11px;
-    color: #4b5563;
+    color: var(--text-2);
   }
 
   .fallback-inputs input {
     padding: 5px 8px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 12px;
     font-variant-numeric: tabular-nums;

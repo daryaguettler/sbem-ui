@@ -118,7 +118,7 @@
   .context {
     margin: 0;
     font-size: 13px;
-    color: #4b5563;
+    color: var(--text-2);
     line-height: 1.5;
   }
 
@@ -129,7 +129,7 @@
     padding: 0;
     list-style: none;
     font-size: 12px;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .legend li {
@@ -149,7 +149,7 @@
     flex-direction: column;
     gap: 12px;
     padding-top: 16px;
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid var(--surface-3);
   }
 
   .scenario header {
@@ -166,14 +166,14 @@
 
   .meta {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .feature h5 {
     margin: 0 0 6px;
     font-size: 13px;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-2);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -184,8 +184,8 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #5b21b6;
-    background: #ede9fe;
+    color: var(--text);
+    background: color-mix(in srgb, var(--series-7) 16%, var(--surface));
     border-radius: 999px;
     padding: 2px 7px;
   }
@@ -208,18 +208,18 @@
   }
 
   .value-name {
-    color: #374151;
+    color: var(--text-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* Two thin bars on one scale: the comparison is the vertical pair. */
+  /* Two thin bars on one scale:the comparison is the vertical pair. */
   .pair {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    background: #f9fafb;
+    background: var(--surface-2);
     border-radius: 3px;
     padding: 2px;
   }
@@ -236,7 +236,7 @@
     left: calc(100% + 6px);
     top: -1px;
     font-size: 10px;
-    color: #6b7280;
+    color: var(--text-muted);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
@@ -245,6 +245,7 @@
     left: auto;
     right: 5px;
     color: #ffffff;
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
     font-weight: 600;
   }
 
@@ -252,27 +253,26 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
-  .delta.up {
-    color: #166534;
-  }
-
+  /* A shift in a distribution isn't good or bad by itself, so deltas stay neutral ink;
+     the +/− sign carries the direction. */
+  .delta.up,
   .delta.down {
-    color: #b91c1c;
+    color: var(--text);
   }
 
   .numeric-line {
     margin: 0;
     font-size: 12px;
-    color: #374151;
+    color: var(--text-2);
     font-variant-numeric: tabular-nums;
   }
 
   .empty {
     margin: 0;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-faint);
   }
 </style>

@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SBEM UI</title>
+    <script>
+      // Apply the saved theme before first paint so dark mode doesn't flash white.
+      try {
+        var theme = localStorage.getItem('sbem-ui:theme');
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="app"></div>

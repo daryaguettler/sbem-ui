@@ -1,14 +1,47 @@
-import { derived, writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
 import type { GisDatasetSummary, ReadinessCheck, WorkflowId } from '../types/workflow';
 import { semanticFieldsStore } from './semanticFieldsStore';
 import { componentMapStore } from './componentMapStore';
 import { priorTargets, priorTreesStore } from './priorTreesStore';
+import { workspaceStore } from './workspaceStore';
 
 export const currentWorkflow = writable<WorkflowId>('gis-cleaning');
 export const gisDataset = writable<GisDatasetSummary | null>(null);
 
+const WORKFLOW_IDS: WorkflowId[] = [
+  'gis-cleaning',
+  'semantic-fields',
+  'component-library',
+  'component-map',
+  'prior-trees',
+  'retrofits',
+  'sampling',
+  'model-execution',
+  'project-files',
+];
+
+const lastWorkflowKey = (projectPath: string) => `sbem-ui:last-workflow:${projectPath}`;
+
 export function navigateTo(workflow: WorkflowId) {
   currentWorkflow.set(workflow);
+  const projectPath = get(workspaceStore).workspace?.path;
+  if (!projectPath) return;
+  try {
+    localStorage.setItem(lastWorkflowKey(projectPath), workflow);
+  } catch {
+    // not remembered across reloads; harmless
+  }
+}
+
+/** Reopen a project on the step the user last had open, or the first step. */
+export function restoreLastWorkflow(projectPath: string) {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(lastWorkflowKey(projectPath));
+  } catch {
+    saved = null;
+  }
+  currentWorkflow.set(WORKFLOW_IDS.includes(saved as WorkflowId) ? (saved as WorkflowId) : 'gis-cleaning');
 }
 
 export const readinessChecks = derived(

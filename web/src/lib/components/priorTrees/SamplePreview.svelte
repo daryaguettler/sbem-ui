@@ -177,7 +177,7 @@
   .context {
     margin: 0;
     font-size: 13px;
-    color: #4b5563;
+    color: var(--text-2);
     line-height: 1.5;
   }
 
@@ -186,7 +186,7 @@
     flex-direction: column;
     gap: 10px;
     padding-top: 16px;
-    border-top: 1px solid #f3f4f6;
+    border-top: 1px solid var(--surface-3);
   }
 
   .feature header {
@@ -203,7 +203,7 @@
 
   .kind {
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .marginal {
@@ -224,7 +224,7 @@
   }
 
   .value-name {
-    color: #374151;
+    color: var(--text-2);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -232,7 +232,7 @@
 
   .bar-track {
     height: 14px;
-    background: #f3f4f6;
+    background: var(--surface-3);
     border-radius: 3px;
     overflow: hidden;
   }
@@ -245,7 +245,7 @@
 
   .value-share {
     text-align: right;
-    color: #111827;
+    color: var(--text);
     font-variant-numeric: tabular-nums;
     font-weight: 600;
   }
@@ -271,7 +271,7 @@
     position: relative;
     display: block;
     height: 16px;
-    background: #f3f4f6;
+    background: var(--surface-3);
     border-radius: 3px;
   }
 
@@ -280,7 +280,7 @@
     top: 5px;
     height: 6px;
     min-width: 2px;
-    background: #9ec5f4;
+    background: var(--seq-2);
     border-radius: 3px;
   }
 
@@ -291,18 +291,18 @@
     height: 10px;
     margin-left: -5px;
     border-radius: 50%;
-    background: #2a78d6;
-    border: 2px solid #ffffff;
+    background: var(--series-1);
+    border: 2px solid var(--surface);
   }
 
   .row-count {
     text-align: right;
-    color: #9ca3af;
+    color: var(--text-faint);
     font-variant-numeric: tabular-nums;
   }
 
   .axis-note {
-    color: #9ca3af;
+    color: var(--text-faint);
   }
 
   .histogram {
@@ -311,29 +311,29 @@
     gap: 2px;
     height: 110px;
     padding: 4px;
-    background: #f9fafb;
+    background: var(--surface-2);
     border-radius: 6px;
   }
 
   .bin {
     flex: 1;
     min-height: 1px;
-    background: #2a78d6;
+    background: var(--series-1);
     border-radius: 3px 3px 0 0;
   }
 
   .stats {
     margin: 0;
     font-size: 12px;
-    color: #6b7280;
+    color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
 
   .toggle {
     align-self: flex-start;
-    border: 1px solid #e5e7eb;
-    background: #ffffff;
-    color: #2563eb;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--accent);
     border-radius: 6px;
     padding: 5px 10px;
     font-size: 12px;
@@ -342,13 +342,13 @@
   }
 
   .toggle:hover {
-    background: #f8fafc;
+    background: var(--surface-2);
   }
 
   .breakdown-scroll {
     overflow: auto;
     max-height: 360px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
   }
 
@@ -362,12 +362,12 @@
   thead th {
     position: sticky;
     top: 0;
-    background: #f9fafb;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
     padding: 8px;
     text-align: left;
     font-weight: 600;
-    color: #374151;
+    color: var(--text-2);
     white-space: nowrap;
   }
 
@@ -387,13 +387,13 @@
     padding: 6px 8px;
     text-align: left;
     font-weight: 600;
-    color: #111827;
-    border-bottom: 1px solid #f3f4f6;
+    color: var(--text);
+    border-bottom: 1px solid var(--surface-3);
     white-space: nowrap;
   }
 
   tbody td {
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--surface-3);
     padding: 6px 8px;
     text-align: center;
     font-variant-numeric: tabular-nums;
@@ -401,13 +401,13 @@
 
   .count {
     text-align: right;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   /* 2px surface gap between heatmap fills, as in the lookup table. */
   .cell {
-    border-left: 2px solid #ffffff;
-    border-right: 2px solid #ffffff;
+    border-left: 2px solid var(--surface);
+    border-right: 2px solid var(--surface);
     font-weight: 600;
   }
 </style>

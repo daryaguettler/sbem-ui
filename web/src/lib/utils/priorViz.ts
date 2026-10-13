@@ -11,31 +11,23 @@
 
 import type { Distribution } from '../types/priorTrees';
 
-/** Categorical slots, in validated order. Past the eighth, values share the last slot. */
-export const SERIES_COLORS = [
-  '#2a78d6',
-  '#eb6834',
-  '#1baf7a',
-  '#eda100',
-  '#e87ba4',
-  '#008300',
-  '#4a3aa7',
-  '#e34948',
-];
+/**
+ * Categorical slots, in validated order, as CSS variables (defined in app.css with
+ * separate light/dark steps). Past the eighth, values share the last slot.
+ */
+export const SERIES_COLORS = Array.from({ length: 8 }, (_, i) => `var(--series-${i + 1})`);
 
-/** Sequential blue, light -> dark, for weight magnitude. */
-const SEQUENTIAL = [
-  '#cde2fb',
-  '#b7d3f6',
-  '#9ec5f4',
-  '#86b6ef',
-  '#6da7ec',
-  '#5598e7',
-  '#3987e5',
-  '#2a78d6',
-  '#256abf',
-  '#1c5cab',
-];
+/**
+ * The same slots as literal hex, for places that can't resolve CSS variables
+ * (SVG ids, canvas, xyflow marker definitions). Keep in sync with app.css.
+ */
+export const SERIES_HEX: Record<'light' | 'dark', string[]> = {
+  light: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6', '#e34948'],
+  dark: ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'],
+};
+
+/** Number of sequential steps (--seq-0 .. --seq-9), low -> high magnitude. */
+const SEQUENTIAL_STEPS = 10;
 
 export function seriesColor(index: number): string {
   return SERIES_COLORS[Math.min(index, SERIES_COLORS.length - 1)];
@@ -43,14 +35,14 @@ export function seriesColor(index: number): string {
 
 /** The fill for a 0..1 weight. Near-zero stays at the surface so a sparse table reads as sparse. */
 export function weightColor(weight: number): string {
-  if (!Number.isFinite(weight) || weight <= 0.001) return '#ffffff';
-  const step = Math.min(SEQUENTIAL.length - 1, Math.floor(weight * SEQUENTIAL.length));
-  return SEQUENTIAL[step];
+  if (!Number.isFinite(weight) || weight <= 0.001) return 'var(--surface)';
+  const step = Math.min(SEQUENTIAL_STEPS - 1, Math.floor(weight * SEQUENTIAL_STEPS));
+  return `var(--seq-${step})`;
 }
 
-/** Ink that stays legible once the cell fill gets dark. */
+/** Ink that stays legible on the cell fill (the dark ramp runs the other way, so this is themed). */
 export function weightInk(weight: number): string {
-  return weight >= 0.6 ? '#ffffff' : '#111827';
+  return weight >= 0.6 ? 'var(--seq-ink-high)' : 'var(--seq-ink-low)';
 }
 
 export function formatShare(value: number): string {

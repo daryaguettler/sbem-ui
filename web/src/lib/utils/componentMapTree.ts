@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import type { ComponentSelector, ComponentSelectorRecord } from '../types/componentMap';
 import { componentTreeStore, type ComponentTreeNode } from '../stores/componentTreeStore';
+import { SERIES_HEX } from './priorViz';
 
 export type ComponentLevel = {
   id: string;
@@ -9,40 +10,18 @@ export type ComponentLevel = {
   path: string;
   depth: number;
   description: string;
-  color: string;
 };
 
-const FIELD_COLORS = ['#2563eb', '#7c3aed', '#db2777', '#16a34a', '#0ea5e9', '#f97316', '#64748b'];
-
-export function fieldColor(fieldName: string, index = 0): string {
-  if (index >= 0) {
-    return FIELD_COLORS[index % FIELD_COLORS.length];
-  }
-  let hash = 0;
-  for (const char of fieldName) {
-    hash = (hash + char.charCodeAt(0)) % FIELD_COLORS.length;
-  }
-  return FIELD_COLORS[hash];
-}
-
-function lightenHex(hex: string, amount: number): string {
-  const cleaned = hex.replace('#', '');
-  const value = cleaned.length === 3 ? cleaned.split('').map((c) => c + c).join('') : cleaned;
-  const intValue = Number.parseInt(value, 16);
-  const mix = (channel: number) =>
-    Math.round(channel + (255 - channel) * Math.min(Math.max(amount, 0), 1));
-  const r = mix((intValue >> 16) & 255);
-  const g = mix((intValue >> 8) & 255);
-  const b = mix(intValue & 255);
-  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
-}
-
-function componentBaseColor(path: string): string {
-  if (path.startsWith('Envelope')) return '#15803d';
-  if (path.startsWith('Operations.HVAC')) return '#2563eb';
-  if (path.startsWith('Operations.SpaceUse')) return '#7c3aed';
-  if (path.startsWith('Operations.DHW')) return '#0ea5e9';
-  return '#6b7280';
+/**
+ * A semantic field's color on the component graph: the validated categorical
+ * palette, by the field's position, in fixed order. Returned as hex (not a CSS
+ * variable) because xyflow bakes edge marker colors into SVG ids, so the caller
+ * passes the resolved theme. Fields past the eighth share a neutral gray rather
+ * than recycling a hue -- the edge still ends at a labeled field node.
+ */
+export function fieldColor(index: number, theme: 'light' | 'dark' = 'light'): string {
+  const slots = SERIES_HEX[theme];
+  return index >= 0 && index < slots.length ? slots[index] : theme === 'dark' ? '#6f7682' : '#9ca3af';
 }
 
 function toComponentId(path: string): string {
@@ -65,7 +44,6 @@ function walkComponents(
     path,
     depth,
     description: info.componentType ?? '',
-    color: lightenHex(componentBaseColor(path), Math.min(depth * 0.12, 0.45)),
   });
 
   for (const childPath of info.children) {

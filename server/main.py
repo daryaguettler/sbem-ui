@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import (
     artifacts_router,
+    assist_router,
     component_library_router,
     component_map_router,
     component_tree_router,
@@ -51,6 +52,7 @@ app.include_router(prior_trees_router)
 app.include_router(gis_router)
 app.include_router(workspace_router)
 app.include_router(runner_router)
+app.include_router(assist_router)
 
 
 @app.get("/")

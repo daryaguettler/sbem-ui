@@ -40,7 +40,7 @@
               <span style={`padding-left:${level.depth * 16}px`}>{level.displayName}</span>
               <div class="path">{level.path}</div>
             </td>
-            <td><span class="status {status}">{status}</span></td>
+            <td><span class="status {status}"><span aria-hidden="true">{status === 'mapped' ? '✓' : status === 'inherited' ? '↳' : '✕'}</span> {status}</span></td>
             <td>{selector?.source_fields.join(', ') || '—'}</td>
             <td>{selector?.suffix || '—'}</td>
             <td>
@@ -56,13 +56,13 @@
 <style>
   .empty {
     margin: 0;
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 14px;
   }
 
   .table-wrap {
     overflow: auto;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
   }
 
@@ -74,20 +74,20 @@
 
   th,
   td {
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     padding: 10px 12px;
     text-align: left;
     vertical-align: top;
-    color: #111827;
+    color: var(--text);
   }
 
   tr.selected {
-    background: #eff6ff;
+    background: var(--accent-soft);
   }
 
   .path {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-faint);
     font-family: monospace;
     margin-top: 2px;
   }
@@ -102,24 +102,24 @@
   }
 
   .status.mapped {
-    background: #dcfce7;
-    color: #166534;
+    background: var(--ok-bg);
+    color: var(--ok-text);
   }
 
   .status.inherited {
-    background: #ffedd5;
-    color: #c2410c;
+    background: var(--accent-soft);
+    color: var(--accent);
   }
 
   .status.unmapped {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--err-bg);
+    color: var(--err-text);
   }
 
   .link-btn {
-    border: 1px solid #2563eb;
-    background: #ffffff;
-    color: #2563eb;
+    border: 1px solid var(--accent);
+    background: var(--surface);
+    color: var(--accent);
     border-radius: 6px;
     padding: 4px 10px;
     cursor: pointer;

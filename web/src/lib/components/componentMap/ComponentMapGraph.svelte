@@ -15,6 +15,7 @@
   import ComponentGraphNode from './ComponentGraphNode.svelte';
   import { componentMapStore } from '../../stores/componentMapStore';
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
+  import { resolvedTheme } from '../../stores/theme';
   import {
     buildComponentLevels,
     collectSelectors,
@@ -36,7 +37,6 @@
       type: MarkerType.ArrowClosed,
       width: 12,
       height: 12,
-      color: '#94a3b8',
     },
   };
 
@@ -61,7 +61,7 @@
     return componentLevels.find((level) => level.id === nodeId)?.path || null;
   }
 
-  function buildFieldNodes(): Node[] {
+  function buildFieldNodes(theme: 'light' | 'dark'): Node[] {
     return $semanticFieldsStore.fields.map((field, index) => ({
       id: fieldNodeId(field.id),
       type: 'semanticField',
@@ -70,7 +70,7 @@
         fieldName: field.name,
         fieldType: field.type,
         optionCount: field.options.length,
-        color: fieldColor(field.name, index),
+        color: fieldColor(index, theme),
       },
       sourcePosition: Position.Bottom,
     }));
@@ -103,7 +103,6 @@
           displayName: level.displayName,
           description: level.description,
           linkedFields: selector?.source_fields || [],
-          color: level.color,
           status: getSelectorStatus($componentMapStore.map!, level.path),
           hiddenChildCount: countHiddenChildren(
             $componentMapStore.map!,
@@ -119,7 +118,7 @@
     });
   }
 
-  function buildEdges(): Edge[] {
+  function buildEdges(theme: 'light' | 'dark'): Edge[] {
     if (!$componentMapStore.map) return [];
 
     const expandedPaths = new Set($componentMapStore.expandedPaths);
@@ -130,7 +129,7 @@
     );
 
     const fieldColorByName = Object.fromEntries(
-      $semanticFieldsStore.fields.map((field, index) => [field.name, fieldColor(field.name, index)])
+      $semanticFieldsStore.fields.map((field, index) => [field.name, fieldColor(index, theme)])
     );
     const fieldIdByName = Object.fromEntries(
       $semanticFieldsStore.fields.map((field) => [field.name, fieldNodeId(field.id)])
@@ -147,7 +146,7 @@
       return selector.source_fields.map((fieldName) => {
         const sourceId = fieldIdByName[fieldName];
         if (!sourceId) return null;
-        const color = fieldColorByName[fieldName] || '#94a3b8';
+        const color = fieldColorByName[fieldName] || fieldColor(-1, theme);
         return {
           id: `edge_${sourceId}_${targetId}`,
           source: sourceId,
@@ -167,8 +166,9 @@
     });
   }
 
-  $: nodes = [...buildFieldNodes(), ...buildComponentNodes()];
-  $: edges = buildEdges();
+  // The theme is passed in so a light/dark switch re-runs these (field colors are hex).
+  $: nodes = [...buildFieldNodes($resolvedTheme), ...buildComponentNodes()];
+  $: edges = buildEdges($resolvedTheme);
 
   function handleConnect(connection: Connection) {
     if (!connection.source || !connection.target || !$componentMapStore.map) return;
@@ -219,6 +219,7 @@
     {edges}
     {nodeTypes}
     {defaultEdgeOptions}
+    colorMode={$resolvedTheme}
     connectionLineType={ConnectionLineType.SmoothStep}
     {isValidConnection}
     fitView
@@ -232,25 +233,79 @@
     <MiniMap position="bottom-left" />
   </SvelteFlow>
 </div>
+<ul class="legend" aria-label="Component status">
+  <li><span class="swatch mapped"></span>✓ Mapped: has its own selector</li>
+  <li><span class="swatch inherited"></span>↳ Inherited: uses a parent's selector</li>
+  <li><span class="swatch unmapped"></span>✕ Unmapped: no selector yet</li>
+</ul>
 
 <style>
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 8px;
+    list-style: none;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .legend li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .swatch {
+    width: 18px;
+    height: 12px;
+    border-radius: 3px;
+    border: 2px solid;
+  }
+
+  .swatch.mapped {
+    border-color: var(--ok);
+  }
+
+  .swatch.inherited {
+    border-color: var(--accent);
+    border-style: dashed;
+  }
+
+  .swatch.unmapped {
+    border-color: var(--err);
+    border-style: dotted;
+    border-width: 3px;
+  }
+
   .canvas {
     height: 560px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
-    background: #ffffff;
+    background: var(--surface);
   }
 
   :global(.svelte-flow__controls button) {
-    background: #ffffff;
-    color: #374151;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+
+  /* xyflow's own dark theme comes from colorMode; these keep it on our surfaces. */
+  .canvas :global(.svelte-flow) {
+    --xy-background-color: var(--surface);
+    --xy-node-background-color: var(--surface);
+    --xy-minimap-background-color: var(--surface-2);
+    --xy-controls-button-background-color: var(--surface);
+    --xy-controls-button-background-color-hover: var(--surface-3);
+    --xy-controls-button-color: var(--text-2);
+    --xy-controls-button-border-color: var(--border);
+    --xy-edge-stroke: var(--text-faint);
   }
 
   :global(.svelte-flow__minimap) {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
   }
 </style>

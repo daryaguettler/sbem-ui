@@ -3,6 +3,8 @@
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
   import { componentTreeStore } from '../../stores/componentTreeStore';
   import SelectorCoverageGrid from './SelectorCoverageGrid.svelte';
+  import SchemaForm from '../componentLibrary/SchemaForm.svelte';
+  import HelpTip from '../HelpTip.svelte';
   import {
     buildComponentLevels,
     getSelectorAtPath,
@@ -27,6 +29,15 @@
     )
   );
 
+  // A library record being created/edited from the coverage grid. It replaces the
+  // selector editor inside this side panel instead of floating over the page.
+  let recordEdit = $state<{ name: string; exists: boolean } | null>(null);
+
+  $effect(() => {
+    path;
+    recordEdit = null;
+  });
+
   function toggleField(fieldName: string) {
     if (sourceFields.includes(fieldName)) {
       componentMapStore.unlinkField(path, fieldName);
@@ -49,7 +60,25 @@
   }
 </script>
 
-{#if level}
+{#if level && recordEdit && componentType}
+  <div class="editor">
+    <div class="record-header">
+      <button type="button" class="btn btn-ghost btn-sm" onclick={() => (recordEdit = null)}>← Back to selector</button>
+      <h3>{recordEdit.exists ? 'Edit' : 'New'} {componentType}</h3>
+      <p class="path">{recordEdit.name}</p>
+    </div>
+    {#key recordEdit.name}
+      <SchemaForm
+        {componentType}
+        mode={recordEdit.exists ? 'edit' : 'create'}
+        name={recordEdit.exists ? recordEdit.name : null}
+        presetName={recordEdit.name}
+        onSaved={() => (recordEdit = null)}
+        onCancel={() => (recordEdit = null)}
+      />
+    {/key}
+  </div>
+{:else if level}
   <div class="editor">
     <div class="header">
       <div>
@@ -58,7 +87,12 @@
       </div>
     </div>
 
-    <p class="help">Choose semantic fields that determine which component record is selected for this path.</p>
+    <p class="help">
+      Which semantic fields decide the record used here?
+      <HelpTip
+        text="Each combination of the ticked fields' options picks one library record, named by joining the option values with '_'. With nothing ticked, this component uses the nearest parent's selector, if any."
+      />
+    </p>
 
     <div class="field-list">
       {#each $semanticFieldsStore.fields as field}
@@ -75,7 +109,10 @@
     </div>
 
     <label class="suffix-row">
-      Suffix
+      <span>
+        Name suffix (optional)
+        <HelpTip text="Appended to every generated record name, e.g. 'Res' turns 'SFH_Pre1975' into 'SFH_Pre1975_Res'. Use it to keep names unique." />
+      </span>
       <input value={suffix} oninput={(event) => updateSuffix((event.currentTarget as HTMLInputElement).value)} />
     </label>
 
@@ -85,6 +122,7 @@
         {sourceFields}
         {suffix}
         semanticFields={$semanticFieldsStore.fields.map((field) => ({ name: field.name, options: field.options }))}
+        onOpenRecord={(name, exists) => (recordEdit = { name, exists })}
       />
     {:else}
       <div class="preview">
@@ -100,10 +138,16 @@
     {/if}
 
     <div class="actions">
-      <button type="button" class="secondary" onclick={collapseChildren} disabled={sourceFields.length === 0}>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        onclick={collapseChildren}
+        disabled={sourceFields.length === 0}
+        title="Remove the selectors on everything below this component so they all inherit this one"
+      >
         Collapse children
       </button>
-      <button type="button" class="danger" onclick={removeMapping} disabled={!selector}>
+      <button type="button" class="btn btn-danger" onclick={removeMapping} disabled={!selector}>
         Clear selector
       </button>
     </div>
@@ -119,24 +163,32 @@
     gap: 14px;
   }
 
-  .header h3 {
-    margin: 0;
+  .record-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-strong);
+  }
+
+  .header h3,
+  .record-header h3 {
     font-size: 16px;
-    color: #111827;
+    color: var(--text);
   }
 
   .path {
-    margin: 4px 0 0;
     font-size: 11px;
-    color: #9ca3af;
-    font-family: monospace;
+    color: var(--text-faint);
+    font-family: ui-monospace, monospace;
+    overflow-wrap: anywhere;
   }
 
   .help,
   .empty {
-    margin: 0;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--text-muted);
   }
 
   .field-list {
@@ -153,14 +205,14 @@
     gap: 8px;
     align-items: center;
     padding: 8px 10px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
     font-size: 13px;
-    color: #111827;
+    color: var(--text);
   }
 
   .options {
-    color: #6b7280;
+    color: var(--text-muted);
     font-size: 12px;
   }
 
@@ -169,23 +221,23 @@
     flex-direction: column;
     gap: 6px;
     font-size: 13px;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .suffix-row input {
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-strong);
     border-radius: 8px;
     padding: 8px 10px;
     font: inherit;
   }
 
   .preview {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px;
-    background: #f9fafb;
+    background: var(--surface-2);
     font-size: 13px;
-    color: #374151;
+    color: var(--text-2);
   }
 
   .preview ul {
@@ -197,31 +249,5 @@
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-  }
-
-  button {
-    border: none;
-    border-radius: 8px;
-    background: #2563eb;
-    color: #ffffff;
-    padding: 8px 12px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  .secondary {
-    background: #ffffff;
-    color: #2563eb;
-    border: 1px solid #2563eb;
-  }
-
-  .danger {
-    background: #dc2626;
-  }
-
-  button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 </style>

@@ -5,6 +5,8 @@
    * field (inference.yml). Candidate columns and the estimate come from the runner.
    */
   import { onMount } from 'svelte';
+  import RunnerNotice from '../components/RunnerNotice.svelte';
+  import HelpTip from '../components/HelpTip.svelte';
   import {
     fetchRunnerStatus,
     fetchSampling,
@@ -110,6 +112,7 @@
   <div class="workflow-header">
     <div>
       <h1>Sampling</h1>
+      <p class="intro">How many buildings to simulate for training, and how to split the stock for prediction.</p>
       <p class="subtitle">
         {#if loadingInfo}
           Estimating…
@@ -117,8 +120,6 @@
           {info.n_buildings.toLocaleString()} buildings
           {#if info.n_strata} · {info.n_strata} strata{/if}
           {#if info.estimate} · ≤ {info.estimate.simulations.toLocaleString()} simulations · ~${info.estimate.usd.toFixed(0)}{/if}
-        {:else}
-          Strata, budget and inference partition
         {/if}
       </p>
     </div>
@@ -127,10 +128,14 @@
 
   <div class="workflow-content">
     {#if error}<p class="error">{error}</p>{/if}
+    {#if settings && !runnerAvailable}
+      <RunnerNotice feature="Listing GIS columns for strata and estimating simulation count and cost" />
+    {/if}
     {#if settings}
       <div class="panel">
+        <h2>Training</h2>
         <div class="row">
-          <span class="label">Strata</span>
+          <span class="label">Strata <HelpTip text="GIS columns that split the stock into groups (strata), e.g. weather station × typology. Every stratum gets simulations in the first round, and training only stops once each stratum is accurate enough." /></span>
           <div class="chips">
             {#each settings.strata_fields as field}
               <span class="chip">{field}<span class="muted">{count(field)}</span>
@@ -139,49 +144,57 @@
             {/each}
             {#if columns.length}
               <select bind:value={addStratum} onchange={add} aria-label="Add stratum">
-                <option value="">+ field</option>
+                <option value="">+ Add column</option>
                 {#each available as column}
                   <option value={column.name}>{column.name}{column.n_values ? ` (${column.n_values})` : ''}</option>
                 {/each}
               </select>
+            {:else}
+              <input
+                type="text"
+                bind:value={addStratum}
+                placeholder="GIS column name"
+                aria-label="Add stratum"
+                onkeydown={(event) => event.key === 'Enter' && add()}
+              />
+              <button type="button" class="secondary" onclick={add} disabled={!addStratum}>+ Add</button>
             {/if}
           </div>
         </div>
 
         <div class="row">
-          <span class="label">Min per stratum</span>
+          <span class="label">Min per stratum <HelpTip text="Simulations each stratum gets in the first round. The first round is raised to at least strata × this number." /></span>
           <input type="number" min="1" bind:value={settings.min_per_stratum} oninput={changed} />
         </div>
         <div class="row">
-          <span class="label">Simulations per iteration</span>
+          <span class="label">Simulations per round <HelpTip text="Buildings simulated in each training round. One number for every round, or a comma-separated list per round (the last value repeats)." /></span>
           <input type="text" bind:value={perIter} oninput={changed} placeholder="5000, 5000" />
         </div>
         <div class="row">
-          <span class="label">Max iterations</span>
+          <span class="label">Max rounds <HelpTip text="Training stops after this many rounds even if some strata haven't converged." /></span>
           <input type="number" min="1" bind:value={settings.max_iters} oninput={changed} />
         </div>
         <div class="row">
-          <span class="label">Context per stratum</span>
+          <span class="label">Context per stratum <HelpTip text="Most buildings kept per stratum in the training context. Simulated buildings are drawn from this subsample, so this limits its size." /></span>
           <input type="number" min="1" bind:value={settings.context_per_stratum} oninput={changed} />
         </div>
 
-        <hr />
-
+        <h2>Prediction</h2>
         <div class="row">
-          <span class="label">Partition by <span class="required">*</span></span>
+          <span class="label">Split stock by <span class="required" aria-label="required">*</span> <HelpTip text="GIS column that splits the stock into prediction jobs and output files, e.g. municipality. Required." /></span>
           {#if partitionChoices.length}
             <select bind:value={settings.partition_field} onchange={changed}>
-              <option value={null}>choose a GIS column</option>
+              <option value={null}>Choose a GIS column…</option>
               {#each partitionChoices as column}
                 <option value={column.name}>{column.name}{column.n_values ? ` (${column.n_values})` : ''}</option>
               {/each}
             </select>
           {:else}
-            <input type="text" bind:value={settings.partition_field} oninput={changed} placeholder="GIS column, e.g. kommune" />
+            <input type="text" bind:value={settings.partition_field} oninput={changed} placeholder="GIS column, e.g. municipality" />
           {/if}
         </div>
         <div class="row">
-          <span class="label">Draws per building</span>
+          <span class="label">Draws per building <HelpTip text="How many times each building's unknown fields (heating system etc.) are sampled from the priors. More draws give smoother results but take longer." /></span>
           <input type="number" min="1" bind:value={settings.n_samples} oninput={changed} />
         </div>
       </div>
@@ -193,27 +206,30 @@
   .workflow { display: flex; flex-direction: column; height: 100%; }
   .workflow-header {
     padding: 24px 32px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
   .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
-  .subtitle { margin: 0; color: #6b7280; font-size: 13px; }
+  .subtitle { margin: 0; color: var(--text-muted); font-size: 13px; }
   .workflow-content { padding: 32px; max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
-  .panel { border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
   .row { display: flex; align-items: center; gap: 16px; font-size: 14px; }
-  .label { width: 190px; color: #374151; flex-shrink: 0; }
-  .required { color: #b91c1c; }
+  .intro { margin: 0 0 2px; color: var(--text-muted); font-size: 14px; }
+  .panel h2 { margin: 6px 0 0; font-size: 14px; color: var(--text); }
+  .label { width: 190px; color: var(--text-2); flex-shrink: 0; }
+  .required { color: var(--err-text); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 2px; background: #f3f4f6; border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
-  .chip-x { border: none; background: transparent; color: #9ca3af; cursor: pointer; padding: 0 4px; font-size: 14px; }
-  .chip-x:hover { color: #111827; }
-  input, select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 8px; font-size: 13px; background: #fff; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; background: var(--surface-3); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
+  .chip-x { border: none; background: transparent; color: var(--text-faint); cursor: pointer; padding: 0 4px; font-size: 14px; }
+  .chip-x:hover { color: var(--text); }
+  input, select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--surface); }
+  input[type='text'], select { min-width: 240px; }
   input[type='number'] { width: 110px; }
-  hr { border: none; border-top: 1px solid #f3f4f6; margin: 4px 0; }
-  button { border: none; border-radius: 8px; background: #2563eb; color: #fff; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
+  button.secondary { background: var(--surface); color: var(--text-2); border: 1px solid var(--border-strong); padding: 5px 10px; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .muted { color: #6b7280; }
-  .error { color: #b91c1c; font-size: 13px; margin: 0; }
+  .muted { color: var(--text-muted); }
+  .error { color: var(--err-text); font-size: 13px; margin: 0; }
 </style>
