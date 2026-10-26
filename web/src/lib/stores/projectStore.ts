@@ -15,6 +15,7 @@ const WORKFLOW_IDS: WorkflowId[] = [
   'retrofits',
   'sampling',
   'model-execution',
+  'single-building',
   'project-files',
 ];
 

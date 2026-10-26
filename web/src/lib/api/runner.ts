@@ -3,7 +3,7 @@
  * estimates and small local test runs. Each call is a background job polled until done.
  */
 
-export type RunnerCommand = 'validate' | 'retrofit-preview' | 'sampling' | 'test-run';
+export type RunnerCommand = 'validate' | 'retrofit-preview' | 'sampling' | 'test-run' | 'flat-model';
 
 export interface RunnerJob<T = unknown> {
   id: string;
@@ -47,17 +47,22 @@ export async function runJob<T>(
   command: RunnerCommand,
   options: Record<string, unknown> = {}
 ): Promise<T> {
-  let job = await requestJson<RunnerJob<T>>('/api/runner/jobs', {
+  const job = await requestJson<RunnerJob<T>>('/api/runner/jobs', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ command, options }),
   });
+  return waitForJob(job);
+}
+
+/** Poll a started job until it finishes (throws with the job's error if it fails). */
+export async function waitForJob<T>(job: RunnerJob<T>): Promise<T> {
   while (job.status === 'running') {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     job = await requestJson<RunnerJob<T>>(`/api/runner/jobs/${job.id}`);
   }
   if (job.status === 'failed' || job.result === null) {
-    throw new Error(job.error ?? `${command} failed`);
+    throw new Error(job.error ?? `${job.command} failed`);
   }
   return job.result;
 }

@@ -5,6 +5,7 @@ export type WorkflowId =
   | 'retrofits'
   | 'sampling'
   | 'model-execution'
+  | 'single-building'
   | 'project-files';
 
 export interface GisDatasetSummary {
