@@ -1,212 +1,202 @@
 # SBEM UI
 
-Svelte-based UI for creating SBEM (Simplified Building Energy Model) artifacts without writing YAML.
-
-## Overview
-
-This application enables non-technical users to create building energy modeling artifacts through a visual interface:
-
-- **Semantic Fields**: Define deterministic and stochastic semantic fields from GIS data
-- **Component Maps**: Link semantic fields to building components
-- **Prior Trees**: Generate prior distributions for stochastic semantic fields,
-  conditioned on any combination of GIS columns and semantic fields
-- **GIS Cleaning**: Validate and preprocess GIS building data
-- **Model Execution**: Run deterministic and stochastic building energy models (future)
+A browser UI for building SBEM (Simplified Building Energy Model) inputs without writing
+YAML by hand. You upload GIS data for a building stock, describe the characteristics that
+drive energy use, set probabilities for the ones your data doesn't record, define retrofit
+packages, and the app writes the files that GloBI reads.
 
 ## Architecture
 
-- **Frontend**: Svelte 5 + TypeScript + Vite
-- **Backend**: FastAPI (Python)
-- **Visualization**: @xyflow/svelte for graph-based interfaces
-- **Integration**: Direct dependency on `epinterface` (the real component graph +
-  Prisma-backed SQLite component library used by `globi`) and `semantic-priors`
-  (prior-tree schema + sampling engine). See "Backend Setup" below for the extra
-  Prisma codegen step this requires.
-- **Persistence**: A "project workspace" is a directory on disk (semantic fields,
-  component map, a real `components-lib.db`, GIS files, priors) that the backend
-  reads/writes -- there's no separate database server. Pick or create one from the
-  UI on first load; it's remembered in the browser so reopening the app reopens
-  the same project.
+- **Frontend**: Svelte 5, TypeScript and Vite (`web/`). Graph views use `@xyflow/svelte`.
+- **Backend**: FastAPI (`server/`).
+- **Libraries**: `epinterface` provides the component graph and the Prisma-backed SQLite
+  component library used by `globi`. `semantic_priors` (prior-tree schema and sampling
+  engine) is vendored in `lib/semantic_priors` (see its `VENDORED.md`).
+- **Persistence**: a project workspace is a directory on disk. It holds the semantic
+  fields, component map, priors, GIS files and a real `components-lib.db`. The backend
+  reads and writes it directly, so there is no separate database server. The browser
+  remembers the last project you opened.
 
-## Saving and reloading your work
-
-Every editor has a **Save to project** button next to its **Export YAML** button. Export
-downloads the artifact; save writes that same document into the project directory
-(`semantic-fields.yaml`, `component-map.selectors.yaml`, `priors/priors.yaml`) instead.
-
-Saved artifacts are loaded straight back into the editors whenever the project is
-reopened, so closing the browser doesn't lose anything. Two ways to reload on demand:
-
-- **Revert to saved** in an editor's toolbar throws away unsaved edits and re-reads that
-  editor's file.
-- **Project Files** in the sidebar lists every file in the project directory with its size
-  and last-modified time, shows the contents of any text file, and offers **Load into
-  editor** for the three saved artifacts.
-
-Saving is deliberately lenient -- half-finished work is worth keeping, so validation stays
-a separate button.
-
-## Project Structure
-
-```
-sbem-ui/
-├── web/                    # Svelte frontend
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── components/  # Reusable UI components
-│   │   │   ├── workflows/   # Workflow-specific pages
-│   │   │   ├── stores/      # Svelte stores for state
-│   │   │   ├── types/       # TypeScript types
-│   │   │   └── utils/       # Helper functions
-│   │   └── main.ts
-│   ├── package.json
-│   └── vite.config.ts
-├── server/                 # FastAPI backend
-│   ├── main.py
-│   ├── routers/            # API endpoints
-│   ├── services/           # Business logic
-│   └── models/             # Pydantic models
-├── templates/              # Pre-built artifact templates
-│   ├── semantic_fields/
-│   ├── component_maps/
-│   └── prior_trees/
-├── lib/                    # Shared Python utilities
-├── pyproject.toml
-└── README.md
-```
-
-## Development Setup
+## Setup
 
 ### Prerequisites
 
 - Node.js 18+
 - Python 3.11+
-- uv (recommended) or pip
+- [uv](https://docs.astral.sh/uv/)
+- Network access for the first setup (`epinterface` installs from GitHub and Prisma
+  downloads its query-engine binaries)
 
-### Frontend Setup
-
-```bash
-cd web
-npm install
-npm run dev
-```
-
-The frontend will be available at `http://localhost:5173`
-
-### Backend Setup
-
-No other checkouts are needed. `epinterface` installs from GitHub (the same branch
-globi pins), and `semantic_priors` is vendored in `lib/semantic_priors` (see its
-`VENDORED.md`).
+### Install
 
 ```bash
-# Install Python dependencies (pulls in epinterface and prisma)
-uv sync
-
-# One-time: generate the Prisma Python client from epinterface's schema.
-# This downloads platform-specific query-engine binaries from Prisma's CDN,
-# so it needs network access; it will fail cryptically in restricted
-# environments (see epinterface's own `epinterface prisma generate` for the
-# underlying command if you need to run it outside this venv).
-uv run epinterface prisma generate
-
-# Run the backend server
-cd server
-uv run python main.py
+make setup
 ```
 
-The backend API will be available at `http://localhost:8000`. On first load the
-frontend will prompt you to create or open a project workspace -- creating one
-also provisions that project's `components-lib.db` (runs `prisma migrate
-deploy` against a fresh SQLite file), which takes a couple of seconds.
+This runs three steps, which you can also run yourself:
 
-### API Documentation
+```bash
+uv sync                          # Python deps, including epinterface and prisma
+uv run epinterface prisma generate   # one-time: generate the Prisma client
+cd web && npm install            # frontend deps
+```
 
-Once the backend is running, visit `http://localhost:8000/docs` for interactive API documentation.
+`prisma generate` downloads platform-specific binaries from Prisma's CDN. It fails with
+an unclear error if the network is restricted.
 
-## Current Status
+### Run
 
-### Architecture Phase 0: Foundations ✅
-- ✅ Real dependency on `epinterface` (component graph + Prisma SQLite component
-  library) and `semantic-priors` (prior schema + sampling engine)
-- ✅ File-backed project workspace (`server/services/workspace.py`) replacing
-  in-memory-only state; GIS session migrated onto it
-- ✅ `GET /api/component-tree/` serves the real, live `epinterface` component
-  graph -- the frontend's previously-hardcoded `prismaComponents.ts` is gone
-- ✅ Editors save into the project directory and reload from it (`/api/artifacts`),
-  plus a Project Files browser for everything on disk
-- ⏳ Component library authoring, generated component-map, native prior editor
-  (see the architecture plan for the full phased breakdown)
+```bash
+make dev
+```
 
-### Phase 1: Foundation ✅
-- ✅ Svelte + Vite project structure
-- ✅ FastAPI backend with basic routing
-- ✅ Template system structure
-- ✅ Basic UI layout with sidebar navigation
-- ✅ Template loading and display functionality
+This starts the backend on `http://localhost:8000` and the frontend on
+`http://localhost:5173`. Ctrl+C stops both. To run them separately, use `make backend`
+and `make frontend`.
 
-### Phase 2: Semantic Fields Editor - Deterministic 🔄 IN PROGRESS
-- ✅ Template system with semantic field templates
-- ✅ Semantic fields store with state management
-- ✅ Template loading and conversion to frontend format
-- ✅ Basic semantic fields display UI
-- ✅ Deterministic vs stochastic field distinction
-- ⏳ Numeric range mapping editor
-- ⏳ Categorical grouping editor
-- ⏳ Compound field builder
-- ⏳ Transformation preview panel
-- ⏳ GIS data upload and column exploration
+Interactive API docs are at `http://localhost:8000/docs`.
 
-### Phase 5: Prior Tree Editor ✅
-- ✅ Priors authored as a real `semantic_priors` `RegionConfig`
-  (`registry`/`priors`/`joints`/`scenarios`), validated by that library's own models
-- ✅ Condition a prior on any combination of semantic fields and raw GIS columns
-- ✅ Generate the lookup table from the project's GIS rows — evenly, or estimated
-  from a column that already records the field for some buildings
-- ✅ Editable heatmap of the table, with per-row provenance and a fallback
-- ✅ Conditioned *numeric* priors: one clipped normal per combination, fitted from
-  the data and edited as a dot plot (these live in `priors` as a `ConditionalPrior`
-  plus its compound key, since `joints` only compiles to categorical samplers)
-- ✅ Scenario editor: fixed and conditional overrides (`$keep` / `$OtherField`),
-  validated against the declared domains
-- ✅ Sampling-order graph, a sample preview over the project's own stock, and a
-  baseline-vs-scenario comparison drawn from one shared sample
+### Optional: AI drafting
 
-### Remaining Phases
-- Phase 3: Semantic Fields Editor - Stochastic
-- Phase 4: Component Map Editor
-- Phase 6: GIS Cleaning Interface
-- Phase 7: Validation & Export
-- Phase 8: Model Execution (future)
+The Building Characteristics page can draft a characteristic for you with Claude. Set
+`ANTHROPIC_API_KEY` in the backend's environment before starting it to enable this. The
+rest of the app works without it.
 
-## Key Features
+### Tests and checks
 
-### Deterministic vs Stochastic Semantic Fields
+```bash
+make test       # Python tests (pytest)
+make test-web   # frontend logic tests (Node's built-in test runner)
+make check      # svelte-check type checking
+```
 
-**Deterministic Semantic Fields**:
-- Derived from existing GIS columns using transformation rules
-- Examples: `construction_year` → `age_buckets` (numeric range mapping)
-- Transformation rules applied directly to GIS data
-- New columns added to GIS data before simulation
+## Using the app
 
-**Stochastic Semantic Fields**:
-- Don't exist in GIS data (no clear transformation rule)
-- Examples: `heating_fuel` (user doesn't have deterministic data)
-- Require prior distributions for runtime sampling
-- Tagged as stochastic, sampled during simulation runs
+### 1. Open a project
 
-## Templates
+On first load the app asks you to create or open a project workspace. Creating one makes
+the directory and provisions its `components-lib.db`, which takes a few seconds. Use
+**Switch project** at the bottom of the sidebar to change projects later.
 
-The project includes pre-built templates for common scenarios:
+A project looks like this on disk:
 
-- **Semantic Fields**: Residential deterministic and stochastic field templates
-- **Component Maps**: Standard residential component hierarchy
-- **Prior Trees**: Heating system priors for residential buildings
+```
+<project>/
+├── project.json                  # name, created date, schema version
+├── gis/                          # uploaded GIS file, cleaned data, column mappings
+├── semantic-fields.yaml          # building characteristics
+├── component-map.selectors.yaml  # which characteristics choose each model part
+├── component-map.yaml            # generated component map
+├── components-lib.db             # component library (epinterface schema)
+└── priors/priors.yaml            # estimates for characteristics not in your data
+```
 
-## Contributing
+`project.json` can remap any of these paths with a `"files"` map, so an existing repo
+layout (such as norway-globi's `inputs/` folder) can be opened as a project. An optional
+`"runner"` entry points at a repo whose `norway` CLI the app uses to validate inputs and
+run local test simulations.
 
-This project is currently in early development. Please refer to the implementation plan for detailed phase information.
+### 2. Work through the steps
+
+The sidebar lists the steps in order. A step shows a check once its readiness checks pass;
+hover over it to see what is missing.
+
+1. **GIS Cleaning**. Upload a CSV or GeoJSON with one row per building. Match your
+   columns to the model's inputs, tick the columns later steps depend on so missing
+   values are caught, then **Validate**. Every later step reads the cleaned dataset, so
+   include any column you will want to classify or stratify by.
+2. **Building Characteristics**. Add the few characteristics that change energy use, such
+   as age band, typology or heating system. For each one, set its values and how it is
+   known:
+   - **From my data**: a rule on a GIS column, for example year built mapped to age bands.
+   - **Estimate it**: each simulated building draws a value from probabilities you set,
+     optionally depending on other characteristics or GIS columns. You can start from an
+     even split or estimate the table from a column that records the value for some
+     buildings.
+
+   Then choose which model parts each characteristic changes. **Check** saves and
+   confirms that sampled combinations each find a record in the component library.
+   **Inspect** follows one real building through the model.
+3. **Retrofits**. Bundle measures into packages, such as "oil boiler to heat pump where
+   built before 1975". Each package is compared against the baseline. Use **Never
+   downgrade** to order a characteristic's values from worst to best, so measures only
+   move buildings towards the better values.
+4. **Sampling**. Choose how many buildings to simulate for training and how to stratify
+   them, and how to split the stock into prediction jobs (for example by municipality).
+   The page shows the estimated number of simulations and their cost.
+5. **Model Execution**. Review readiness for every step. If the project has a runner,
+   validate the inputs and run a small local test to sanity-check EUI and savings.
+   **Export** downloads a JSON snapshot of the project for sharing or archiving. It is
+   not a GloBI `manifest.yml`.
+
+Two utility pages sit below the steps:
+
+- **Component Library** lets you browse and edit the engineering records (lighting power,
+  infiltration, HVAC efficiency, schedules) that model parts point to. A part picks a
+  record by joining its characteristics' values with `_`, for example `SFH_pre_1975`.
+- **Project Files** lists every file in the project with its size and last-modified time,
+  shows the contents of text files, and can load a saved artifact back into its editor.
+
+### 3. Save and reload
+
+**Save** on the Building Characteristics page writes every file with unsaved changes:
+`semantic-fields.yaml`, `component-map.yaml` and `priors/priors.yaml`. **Revert** throws
+away unsaved edits and re-reads the saved files. Saved work loads back into the editors
+whenever the project is reopened, so closing the browser loses nothing that was saved.
+
+Saving accepts half-finished work. Run **Check** separately to validate it.
+
+### Help text
+
+The sidebar's **Minimal** and **Explain** toggle controls the guidance. Minimal keeps it
+behind the **?** next to each heading. Explain shows it under every section.
+
+## Key concepts
+
+**Deterministic characteristics** are derived from GIS columns by a rule, for example
+`construction_year` mapped to `age_buckets` by numeric ranges, or a categorical column
+grouped into fewer values. The values are added to the GIS data before simulation.
+
+**Stochastic characteristics** are not in the GIS data, for example `heating_fuel`. They
+need a prior distribution and are sampled at run time. One building can get different
+values in different draws, which is how the model carries what the data does not record.
+
+GloBI calls characteristics *semantic fields*, the probabilities *priors*, and the
+mapping from characteristics to model parts the *component map*.
+
+## Repository layout
+
+```
+sbem-ui/
+├── web/                # Svelte frontend
+│   ├── src/lib/
+│   │   ├── workflows/  # one page per sidebar step
+│   │   ├── components/ # shared UI components
+│   │   ├── stores/     # Svelte stores
+│   │   ├── api/        # backend client
+│   │   ├── types/      # TypeScript types
+│   │   └── help.ts     # help text shown in Explain mode
+│   └── tests/          # frontend logic tests
+├── server/             # FastAPI backend
+│   ├── main.py
+│   ├── routers/        # API endpoints
+│   ├── services/       # business logic (workspace, GIS, priors, runner, LLM assist)
+│   └── models/         # Pydantic models
+├── lib/semantic_priors # vendored prior-tree library
+├── templates/          # starter semantic fields, component maps and prior trees
+├── tests/              # Python tests
+├── Makefile
+└── pyproject.toml
+```
+
+## Status
+
+The app is in early development. The workspace, GIS cleaning, building characteristics
+(including priors, scenarios and the sample preview), retrofits, sampling and local test
+runs work end to end. Still to come: authoring the component library from scratch, a
+generated component map that needs no manual selectors, and running full models from the
+UI.
 
 ## License
 
-MIT License
+MIT
