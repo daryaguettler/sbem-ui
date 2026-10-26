@@ -12,6 +12,10 @@
   import { fetchRunnerStatus, runJob } from '../api/runner';
   import { markSaved, savedAt } from '../stores/projectArtifacts';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
+  import Explain from '../components/Explain.svelte';
+  import Select from '../components/Select.svelte';
+  import { HELP } from '../help';
+  const help = HELP.retrofits;
 
   interface Condition {
     field: string;
@@ -180,22 +184,22 @@
 <section class="workflow">
   <div class="workflow-header">
     <div>
-      <h1>Retrofits</h1>
-      <p class="subtitle">Bundle upgrades into packages, e.g. “oil boiler → heat pump where built before 1975”.</p>
+      <h1>Retrofits <Explain text={help.page} tip /></h1>
+      <Explain text={help.page} />
       <p class="saved-line">{formatSavedAt($savedAt['retrofits'])}{dirty ? ' · unsaved changes' : ''}</p>
     </div>
     <div class="actions">
       {#if runnerAvailable}
-        <button type="button" class="secondary" onclick={runPreview} disabled={previewing || doc.packages.length === 0}>
+        <button type="button" class="btn btn-secondary" onclick={runPreview} disabled={previewing || doc.packages.length === 0}>
           {previewing ? 'Previewing…' : 'Preview'}
         </button>
       {/if}
-      <button type="button" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
+      <button type="button" class="btn" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
     </div>
   </div>
 
   <div class="workflow-content">
-    {#if error}<p class="error">{error}</p>{/if}
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if !loading && !runnerAvailable}
       <RunnerNotice feature="Previewing how many buildings each package changes" />
     {/if}
@@ -204,18 +208,19 @@
       <p class="muted">Loading…</p>
     {:else if fieldNames.length === 0}
       <WorkflowGuide
-        title="Define semantic fields first"
-        message="Each measure changes a semantic field, e.g. Heating from oil to heat pump."
-        actionLabel="Go to Semantic Fields"
-        actionWorkflow="semantic-fields"
+        title="Define building characteristics first"
+        message="Each measure changes a building characteristic, e.g. Heating from oil to heat pump."
+        actionLabel="Go to Building Characteristics"
+        actionWorkflow="characteristics"
       />
     {:else}
       <div class="panel">
-        <h2>Packages</h2>
+        <h2>Packages <Explain text={help.packages} tip /></h2>
+        <Explain text={help.packages} />
         {#if doc.packages.length === 0}
           <div class="empty">
             <p>No packages yet. A package is a set of measures applied together, and is compared against the baseline.</p>
-            <button type="button" onclick={addPackage}>+ Add package</button>
+            <button type="button" class="btn" onclick={addPackage}>+ Add package</button>
           </div>
         {/if}
         {#each doc.packages as pkg, p}
@@ -236,43 +241,66 @@
               {/each}
               {#if adding === p}
                 <span class="add-row">
-                  <select bind:value={draft.field} onchange={() => (draft.to = '')}>
-                    {#each fieldNames as name}<option value={name}>{name}</option>{/each}
-                  </select>
+                  <span class="pick">
+                    <Select
+                      value={draft.field}
+                      options={fieldNames.map((name) => ({ value: name, label: name }))}
+                      placeholder="characteristic"
+                      ariaLabel="Characteristic to change"
+                      onChange={(value) => (draft = { ...draft, field: value, to: '' })}
+                    />
+                  </span>
                   →
-                  <select bind:value={draft.to}>
-                    <option value="" disabled>option</option>
-                    {#each options[draft.field] ?? [] as opt}<option value={opt}>{opt}</option>{/each}
-                  </select>
+                  <span class="pick">
+                    <Select
+                      value={draft.to}
+                      options={(options[draft.field] ?? []).map((opt) => ({ value: opt, label: opt }))}
+                      placeholder="value"
+                      ariaLabel="Change it to"
+                      onChange={(value) => (draft = { ...draft, to: value })}
+                    />
+                  </span>
                   <span class="muted">if</span>
-                  <select bind:value={draft.ifField} onchange={() => (draft.ifValue = '')}>
-                    <option value="">always</option>
-                    {#each fieldNames as name}<option value={name}>{name}</option>{/each}
-                  </select>
+                  <span class="pick">
+                    <Select
+                      value={draft.ifField}
+                      options={[
+                        { value: '', label: 'always' },
+                        ...fieldNames.map((name) => ({ value: name, label: name })),
+                      ]}
+                      ariaLabel="Only if"
+                      onChange={(value) => (draft = { ...draft, ifField: value, ifValue: '' })}
+                    />
+                  </span>
                   {#if draft.ifField}
-                    <select bind:value={draft.ifValue}>
-                      <option value="" disabled>is</option>
-                      {#each options[draft.ifField] ?? [] as opt}<option value={opt}>{opt}</option>{/each}
-                    </select>
+                    <span class="pick">
+                      <Select
+                        value={draft.ifValue}
+                        options={(options[draft.ifField] ?? []).map((opt) => ({ value: opt, label: opt }))}
+                        placeholder="is"
+                        ariaLabel={`${draft.ifField} is`}
+                        onChange={(value) => (draft = { ...draft, ifValue: value })}
+                      />
+                    </span>
                   {/if}
-                  <button type="button" class="small" onclick={addMeasure} disabled={!draft.to || (!!draft.ifField && !draft.ifValue)}>Add</button>
+                  <button type="button" class="btn btn-sm" onclick={addMeasure} disabled={!draft.to || (!!draft.ifField && !draft.ifValue)}>Add</button>
                   <button type="button" class="icon" title="Cancel" onclick={() => (adding = null)}>×</button>
                 </span>
               {:else}
-                <button type="button" class="link" onclick={() => openAdd(p)}>+ Add measure</button>
+                <button type="button" class="btn btn-link" onclick={() => openAdd(p)}>+ Add measure</button>
               {/if}
             </div>
           </div>
         {/each}
         {#if doc.packages.length > 0}
-          <button type="button" class="link" onclick={addPackage}>+ Add package</button>
+          <button type="button" class="btn btn-link" onclick={addPackage}>+ Add package</button>
         {/if}
       </div>
 
       {#if usedFields.length > 0}
         <div class="panel">
-          <h2>Never downgrade</h2>
-          <p class="muted">Tick a field and order its options from worst (left) to best (right); measures then only move a building rightwards.</p>
+          <h2>Never downgrade <Explain text={help.order} tip /></h2>
+          <Explain text={help.order} />
           {#each usedFields as field}
             <div class="order-row">
               <label class="toggle">
@@ -300,45 +328,29 @@
 </section>
 
 <style>
-  .workflow { display: flex; flex-direction: column; height: 100%; }
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
-  .subtitle { margin: 0; color: var(--text-muted); font-size: 14px; }
+  .workflow-header { flex-direction: row; justify-content: space-between; align-items: center; }
   .saved-line { margin: 2px 0 0; color: var(--text-faint); font-size: 12px; }
   .empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: var(--text-muted); font-size: 14px; }
   .actions { display: flex; gap: 8px; }
-  .workflow-content { padding: 32px; display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
-  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .panel h2 { margin: 0; font-size: 15px; }
+  .workflow-content { max-width: 960px; }
   .package { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--surface-3); }
   .package-head { display: flex; align-items: center; gap: 10px; }
-  .name { font-size: 15px; font-weight: 600; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; min-width: 200px; }
+  .name { font-size: 15px; font-weight: 600; border: 1px solid transparent; border-radius: var(--radius); padding: 4px 6px; min-width: 200px; }
   .name:hover, .name:focus { border-color: var(--border); outline: none; }
   .share { font-size: 12px; color: var(--accent); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-3); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-3); border-radius: var(--radius-sm); padding: 4px 6px 4px 12px; font-size: 13px; }
   .chip-x, .icon, .arrow { border: none; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 14px; padding: 0 4px; }
   .chip-x:hover, .icon:hover, .arrow:hover { color: var(--text); }
   .icon { margin-left: auto; }
   .add-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
   .add-row .icon { margin-left: 0; }
-  select { border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 13px; background: var(--surface); }
-  .link { border: none; background: transparent; color: var(--accent); cursor: pointer; font-size: 13px; padding: 4px 0; text-align: left; }
+  .add-row .pick { min-width: 130px; }
+  .btn-link { align-self: flex-start; }
   .order-row { display: flex; align-items: center; gap: 16px; font-size: 13px; }
   .toggle { display: inline-flex; align-items: center; gap: 6px; min-width: 180px; }
   .order { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-  .step { display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; }
+  .step { display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 4px; }
   .lt { color: var(--text-faint); }
-  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
-  button.small { padding: 4px 10px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
   .muted { color: var(--text-muted); font-size: 13px; }
-  .error { color: var(--err-text); font-size: 13px; margin: 0; }
 </style>

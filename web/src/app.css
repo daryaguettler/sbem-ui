@@ -4,10 +4,11 @@
  * query (guarded so an explicit light choice still wins) and under the explicit
  * data-theme stamp set by the theme toggle (lib/stores/theme.ts).
  *
- * Categorical (--series-*) and sequential (--seq-*) steps come from the validated
- * dataviz palette; the categorical order is the colorblind-safety mechanism, so
- * don't reorder it. Status hues are paired with an icon + label wherever they're
- * used, never color alone.
+ * Sequential (--seq-*) steps and the accent are Crameri's oslo (cmcrameri), sampled
+ * 0.15-0.9 to skip near-black/white; light mode runs it reversed. Categorical
+ * (--series-*) come from the validated dataviz palette; their order is the
+ * colorblind-safety mechanism, so don't reorder it. Status hues are paired with an
+ * icon + label wherever they're used, never color alone.
  */
 :root {
   color-scheme: light;
@@ -24,12 +25,12 @@
   --text-muted: #6b7280;
   --text-faint: #9ca3af;
 
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  --accent: #143454;
+  --accent-hover: #0f2236;
   --on-accent: #ffffff;
-  --accent-soft: #eff6ff;
-  --accent-border: #bfdbfe;
-  --focus-ring: rgba(37, 99, 235, 0.25);
+  --accent-soft: #eceff3;
+  --accent-border: #b9c1cd;
+  --focus-ring: rgba(20, 52, 84, 0.25);
 
   --danger: #dc2626;
   --danger-hover: #b91c1c;
@@ -64,20 +65,39 @@
   --series-neutral: #9ca3af;
 
   /* sequential magnitude, low -> high */
-  --seq-0: #cde2fb;
-  --seq-1: #b7d3f6;
-  --seq-2: #9ec5f4;
-  --seq-3: #86b6ef;
-  --seq-4: #6da7ec;
-  --seq-5: #5598e7;
-  --seq-6: #3987e5;
-  --seq-7: #2a78d6;
-  --seq-8: #256abf;
-  --seq-9: #1c5cab;
+  --seq-0: #d8dade;
+  --seq-1: #b9c1cd;
+  --seq-2: #9dadc9;
+  --seq-3: #849eca;
+  --seq-4: #6a8dc8;
+  --seq-5: #4775b6;
+  --seq-6: #2c5d96;
+  --seq-7: #1d4875;
+  --seq-8: #143454;
+  --seq-9: #0f2236;
   --seq-ink-low: #111827;
   --seq-ink-high: #ffffff;
 
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* One sans family, fixed scale (~1.15 ratio), 4px spacing base. */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --control-h: 32px;
+  --radius: 6px;
+  --radius-sm: 4px;
+
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
   color: var(--text);
@@ -104,12 +124,12 @@
     --text-muted: #9aa1ac;
     --text-faint: #6f7682;
 
-    --accent: #6ea3f0;
-    --accent-hover: #8db7f4;
-    --on-accent: #0b1220;
-    --accent-soft: #172338;
-    --accent-border: #2a4670;
-    --focus-ring: rgba(110, 163, 240, 0.35);
+    --accent: #849eca;
+    --accent-hover: #9dadc9;
+    --on-accent: #0f2236;
+    --accent-soft: #1a2533;
+    --accent-border: #2c5d96;
+    --focus-ring: rgba(132, 158, 202, 0.35);
 
     --danger: #e66767;
     --danger-hover: #ee8a8a;
@@ -141,16 +161,16 @@
     --series-8: #e66767;
     --series-neutral: #6f7682;
 
-    --seq-0: #0d366b;
-    --seq-1: #104281;
-    --seq-2: #184f95;
-    --seq-3: #1c5cab;
-    --seq-4: #256abf;
-    --seq-5: #2a78d6;
-    --seq-6: #3987e5;
-    --seq-7: #5598e7;
-    --seq-8: #6da7ec;
-    --seq-9: #86b6ef;
+    --seq-0: #0f2236;
+    --seq-1: #143454;
+    --seq-2: #1d4875;
+    --seq-3: #2c5d96;
+    --seq-4: #4775b6;
+    --seq-5: #6a8dc8;
+    --seq-6: #849eca;
+    --seq-7: #9dadc9;
+    --seq-8: #b9c1cd;
+    --seq-9: #d8dade;
     --seq-ink-low: #eceef1;
     --seq-ink-high: #0b0b0b;
   }
@@ -171,12 +191,12 @@
   --text-muted: #9aa1ac;
   --text-faint: #6f7682;
 
-  --accent: #6ea3f0;
-  --accent-hover: #8db7f4;
-  --on-accent: #0b1220;
-  --accent-soft: #172338;
-  --accent-border: #2a4670;
-  --focus-ring: rgba(110, 163, 240, 0.35);
+  --accent: #849eca;
+  --accent-hover: #9dadc9;
+  --on-accent: #0f2236;
+  --accent-soft: #1a2533;
+  --accent-border: #2c5d96;
+  --focus-ring: rgba(132, 158, 202, 0.35);
 
   --danger: #e66767;
   --danger-hover: #ee8a8a;
@@ -208,16 +228,16 @@
   --series-8: #e66767;
   --series-neutral: #6f7682;
 
-  --seq-0: #0d366b;
-  --seq-1: #104281;
-  --seq-2: #184f95;
-  --seq-3: #1c5cab;
-  --seq-4: #256abf;
-  --seq-5: #2a78d6;
-  --seq-6: #3987e5;
-  --seq-7: #5598e7;
-  --seq-8: #6da7ec;
-  --seq-9: #86b6ef;
+  --seq-0: #0f2236;
+  --seq-1: #143454;
+  --seq-2: #1d4875;
+  --seq-3: #2c5d96;
+  --seq-4: #4775b6;
+  --seq-5: #6a8dc8;
+  --seq-6: #849eca;
+  --seq-7: #9dadc9;
+  --seq-8: #b9c1cd;
+  --seq-9: #d8dade;
   --seq-ink-low: #eceef1;
   --seq-ink-high: #0b0b0b;
 }
@@ -245,11 +265,49 @@ body {
   min-height: 100vh;
 }
 
-input,
-select,
-textarea {
+/* Zero-specificity base so any component's scoped input style still wins. */
+:where(input:not([type='checkbox'], [type='radio'], [type='file'], [type='range']), select, textarea) {
+  min-height: var(--control-h);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+
+:where(textarea) {
+  padding: var(--space-2);
+}
+
+/* The file input's built-in button matches .btn-secondary. */
+::file-selector-button {
+  min-height: var(--control-h);
+  margin-right: var(--space-2);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-2);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+::file-selector-button:hover {
+  background: var(--surface-3);
+}
+
+:where(input[readonly]) {
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+:where(input, select, textarea):disabled {
+  background: var(--surface-3);
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
 
 :focus-visible {
@@ -257,18 +315,120 @@ textarea {
   outline-offset: 2px;
 }
 
-/* Shared buttons. Components can still scope their own, but new code uses these. */
+/* Browser surfaces take the palette instead of UA defaults. */
+::selection {
+  background: var(--accent-border);
+  color: var(--text);
+}
+
+:root {
+  caret-color: var(--accent);
+  accent-color: var(--accent);
+}
+
+:where(table) {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(h1, h2, h3) {
+  text-wrap: balance;
+}
+
+:where(code, pre, kbd) {
+  font-family: var(--font-mono);
+}
+
+/* Page chrome shared by every workflow (lib/workflows/*). */
+.workflow {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.workflow-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-8);
+  border-bottom: 1px solid var(--border);
+}
+
+.workflow-header h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.workflow-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-8);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.panel h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.panel h2 ~ h2 {
+  margin-top: var(--space-3);
+}
+
+.panel h3 {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.error {
+  margin: 0;
+  color: var(--err-text);
+  font-size: var(--text-sm);
+}
+
+/* How-to text, shown only in Explain mode (lib/components/Explain.svelte). */
+.explain {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+/* Shared buttons: every action uses .btn plus at most one variant. */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-height: var(--control-h);
   border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 7px 12px;
-  font-size: 13px;
+  border-radius: var(--radius);
+  padding: 0 var(--space-3);
+  font: inherit;
+  font-size: var(--text-sm);
   font-weight: 600;
   line-height: 1.3;
+  white-space: nowrap;
   cursor: pointer;
   background: var(--accent);
   color: var(--on-accent);
@@ -276,6 +436,25 @@ textarea {
 
 .btn:hover:not(:disabled) {
   background: var(--accent-hover);
+}
+
+/* Feedback on press, not release (Apple: response). */
+.btn {
+  transition: transform 100ms ease-out, background-color 150ms ease-out;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn {
+    transition: none;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
 }
 
 .btn:disabled {
@@ -314,8 +493,24 @@ textarea {
 }
 
 .btn-sm {
-  padding: 4px 9px;
-  font-size: 12px;
+  min-height: 26px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+/* Inline text action ("+ Add package"): accent text, no box. */
+.btn-link {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.btn-link:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .visually-hidden {
@@ -326,3 +521,4 @@ textarea {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+

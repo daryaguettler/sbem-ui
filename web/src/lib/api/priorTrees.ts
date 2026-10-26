@@ -15,8 +15,6 @@ import type {
   PriorConfig,
   PriorValidation,
   SampleSummary,
-  ScenarioPreview,
-  ScenarioTarget,
 } from '../types/priorTrees';
 
 async function requestJson<T>(input: string, body: unknown): Promise<T> {
@@ -141,30 +139,6 @@ export function samplePriorTree(
   });
 }
 
-/** Features a scenario can override or branch on, with their declared values. */
-export async function fetchScenarioTargets(config: PriorConfig): Promise<ScenarioTarget[]> {
-  const data = await requestJson<{ targets: ScenarioTarget[] }>(
-    '/api/prior-trees/scenario-targets',
-    { config, required_targets: [], fields: [] }
-  );
-  return data.targets;
-}
-
-/** Sample one baseline and apply every scenario to it. */
-export function previewScenarios(
-  fields: SemanticField[],
-  config: PriorConfig,
-  n: number,
-  seed: number | null
-): Promise<ScenarioPreview> {
-  return requestJson('/api/prior-trees/scenarios/preview', {
-    fields: toApiFields(fields),
-    config,
-    n,
-    seed,
-  });
-}
-
 export async function exportPriorTreeYaml(config: PriorConfig): Promise<string> {
   const response = await fetch('/api/prior-trees/export', {
     method: 'POST',
@@ -173,4 +147,36 @@ export async function exportPriorTreeYaml(config: PriorConfig): Promise<string> 
   });
   if (!response.ok) throw new Error('Failed to export the prior tree.');
   return response.text();
+}
+
+export interface BuildingTrace {
+  buildingId: string | null;
+  n: number;
+  known: Array<{ name: string; value: string | null; because: string }>;
+  estimated: Array<{ name: string; shares: Array<{ value: string | null; share: number }> }>;
+  parts: Array<{
+    path: string;
+    componentType: string | null;
+    sourceFields: string[];
+    /** `exists` is null when the component library couldn't be read. */
+    records: Array<{ name: string | null; share: number; exists: boolean | null }>;
+  }>;
+}
+
+/** Trace one building (or a random one) from its GIS row to the library records it uses. */
+export function inspectBuilding(
+  fields: SemanticField[],
+  config: PriorConfig,
+  componentMap: Record<string, unknown> | null,
+  idColumn: string,
+  buildingId: string | null
+): Promise<BuildingTrace> {
+  return requestJson('/api/inspect/building', {
+    building_id: buildingId,
+    id_column: idColumn,
+    fields: toApiFields(fields),
+    config,
+    component_map: componentMap,
+    n: 500,
+  });
 }

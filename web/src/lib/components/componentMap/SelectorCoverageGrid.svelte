@@ -76,7 +76,7 @@
   {/if}
 
   {#if combinations.length === 0}
-    <p class="hint">Tick at least one semantic field above to see which records this selector needs.</p>
+    <p class="hint">Tick at least one characteristic to see which records this part needs.</p>
   {:else}
     <div class="table-scroll">
       <table>
@@ -127,7 +127,7 @@
 <style>
   .coverage {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 12px;
     background: var(--surface-2);
   }
@@ -181,7 +181,7 @@
   }
 
   .record-name {
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
     overflow-wrap: anywhere;
   }

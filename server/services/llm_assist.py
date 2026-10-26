@@ -307,7 +307,6 @@ def check_field(
     errors = validate_semantic_field(field, gis_columns)
     warnings: list[str] = []
     rule = field.get("transformation_rule") or {}
-    options = set(field.get("options") or [])
     source = rule.get("source_column")
 
     if field.get("type") != "deterministic" or not source:
@@ -317,11 +316,6 @@ def check_field(
 
     if rule.get("type") == "numeric_range":
         ranges = rule.get("numeric_ranges") or []
-        for r in ranges:
-            if r["label"] not in options:
-                errors.append(f"Range label '{r['label']}' is not one of the options.")
-            if r["min"] > r["max"]:
-                errors.append(f"Range '{r['label']}' has min greater than max.")
         overlapping: Counter[str] = Counter()
         for value in values:
             number = _parse_numeric(value)
@@ -338,10 +332,6 @@ def check_field(
     if rule.get("type") == "categorical_mapping":
         observed = {str(v).strip() for v in values if not _is_missing(v)}
         for group in rule.get("categorical_groups") or []:
-            if group["group_label"] not in options:
-                errors.append(
-                    f"Group label '{group['group_label']}' is not one of the options."
-                )
             missing = [v for v in group["source_values"] if v not in observed]
             if missing:
                 warnings.append(

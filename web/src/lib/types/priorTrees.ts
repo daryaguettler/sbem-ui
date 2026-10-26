@@ -113,49 +113,6 @@ export interface PriorConfig {
   scenarios: ScenarioSpec[];
 }
 
-/** A feature a scenario can override, or (context only) merely branch on. */
-export interface ScenarioTarget {
-  name: string;
-  dtype: 'categorical' | 'numeric';
-  values: string[];
-  dependsOn: string[];
-  /** True for a field read from the GIS data: testable, but not overridable. */
-  contextOnly?: boolean;
-}
-
-export interface ScenarioFeatureComparison {
-  feature: string;
-  dtype: 'categorical' | 'numeric';
-  values: string[];
-  shares: Array<{ value: string; baseline: number; scenario: number }>;
-  numeric: {
-    baselineMean: number;
-    scenarioMean: number;
-    baselineStd: number;
-    scenarioStd: number;
-  } | null;
-}
-
-export interface ScenarioComparison {
-  name: string;
-  /** Features the scenario overrides directly. */
-  changed: string[];
-  /** Features resampled because they depend on a changed one. */
-  downstream: string[];
-  resampleChangedFeatures: boolean;
-  labelColumn: string | null;
-  features: ScenarioFeatureComparison[];
-}
-
-export interface ScenarioPreview {
-  n: number;
-  seed: number | null;
-  contextFields: string[];
-  contextRowCount: number;
-  contextSource: 'gis' | 'synthetic';
-  scenarios: ScenarioComparison[];
-}
-
 /** Where a conditioning field's values come from. */
 export type CandidateSource = 'semantic' | 'gis' | 'sampled';
 
@@ -299,7 +256,6 @@ export interface PriorTreesState {
   validationWarnings: string[];
   dependencies: DependencyGraph;
   sample: SampleSummary | null;
-  scenarioPreview: ScenarioPreview | null;
 }
 
 export interface PriorTreeTemplateSummary {

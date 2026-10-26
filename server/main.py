@@ -9,6 +9,7 @@ from routers import (
     component_map_router,
     component_tree_router,
     gis_router,
+    inspect_router,
     prior_trees_router,
     runner_router,
     semantic_fields_router,
@@ -53,6 +54,7 @@ app.include_router(gis_router)
 app.include_router(workspace_router)
 app.include_router(runner_router)
 app.include_router(assist_router)
+app.include_router(inspect_router)
 
 
 @app.get("/")

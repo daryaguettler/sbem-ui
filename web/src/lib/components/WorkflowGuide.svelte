@@ -14,7 +14,7 @@
   <p>{message}</p>
   {#if actionLabel && actionWorkflow}
     {@const target = actionWorkflow}
-    <button type="button" class="action" onclick={() => navigateTo(target)}>
+    <button type="button" class="btn" onclick={() => navigateTo(target)}>
       {actionLabel}
     </button>
   {/if}
@@ -22,32 +22,22 @@
 
 <style>
   .guide {
-    padding: 24px;
+    padding: var(--space-5);
     border: 1px solid var(--accent-border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     background: var(--accent-soft);
   }
 
   .guide h2 {
-    margin: 0 0 8px;
-    font-size: 18px;
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-lg);
     color: var(--text);
   }
 
   .guide p {
-    margin: 0 0 16px;
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
     color: var(--accent-hover);
     line-height: 1.5;
-  }
-
-  .action {
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: var(--on-accent);
-    padding: 10px 16px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
   }
 </style>

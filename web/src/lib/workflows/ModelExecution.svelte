@@ -13,6 +13,9 @@
   import { priorTreesStore } from '../stores/priorTreesStore';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import { downloadText } from '../utils/download';
+  import Explain from '../components/Explain.svelte';
+  import { HELP } from '../help';
+  const help = HELP.modelExecution;
 
   interface Check {
     name: string;
@@ -116,15 +119,16 @@
 
 <section class="workflow">
   <div class="workflow-header">
-    <h1>Model Execution</h1>
-    <p class="subtitle">{runnerAvailable ? 'Check readiness, validate inputs and run a small local test.' : 'Check readiness and export a snapshot.'}</p>
+    <h1>Model Execution <Explain text={runnerAvailable ? help.pageRunner : help.page} tip /></h1>
+    <Explain text={runnerAvailable ? help.pageRunner : help.page} />
   </div>
 
   <div class="workflow-content">
-    {#if error}<p class="error">{error}</p>{/if}
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
 
     <div class="panel">
-      <h2>Readiness</h2>
+      <h2>Readiness <Explain text={help.readiness} tip /></h2>
+      <Explain text={help.readiness} />
       <ul class="checks">
         {#each $readinessChecks as check}
           <li>
@@ -135,7 +139,7 @@
               <strong>{check.label}</strong>
               <span class="muted">{check.detail}</span>
             </span>
-            {#if !check.ready}<button type="button" class="link" onclick={() => navigateTo(check.workflow)}>Go to step</button>{/if}
+            {#if !check.ready}<button type="button" class="btn btn-link" onclick={() => navigateTo(check.workflow)}>Go to step</button>{/if}
           </li>
         {/each}
       </ul>
@@ -144,9 +148,10 @@
     {#if runnerAvailable}
       <div class="panel">
         <div class="head">
-          <h2>Inputs</h2>
-          <button type="button" onclick={validate} disabled={validating}>{validating ? 'Checking…' : 'Validate'}</button>
+          <h2>Inputs <Explain text={help.inputs} tip /></h2>
+          <button type="button" class="btn" onclick={validate} disabled={validating}>{validating ? 'Checking…' : 'Validate'}</button>
         </div>
+        <Explain text={help.inputs} />
         {#if checks}
           <ul class="checks">
             {#each checks as check}
@@ -161,11 +166,12 @@
 
       <div class="panel">
         <div class="head">
-          <h2>Test run</h2>
+          <h2>Test run <Explain text={help.testRun} tip /></h2>
           <div class="controls">
             <label><input type="number" min="1" max={MAX_TEST_BUILDINGS} bind:value={n} /> buildings</label>
             <button
               type="button"
+              class="btn"
               onclick={testRun}
               disabled={testing || noPackageSelected}
               title={noPackageSelected ? 'Select at least one retrofit package' : undefined}
@@ -174,6 +180,7 @@
             </button>
           </div>
         </div>
+        <Explain text={help.testRun} />
         {#if packages.length}
           <div class="packages">
             {#each packages as name}
@@ -183,14 +190,14 @@
         {/if}
         {#if run}
           <table>
-            <thead><tr><th>Scenario</th><th>EUI (kWh/m²)</th><th>Savings</th><th>Buildings changed</th></tr></thead>
+            <thead><tr><th>Scenario</th><th class="num">EUI (kWh/m²)</th><th class="num">Savings</th><th class="num">Buildings changed</th></tr></thead>
             <tbody>
               {#each run.by_scenario as row}
                 <tr>
                   <td>{row.scenario}</td>
-                  <td>{row.eui_total_mean?.toFixed(1) ?? '–'}</td>
-                  <td>{pct(row.savings_mean)}</td>
-                  <td>{pct(row.share_changed)}</td>
+                  <td class="num">{row.eui_total_mean?.toFixed(1) ?? '–'}</td>
+                  <td class="num">{pct(row.savings_mean)}</td>
+                  <td class="num">{pct(row.share_changed)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -204,33 +211,25 @@
     {:else}
       <RunnerNotice feature="Validating inputs against globi and running a local test" />
       <div class="panel">
-        <h2>Export</h2>
-        <div><button type="button" onclick={exportManifest} disabled={!$allArtifactsReady}>Download editor snapshot</button></div>
-        <p class="muted">
-          A JSON snapshot of this project's editors, for sharing or archiving. It is not a globi
-          <code>manifest.yml</code> and can't be passed to <code>globi submit</code>.
-        </p>
+        <h2>Export <Explain text={help.export} tip /></h2>
+        <div><button type="button" class="btn" onclick={exportManifest} disabled={!$allArtifactsReady}>Download editor snapshot</button></div>
+        <Explain text={help.export} />
       </div>
     {/if}
   </div>
 </section>
 
 <style>
-  .workflow { display: flex; flex-direction: column; height: 100%; }
-  .workflow-header { padding: 24px 32px; border-bottom: 1px solid var(--border); }
-  .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
   .subtitle { margin: 0; color: var(--text-muted); font-size: 13px; }
-  .workflow-content { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 20px; }
-  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .panel h2 { margin: 0; font-size: 15px; }
+  .workflow-content { max-width: 860px; }
   .head { display: flex; justify-content: space-between; align-items: center; }
   .controls { display: flex; align-items: center; gap: 12px; font-size: 13px; }
-  .controls input { width: 64px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+  .controls input { width: 64px; }
   .packages { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; }
   .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
   .checks li { display: flex; align-items: flex-start; gap: 10px; }
   .checks strong { min-width: 120px; font-weight: 600; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 76px; padding: 1px 8px; border-radius: 999px; border: 1px solid; font-size: 11px; font-weight: 700; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 76px; padding: 1px 8px; border-radius: var(--radius-sm); border: 1px solid; font-size: 11px; font-weight: 700; }
   .badge.ok { color: var(--ok-text); background: var(--ok-bg); border-color: var(--ok-border); }
   .badge.warn { color: var(--warn-text); background: var(--warn-bg); border-color: var(--warn-border); }
   .badge.error { color: var(--err-text); background: var(--err-bg); border-color: var(--err-border); }
@@ -238,9 +237,6 @@
   table { border-collapse: collapse; font-size: 13px; width: 100%; }
   th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); }
   td { padding: 6px 8px; border-bottom: 1px solid var(--surface-3); }
-  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .link { background: transparent; color: var(--accent); padding: 0; font-weight: 500; white-space: nowrap; }
+  th.num, td.num { text-align: right; }
   .muted { color: var(--text-muted); font-size: 13px; margin: 0; }
-  .error { color: var(--err-text); font-size: 13px; margin: 0; }
 </style>

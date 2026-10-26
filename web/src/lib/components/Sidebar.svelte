@@ -3,16 +3,14 @@
   import { workspaceStore } from '../stores/workspaceStore';
   import { readinessChecks } from '../stores/projectStore';
   import { themeChoice, type ThemeChoice } from '../stores/theme';
+  import { helpMode, type HelpMode } from '../stores/helpMode';
 
   export let currentWorkflow: WorkflowId;
   export let setWorkflow: (workflow: WorkflowId) => void;
 
   const steps: Array<{ id: WorkflowId; label: string }> = [
     { id: 'gis-cleaning', label: 'GIS Cleaning' },
-    { id: 'semantic-fields', label: 'Semantic Fields' },
-    { id: 'component-library', label: 'Component Library' },
-    { id: 'component-map', label: 'Component Map' },
-    { id: 'prior-trees', label: 'Prior Trees' },
+    { id: 'characteristics', label: 'Building Characteristics' },
     { id: 'retrofits', label: 'Retrofits' },
     { id: 'sampling', label: 'Sampling' },
     { id: 'model-execution', label: 'Model Execution' },
@@ -24,21 +22,44 @@
     { id: 'system', label: 'System' },
   ];
 
-  // Only the steps with a readiness check get a done/not-done mark; the rest have no
-  // project-level "done" state to report.
-  $: readyByWorkflow = new Map($readinessChecks.map((check) => [check.workflow, check]));
+  const helpModes: Array<{ id: HelpMode; label: string; title: string }> = [
+    { id: 'minimal', label: 'Minimal', title: 'Controls only; guidance sits behind each ?' },
+    { id: 'explain', label: 'Explain', title: 'Show how-to guidance under every section' },
+  ];
+
+  const utilities: Array<{ id: WorkflowId; label: string; icon: string }> = [
+    { id: 'component-library', label: 'Component Library', icon: '▦' },
+    { id: 'project-files', label: 'Project Files', icon: '▤' },
+  ];
+
+  // Only the steps with readiness checks get a done/not-done mark; a step with several
+  // checks (Building Characteristics) is done when all of them are.
+  $: checksFor = (workflow: WorkflowId) => $readinessChecks.filter((check) => check.workflow === workflow);
+  $: stepChecks = new Map(
+    steps.map((step) => {
+      const checks = checksFor(step.id);
+      return [
+        step.id,
+        checks.length
+          ? {
+              ready: checks.every((check) => check.ready),
+              detail: checks.filter((check) => !check.ready).map((check) => check.detail).join(' '),
+            }
+          : null,
+      ];
+    })
+  );
 </script>
 
 <aside class="sidebar">
   <div class="sidebar-header">
     <h1>SBEM UI</h1>
-    <p class="subtitle">Building stock energy modeling</p>
   </div>
 
   <nav class="sidebar-nav" aria-label="Workflow steps">
     <ol class="steps">
       {#each steps as step, index}
-        {@const check = readyByWorkflow.get(step.id)}
+        {@const check = stepChecks.get(step.id)}
         <li>
           <button
             type="button"
@@ -59,16 +80,18 @@
 
     <div class="divider" role="separator"></div>
 
-    <button
-      type="button"
-      class="nav-item utility"
-      class:active={currentWorkflow === 'project-files'}
-      aria-current={currentWorkflow === 'project-files' ? 'page' : undefined}
-      onclick={() => setWorkflow('project-files')}
-    >
-      <span class="step-badge utility-badge" aria-hidden="true">▤</span>
-      <span class="step-label">Project Files</span>
-    </button>
+    {#each utilities as utility}
+      <button
+        type="button"
+        class="nav-item utility"
+        class:active={currentWorkflow === utility.id}
+        aria-current={currentWorkflow === utility.id ? 'page' : undefined}
+        onclick={() => setWorkflow(utility.id)}
+      >
+        <span class="step-badge utility-badge" aria-hidden="true">{utility.icon}</span>
+        <span class="step-label">{utility.label}</span>
+      </button>
+    {/each}
   </nav>
 
   <div class="sidebar-footer">
@@ -80,6 +103,21 @@
         Switch project
       </button>
     {/if}
+
+    <div class="theme-toggle" role="radiogroup" aria-label="Help text">
+      {#each helpModes as mode}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={$helpMode === mode.id}
+          class:selected={$helpMode === mode.id}
+          title={mode.title}
+          onclick={() => helpMode.set(mode.id)}
+        >
+          {mode.label}
+        </button>
+      {/each}
+    </div>
 
     <div class="theme-toggle" role="radiogroup" aria-label="Color theme">
       {#each themes as theme}
@@ -117,15 +155,10 @@
   }
 
   .sidebar-header h1 {
-    font-size: 18px;
+    font-size: var(--text-lg);
     font-weight: 700;
     color: var(--text);
-    margin: 0 0 2px 0;
-  }
-
-  .subtitle {
-    font-size: 12px;
-    color: var(--text-muted);
+    margin: 0;
   }
 
   .sidebar-nav {
@@ -151,7 +184,7 @@
     padding: 8px 10px;
     border: none;
     background: transparent;
-    border-radius: 8px;
+    border-radius: var(--radius);
     cursor: pointer;
     text-align: left;
     font-size: 14px;
@@ -237,7 +270,7 @@
     width: 100%;
     padding: 6px 10px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius);
     background: var(--surface);
     color: var(--text-2);
     font-size: 12px;
@@ -250,17 +283,18 @@
 
   .theme-toggle {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
     padding: 2px;
     border: 1px solid var(--border);
-    border-radius: 7px;
+    border-radius: var(--radius);
     background: var(--surface-3);
   }
 
   .theme-toggle button {
     padding: 4px 0;
     border: none;
-    border-radius: 5px;
+    border-radius: var(--radius-sm);
     background: transparent;
     color: var(--text-muted);
     font-size: 11px;
@@ -271,6 +305,6 @@
   .theme-toggle button.selected {
     background: var(--surface);
     color: var(--text);
-    box-shadow: var(--shadow);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
   }
 </style>

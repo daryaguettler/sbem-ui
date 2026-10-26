@@ -19,9 +19,9 @@
   export let onReorder: (names: string[]) => void;
 
   const SOURCE_LABELS: Record<string, string> = {
-    semantic: 'Semantic field',
+    semantic: 'Characteristic from your data',
     gis: 'GIS column',
-    sampled: 'Sampled field',
+    sampled: 'Estimated characteristic',
   };
 
   /** Conditioning fields are grouped by where their values come from. */
@@ -42,8 +42,8 @@
   }
 
   function describe(candidate: ConditioningCandidate): string {
-    if (candidate.source === 'sampled') return 'sampled, no observed values';
-    if (candidate.dtype === 'numeric') return 'numeric — bucket it into a semantic field first';
+    if (candidate.source === 'sampled') return 'estimated, no observed values';
+    if (candidate.dtype === 'numeric') return 'numeric: group it into ranges as a characteristic first';
     return `${candidate.cardinality} values · ${formatPercent(candidate.coverage)} of rows`;
   }
 </script>
@@ -51,7 +51,7 @@
 <div class="picker">
   {#if selected.length > 0}
     <div class="selection">
-      <span class="selection-label">Conditioned on</span>
+      <span class="selection-label">Depends on</span>
       <ol class="chosen">
         {#each selected as name, index}
           <li>
@@ -77,7 +77,7 @@
         {preview.keyCount === 1 ? 'combination' : 'combinations'} occur in your data, covering
         <strong>{formatPercent(preview.coverage)}</strong> of {preview.rowCount.toLocaleString()} buildings.
         {#if preview.coverage < 1}
-          The rest use the fallback.
+          The rest use “Everything else”.
         {/if}
       </p>
     {/if}
@@ -157,7 +157,7 @@
     gap: 6px;
     padding: 4px 6px 4px 10px;
     border: 1px solid var(--accent-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--accent-soft);
     font-size: 13px;
   }
@@ -180,7 +180,7 @@
     line-height: 1;
     padding: 2px 3px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
   }
 
   .chip-actions button:disabled {
@@ -211,8 +211,6 @@
     margin: 0 0 8px;
     font-size: 12px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     color: var(--text-muted);
   }
 
@@ -228,7 +226,7 @@
     gap: 3px;
     padding: 8px 10px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
     text-align: left;
     cursor: pointer;
@@ -283,7 +281,7 @@
     color: var(--warn-text);
     background: var(--warn-bg);
     border: 1px solid var(--warn-border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 10px 12px;
   }
 </style>

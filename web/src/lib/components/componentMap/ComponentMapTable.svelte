@@ -18,7 +18,7 @@
 </script>
 
 {#if !$componentMapStore.map}
-  <p class="empty">Load or create a component map to edit selectors.</p>
+  <p class="empty">No model parts are connected yet.</p>
 {:else}
   <div class="table-wrap">
     <table>
@@ -63,7 +63,7 @@
   .table-wrap {
     overflow: auto;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
   }
 
   table {
@@ -88,14 +88,14 @@
   .path {
     font-size: 11px;
     color: var(--text-faint);
-    font-family: monospace;
+    font-family: var(--font-mono);
     margin-top: 2px;
   }
 
   .status {
     display: inline-block;
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 11px;
     font-weight: 600;
     text-transform: capitalize;
@@ -120,7 +120,7 @@
     border: 1px solid var(--accent);
     background: var(--surface);
     color: var(--accent);
-    border-radius: 6px;
+    border-radius: var(--radius);
     padding: 4px 10px;
     cursor: pointer;
     font-size: 12px;

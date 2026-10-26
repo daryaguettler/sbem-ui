@@ -104,7 +104,7 @@
     {:else}
       <div class="assist-head">
         <h3><span class="spark" aria-hidden="true">✦</span> Draft with AI</h3>
-        <button type="button" class="ghost" onclick={() => (open = false)} aria-label="Hide AI drafting">Hide</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick={() => (open = false)} aria-label="Hide AI drafting">Hide</button>
       </div>
 
       {#if !result}
@@ -118,7 +118,7 @@
           ></textarea>
         </label>
         <div class="row">
-          <button type="button" onclick={() => run(false)} disabled={loading || description.trim().length < 3}>
+          <button type="button" class="btn" onclick={() => run(false)} disabled={loading || description.trim().length < 3}>
             {loading ? 'Drafting…' : 'Draft'}
           </button>
           <span class="privacy">Sends column names and sampled values (not whole rows) to Anthropic.</span>
@@ -194,14 +194,14 @@
               onkeydown={(event) => event.key === 'Enter' && run(true)}
               aria-label="Requested change"
             />
-            <button type="button" class="secondary" onclick={() => run(true)} disabled={loading || !refineText.trim()}>
+            <button type="button" class="btn btn-secondary" onclick={() => run(true)} disabled={loading || !refineText.trim()}>
               {loading ? 'Revising…' : 'Revise'}
             </button>
           </div>
 
           <div class="row">
-            <button type="button" onclick={apply} disabled={loading}>Apply to field</button>
-            <button type="button" class="secondary" onclick={() => (result = null)} disabled={loading}>Discard</button>
+            <button type="button" class="btn" onclick={apply} disabled={loading}>Apply to field</button>
+            <button type="button" class="btn btn-secondary" onclick={() => (result = null)} disabled={loading}>Discard</button>
           </div>
         </div>
       {/if}
@@ -214,7 +214,7 @@
 <style>
   .assist {
     border: 1px dashed var(--accent-border);
-    border-radius: 10px;
+    border-radius: var(--radius);
     background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
     margin-bottom: 16px;
   }
@@ -258,15 +258,13 @@
     margin: 0 0 2px;
     font-size: 12px;
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
   }
 
   textarea,
   .refine input {
     width: 100%;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     padding: 8px 10px;
     font: inherit;
     font-size: 13px;
@@ -288,34 +286,6 @@
     min-width: 200px;
   }
 
-  button {
-    border: none;
-    border-radius: 6px;
-    background: var(--accent);
-    color: var(--on-accent);
-    padding: 7px 12px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  button.secondary {
-    background: var(--surface);
-    color: var(--text-2);
-    border: 1px solid var(--border-strong);
-  }
-
-  button.ghost {
-    background: transparent;
-    color: var(--text-muted);
-    padding: 4px 8px;
-  }
-
   .privacy,
   .muted,
   .unavailable {
@@ -333,7 +303,7 @@
     gap: 10px;
     padding: 12px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
   }
 
@@ -348,7 +318,7 @@
   .tag {
     font-size: 11px;
     padding: 1px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--surface-3);
     color: var(--text-2);
   }

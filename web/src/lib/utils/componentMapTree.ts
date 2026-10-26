@@ -349,6 +349,71 @@ export function removeFieldFromSelector(
   return setSelectorAtPath(componentMap, path, nextFields, existing.suffix);
 }
 
+/** How a field reaches a component: its own selector, an ancestor's, or not at all.
+ * A child's own selector replaces its parent's, so an ancestor only counts when the
+ * path has no selector of its own. */
+export function fieldStatusAtPath(
+  componentMap: Record<string, unknown>,
+  path: string,
+  fieldName: string
+): { status: 'own' | 'inherited' | 'off'; from?: string } {
+  const effective = getEffectiveSelector(componentMap, path);
+  if (!effective?.selector.source_fields.includes(fieldName)) return { status: 'off' };
+  return effective.path === path ? { status: 'own' } : { status: 'inherited', from: effective.path };
+}
+
+/** Insert `fieldName` without reordering the existing fields (that would rename every
+ * record): it goes before the first existing field that `fieldOrder` puts after it. */
+function insertInOrder(sourceFields: string[], fieldName: string, fieldOrder: string[]): string[] {
+  const rank = (name: string) => {
+    const index = fieldOrder.indexOf(name);
+    return index === -1 ? Infinity : index;
+  };
+  const at = sourceFields.findIndex((name) => rank(name) > rank(fieldName));
+  return at === -1 ? [...sourceFields, fieldName] : [...sourceFields.slice(0, at), fieldName, ...sourceFields.slice(at)];
+}
+
+/**
+ * Make `fieldName` choose (or stop choosing) the component at `path`.
+ *
+ * Turning it on where the path only inherits a parent's selector creates a child
+ * override from the parent's fields plus this one, so sibling components keep the
+ * records they have. Turning it off only touches the path's own selector.
+ */
+export function setPartForField(
+  componentMap: Record<string, unknown>,
+  path: string,
+  fieldName: string,
+  on: boolean,
+  fieldOrder: string[],
+  /** Suffix for a selector this creates (see modelParts.defaultSuffix); an existing one keeps its own. */
+  suffixForNew?: string
+): Record<string, unknown> {
+  if (!on) return removeFieldFromSelector(componentMap, path, fieldName);
+
+  const effective = getEffectiveSelector(componentMap, path);
+  if (effective?.selector.source_fields.includes(fieldName)) return componentMap;
+  const own = effective?.path === path ? effective.selector : null;
+  const base = effective?.selector.source_fields ?? [];
+  const suffix = own ? own.suffix : suffixForNew;
+  return setSelectorAtPath(componentMap, path, insertInOrder(base, fieldName, fieldOrder), suffix);
+}
+
+/** Rename a field in every selector, keeping each selector's field order. */
+export function renameFieldInMap(
+  componentMap: Record<string, unknown>,
+  from: string,
+  to: string
+): Record<string, unknown> {
+  let updated = componentMap;
+  for (const record of collectSelectors(componentMap)) {
+    if (!record.source_fields.includes(from)) continue;
+    const fields = record.source_fields.map((name) => (name === from ? to : name));
+    updated = setSelectorAtPath(updated, record.path, fields, record.suffix);
+  }
+  return updated;
+}
+
 export function isComponentVisible(
   componentMap: Record<string, unknown>,
   path: string,

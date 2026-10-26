@@ -1,11 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import WorkflowGuide from '../components/WorkflowGuide.svelte';
+  import { helpMode } from '../stores/helpMode';
   import { gisDataset } from '../stores/projectStore';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import type { GlobiColumnRole, GisColumnMappings } from '../types/gis';
   import type { GISColumn } from '../types/semanticFields';
   import { downloadFromResponse } from '../utils/download';
+  import Explain from '../components/Explain.svelte';
+  import Select from '../components/Select.svelte';
+  import { HELP } from '../help';
+  const help = HELP.gis;
 
   let selectedFile: File | null = null;
   let uploading = false;
@@ -239,14 +244,14 @@
 
 <section class="workflow">
   <div class="workflow-header">
-    <h1>GIS Cleaning</h1>
-    <p class="subtitle">Upload your building data, match its columns to the model's inputs, and check for missing values.</p>
+    <h1>GIS Cleaning <Explain text={help.page} tip /></h1>
+    <Explain text={help.page} />
   </div>
 
   <div class="workflow-content">
     <div class="panel">
-      <h2>1. Upload GIS data</h2>
-      <p class="help">CSV or GeoJSON, one row per building.</p>
+      <h2>1. Upload GIS data <Explain text={help.upload} tip /></h2>
+      <Explain text={help.upload} />
       <div class="upload-row">
         <input
           type="file"
@@ -256,7 +261,7 @@
             selectedFile = target.files?.[0] || null;
           }}
         />
-        <button type="button" onclick={uploadFile} disabled={uploading || !selectedFile}>
+        <button type="button" class="btn" onclick={uploadFile} disabled={uploading || !selectedFile}>
           {uploading ? 'Uploading…' : 'Upload'}
         </button>
       </div>
@@ -275,8 +280,8 @@
 
     {#if columns.length > 0}
       <div class="panel">
-        <h2>2. Match columns</h2>
-        <p class="help">Pick which of your columns holds each model input. Only required inputs must be matched.</p>
+        <h2>2. Match columns <Explain text={help.match} tip /></h2>
+        <Explain text={help.match} />
         <div class="mapping-grid">
           {#each roles as role}
             <label>
@@ -291,23 +296,22 @@
               {#if role.description}
                 <span class="role-description">{role.description}</span>
               {/if}
-              <select
+              <Select
                 value={columnMappings[role.key] || ''}
-                onchange={(event) =>
-                  setMapping(role.key, (event.currentTarget as HTMLSelectElement).value)}
-              >
-                <option value="">Not mapped</option>
-                {#each columns as column}
-                  <option value={column.name}>{column.name}</option>
-                {/each}
-              </select>
+                options={[
+                  { value: '', label: 'Not mapped' },
+                  ...columns.map((column) => ({ value: column.name, label: column.name })),
+                ]}
+                onChange={(value) => setMapping(role.key, value)}
+              />
             </label>
           {/each}
         </div>
       </div>
 
       <div class="panel">
-        <h2>3. Check for missing values</h2>
+        <h2>3. Check for missing values <Explain text={help.missing} tip /></h2>
+        <Explain text={help.missing} />
         <details open={columns.length <= 12}>
           <summary>Columns to check ({validateColumns.size} of {columns.length} selected)</summary>
         <div class="validation-grid">
@@ -328,7 +332,8 @@
       </div>
 
       <div class="panel">
-        <h2>4. Validate</h2>
+        <h2>4. Validate <Explain text={help.validate} tip /></h2>
+        <Explain text={help.validate} />
         <label class="checkbox-row drop-option">
           <input type="checkbox" bind:checked={dropIncompleteRows} />
           <span>Drop rows with missing values in the checked columns</span>
@@ -337,11 +342,11 @@
           <p class="help">{incompleteRowCount} rows have missing values. Tick the box above to drop them.</p>
         {/if}
         <div class="action-row">
-          <button type="button" onclick={validateDataset} disabled={cleaning}>
+          <button type="button" class="btn" onclick={validateDataset} disabled={cleaning}>
             {cleaning ? 'Validating…' : dropIncompleteRows ? 'Validate & drop rows' : 'Validate'}
           </button>
           {#if $gisDataset?.validated}
-            <button type="button" class="secondary" onclick={downloadCleanedDataset}>
+            <button type="button" class="btn btn-secondary" onclick={downloadCleanedDataset}>
               Download cleaned {sourceFormat === 'csv' ? 'CSV' : 'GeoJSON'}
             </button>
           {/if}
@@ -364,12 +369,12 @@
       {#if $gisDataset?.validated}
         <WorkflowGuide
           title="GIS data is ready"
-          message="Next, turn its columns into the building categories the model uses."
-          actionLabel="Go to Semantic Fields"
-          actionWorkflow="semantic-fields"
+          message="Next, describe the building characteristics the model uses, from your columns or as estimates."
+          actionLabel="Go to Building Characteristics"
+          actionWorkflow="characteristics"
         />
       {/if}
-    {:else}
+    {:else if $helpMode === 'explain'}
       <WorkflowGuide
         title="Start with GIS data"
         message="Upload a CSV or GeoJSON of your buildings above to begin."
@@ -377,85 +382,28 @@
     {/if}
 
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" role="alert">{error}</p>
     {/if}
   </div>
 </section>
 
 <style>
-  .workflow {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .workflow-header h1 {
-    margin: 0 0 4px;
-    font-size: 24px;
-  }
-
-  .subtitle,
   .help {
     margin: 0;
     color: var(--text-muted);
-    font-size: 14px;
-  }
-
-  .help {
-    margin-bottom: 12px;
-  }
-
-  .workflow-content {
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .panel {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    background: var(--surface);
-  }
-
-  .panel h2 {
-    margin: 0 0 8px;
-    font-size: 18px;
+    font-size: var(--text-sm);
   }
 
   .upload-row {
     display: flex;
-    gap: 12px;
+    gap: var(--space-3);
     align-items: center;
-    margin-top: 12px;
-  }
-
-  button {
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: var(--on-accent);
-    padding: 10px 16px;
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 
   .summary {
     display: flex;
-    gap: 16px;
+    gap: var(--space-4);
     flex-wrap: wrap;
-    margin-top: 16px;
     color: var(--text-2);
     font-size: 14px;
   }
@@ -498,10 +446,9 @@
   }
 
   .tag {
-    font-size: 10px;
-    text-transform: uppercase;
+    font-size: 11px;
     padding: 2px 6px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-weight: 700;
   }
 
@@ -515,12 +462,9 @@
     color: var(--warn-text);
   }
 
-  select,
   input[type='file'] {
-    border: 1px solid var(--border-strong);
-    border-radius: 8px;
-    padding: 8px 10px;
     font: inherit;
+    font-size: var(--text-sm);
   }
 
   details summary {
@@ -543,7 +487,7 @@
     gap: 8px;
     padding: 8px 10px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
   }
 
   .null-count {
@@ -553,35 +497,18 @@
   }
 
   .issues {
-    margin: 16px 0 0;
     padding-left: 18px;
     color: var(--warn-text);
   }
 
-  .error {
-    color: var(--err-text);
-  }
-
   .action-row {
     display: flex;
-    gap: 12px;
+    gap: var(--space-3);
     flex-wrap: wrap;
-    margin-top: 12px;
-  }
-
-  .secondary {
-    background: var(--surface);
-    color: var(--accent);
-    border: 1px solid var(--accent);
-  }
-
-  .drop-option {
-    margin-bottom: 12px;
   }
 
   .success {
-    margin-top: 12px;
     color: var(--ok-text);
-    font-size: 14px;
+    font-size: var(--text-sm);
   }
 </style>

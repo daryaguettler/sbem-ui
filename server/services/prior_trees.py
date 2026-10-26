@@ -660,7 +660,7 @@ def validate_prior_tree(
 
     for target in required_targets:
         if target not in targets:
-            errors.append(f"Stochastic field '{target}' has no prior yet.")
+            errors.append(f"Sampled field '{target}' has no prior yet.")
 
     for target in sorted(targets):
         if target not in registry_fields:

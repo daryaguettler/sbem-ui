@@ -13,6 +13,8 @@ export interface ArtifactStatus {
   path: string;
   exists: boolean;
   savedAt: string | null;
+  /** The file globi reads (for the component map, the pruned component-map.yaml). */
+  globiPath: string;
 }
 
 export interface SavedArtifact {

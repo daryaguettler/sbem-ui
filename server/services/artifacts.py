@@ -150,6 +150,10 @@ def list_artifacts(workspace: ProjectWorkspace) -> list[dict[str, Any]]:
             "path": workspace.relative(spec.file_key),
             "exists": workspace.path(spec.file_key).exists(),
             "savedAt": _modified_at(workspace.path(spec.file_key)),
+            # The file globi reads: the pruned map for the component map, else the same file.
+            "globiPath": workspace.relative(
+                "component_map" if spec.kind == "component-map" else spec.file_key
+            ),
         }
         for spec in ARTIFACTS.values()
     ]

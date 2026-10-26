@@ -1,9 +1,7 @@
 export type WorkflowId =
   | 'gis-cleaning'
-  | 'semantic-fields'
+  | 'characteristics'
   | 'component-library'
-  | 'component-map'
-  | 'prior-trees'
   | 'retrofits'
   | 'sampling'
   | 'model-execution'

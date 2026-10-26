@@ -16,7 +16,7 @@
   .notice {
     border: 1px solid var(--warn-border);
     background: var(--warn-bg);
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 14px 18px;
     font-size: 13px;
     color: var(--warn-text);

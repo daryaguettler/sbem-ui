@@ -71,7 +71,7 @@
   <div class="toolbar">
     <label class="filter">
       <span class="sr-only">Filter combinations</span>
-      <input type="text" placeholder="Filter combinations..." bind:value={filter} />
+      <input type="text" placeholder="Filter combinations…" bind:value={filter} />
     </label>
     <span class="count">
       {rows.length} of {prior.conditions.length}
@@ -89,10 +89,10 @@
             <th class="key-col" scope="col">{prior.source_feature.replace('compound.', '')}</th>
             <th class="count-col" scope="col" title="Buildings in this combination">n</th>
             <th class="plot-col" scope="col">{target} (mean ± sd)</th>
-            <th scope="col">Mean</th>
-            <th scope="col">SD</th>
-            <th scope="col">Min</th>
-            <th scope="col">Max</th>
+            <th scope="col" class="num">Mean</th>
+            <th scope="col" class="num">SD</th>
+            <th scope="col" class="num">Min</th>
+            <th scope="col" class="num">Max</th>
             <th class="actions-col" scope="col"><span class="sr-only">Row actions</span></th>
           </tr>
         </thead>
@@ -105,7 +105,7 @@
                   <span class="key-source" class:estimated={row.info.estimated}>
                     {row.info.estimated
                       ? `fitted to ${row.info.supportingCount} buildings`
-                      : 'inherited from fallback'}
+                      : 'uses “Everything else”'}
                   </span>
                 {/if}
               </th>
@@ -163,7 +163,7 @@
 
   <div class="fallback">
     <div class="fallback-header">
-      <h4>Fallback</h4>
+      <h4>Everything else <span class="globi">(fallback)</span></h4>
       <p>
         For buildings whose combination isn't listed above. Without it, those buildings can't be sampled.
       </p>
@@ -186,6 +186,11 @@
 </div>
 
 <style>
+  .globi {
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
   .numeric-editor {
     display: flex;
     flex-direction: column;
@@ -202,7 +207,7 @@
   .filter input {
     padding: 6px 10px;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     font-size: 13px;
     width: 240px;
   }
@@ -216,7 +221,7 @@
     overflow: auto;
     max-height: 460px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
   }
 
   table {
@@ -294,7 +299,7 @@
     display: block;
     height: 18px;
     background: var(--surface-2);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
   }
 
   /* The ±1 sd band, with the mean marked on top of it. */
@@ -304,7 +309,7 @@
     height: 6px;
     min-width: 2px;
     background: var(--seq-2);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
   }
 
   .dot {
@@ -343,11 +348,15 @@
     color: var(--text-faint);
   }
 
+  thead th.num {
+    text-align: right;
+  }
+
   tbody input {
     width: 86px;
     padding: 5px 6px;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -366,7 +375,7 @@
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--err-text);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 6px;
     font-size: 12px;
     cursor: pointer;
@@ -389,7 +398,7 @@
     gap: 10px;
     padding: 14px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface-2);
   }
 
@@ -422,7 +431,7 @@
   .fallback-inputs input {
     padding: 5px 8px;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
   }

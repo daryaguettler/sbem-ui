@@ -7,6 +7,9 @@
     deleteComponentRecord,
     type ComponentRecord,
   } from '../api/componentLibrary';
+  import Explain from '../components/Explain.svelte';
+  import { HELP } from '../help';
+  const help = HELP.componentLibrary;
 
   let types = $state<string[]>([]);
   let selectedType = $state<string | null>(null);
@@ -85,11 +88,8 @@
 
 <div class="workflow">
   <header class="workflow-header">
-    <h1>Component Library</h1>
-    <p class="subtitle">
-      The engineering records (lighting power, infiltration, HVAC efficiency, schedules…) that the
-      Component Map points to.
-    </p>
+    <h1>Component Library <Explain text={help.page} tip /></h1>
+    <Explain text={help.page} />
   </header>
 
   <div class="body" class:panel-open={panel.mode !== 'closed'}>
@@ -114,9 +114,10 @@
     <section class="records">
       {#if selectedType}
         <div class="records-header">
-          <h2>{selectedType}</h2>
+          <h2>{selectedType} <Explain text={help.records} tip /></h2>
           <button type="button" class="btn" onclick={openCreate}>+ Add {selectedType}</button>
         </div>
+        <Explain text={help.records} />
 
         {#if error}
           <p class="error" role="alert">{error}</p>
@@ -175,30 +176,6 @@
 </div>
 
 <style>
-  .workflow {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
-  }
-
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .workflow-header h1 {
-    margin: 0 0 4px;
-    font-size: 24px;
-    color: var(--text);
-  }
-
-  .subtitle {
-    font-size: 14px;
-    color: var(--text-muted);
-    max-width: 720px;
-  }
-
   .body {
     position: relative;
     flex: 1;
@@ -250,7 +227,7 @@
     text-align: left;
     padding: 8px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius);
     background: transparent;
     color: var(--text-2);
     font-size: 14px;
@@ -299,7 +276,7 @@
     padding: 24px;
     max-width: 960px;
     border: 1px dashed var(--border-strong);
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--text-muted);
     font-size: 14px;
   }
@@ -335,14 +312,15 @@
   }
 
   .hint {
-    font-size: 14px;
+    font-size: var(--text-sm);
     color: var(--text-muted);
   }
 
   .error {
-    font-size: 13px;
-    color: var(--err-text);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
   }
 
+  .records :global(.explain) {
+    margin-bottom: var(--space-4);
+  }
 </style>

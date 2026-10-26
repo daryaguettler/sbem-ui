@@ -13,11 +13,14 @@
   import { workspaceStore } from '../stores/workspaceStore';
   import type { WorkflowId } from '../types/workflow';
   import { downloadText } from '../utils/download';
+  import Explain from '../components/Explain.svelte';
+  import { HELP } from '../help';
+  const help = HELP.projectFiles;
 
   const WORKFLOW_FOR_KIND: Record<ArtifactKind, WorkflowId> = {
-    'semantic-fields': 'semantic-fields',
-    'component-map': 'component-map',
-    priors: 'prior-trees',
+    'semantic-fields': 'characteristics',
+    'component-map': 'characteristics',
+    priors: 'characteristics',
     retrofits: 'retrofits',
   };
 
@@ -85,29 +88,26 @@
 
 <section class="workflow">
   <div class="workflow-header">
-    <h1>Project Files</h1>
-    <p class="subtitle">
-      Everything saved in this project on disk. Open a file to read it, or load a saved artifact
-      straight back into its editor.
-    </p>
+    <h1>Project Files <Explain text={help.page} tip /></h1>
+    <Explain text={help.page} />
   </div>
 
   <div class="workflow-content">
     <div class="toolbar panel">
       <p class="path" title={root}>{$workspaceStore.workspace?.name ?? 'Project'} &mdash; {root}</p>
       <div class="toolbar-actions">
-        <button type="button" onclick={() => loadFiles()}>Refresh</button>
+        <button type="button" class="btn btn-secondary" onclick={() => loadFiles()}>Refresh</button>
       </div>
     </div>
 
     {#if error}
-      <p class="error">{error}</p>
+      <p class="error" role="alert">{error}</p>
     {/if}
 
     <div class="browser">
       <aside class="file-list panel">
         {#if loadingFiles}
-          <p class="help">Loading files...</p>
+          <p class="help">Loading files…</p>
         {:else if files.length === 0}
           <p class="help">This project directory is empty.</p>
         {:else}
@@ -132,7 +132,7 @@
 
       <section class="viewer panel">
         {#if loadingContent}
-          <p class="help">Reading file...</p>
+          <p class="help">Reading file…</p>
         {:else if !selected}
           <p class="help">Select a file to view its contents.</p>
         {:else}
@@ -140,13 +140,13 @@
             <h2>{selected.path}</h2>
             <div class="toolbar-actions">
               {#if selected.kind}
-                <button type="button" onclick={() => loadIntoEditor(selected!.kind!)}>
+                <button type="button" class="btn" onclick={() => loadIntoEditor(selected!.kind!)}>
                   Load into editor
                 </button>
               {/if}
               <button
                 type="button"
-                class="secondary"
+                class="btn btn-secondary"
                 onclick={downloadSelected}
                 disabled={!selected.content}
               >
@@ -175,46 +175,18 @@
 </section>
 
 <style>
-  .workflow {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-  }
-
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .workflow-header h1 {
-    margin: 0 0 4px;
-    font-size: 24px;
-  }
-
-  .subtitle,
   .help {
     margin: 0;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--text-sm);
   }
 
   .workflow-content {
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
     min-height: 0;
   }
 
-  .panel {
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 20px;
-    background: var(--surface);
-  }
-
   .toolbar {
-    display: flex;
+    flex-direction: row;
     justify-content: space-between;
     gap: 16px;
     flex-wrap: wrap;
@@ -225,7 +197,7 @@
     margin: 0;
     font-size: 13px;
     color: var(--text-muted);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -237,27 +209,6 @@
     flex-wrap: wrap;
   }
 
-  .toolbar-actions button {
-    border: 1px solid var(--accent);
-    border-radius: 8px;
-    background: var(--accent);
-    color: var(--on-accent);
-    padding: 8px 12px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 13px;
-  }
-
-  .toolbar-actions .secondary {
-    background: var(--surface);
-    color: var(--accent);
-  }
-
-  .toolbar-actions button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
   .browser {
     display: grid;
     grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -266,8 +217,6 @@
   }
 
   .file-list {
-    display: flex;
-    flex-direction: column;
     gap: 4px;
     padding: 12px;
     max-height: 70vh;
@@ -282,8 +231,10 @@
     text-align: left;
     padding: 10px 12px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: transparent;
+    color: var(--text);
+    font: inherit;
     cursor: pointer;
   }
 
@@ -298,7 +249,7 @@
   .file-name {
     font-size: 13px;
     color: var(--text);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     word-break: break-all;
   }
 
@@ -310,11 +261,11 @@
   .badge {
     margin-left: 6px;
     padding: 1px 6px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--accent-soft);
     color: var(--accent-hover);
     font-size: 11px;
-    font-family: system-ui, sans-serif;
+    font-family: var(--font-sans);
     white-space: nowrap;
   }
 
@@ -337,7 +288,7 @@
     margin: 0;
     font-size: 16px;
     color: var(--text);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     word-break: break-all;
   }
 
@@ -346,7 +297,7 @@
     padding: 16px;
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     font-size: 12px;
     line-height: 1.6;
     max-height: 60vh;
@@ -361,14 +312,8 @@
     color: var(--warn-text);
     background: var(--warn-bg);
     border: 1px solid var(--warn-border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 8px 12px;
-  }
-
-  .error {
-    margin: 0;
-    font-size: 13px;
-    color: var(--err-text);
   }
 
   @media (max-width: 1100px) {

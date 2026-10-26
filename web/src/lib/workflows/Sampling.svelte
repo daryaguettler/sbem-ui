@@ -14,6 +14,10 @@
     saveSampling,
     type SamplingSettings,
   } from '../api/runner';
+  import Explain from '../components/Explain.svelte';
+  import Select from '../components/Select.svelte';
+  import { HELP } from '../help';
+  const help = HELP.sampling;
 
   interface Column {
     name: string;
@@ -111,8 +115,8 @@
 <section class="workflow">
   <div class="workflow-header">
     <div>
-      <h1>Sampling</h1>
-      <p class="intro">How many buildings to simulate for training, and how to split the stock for prediction.</p>
+      <h1>Sampling <Explain text={help.page} tip /></h1>
+      <Explain text={help.page} />
       <p class="subtitle">
         {#if loadingInfo}
           Estimating…
@@ -123,17 +127,18 @@
         {/if}
       </p>
     </div>
-    <button type="button" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
+    <button type="button" class="btn" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
   </div>
 
   <div class="workflow-content">
-    {#if error}<p class="error">{error}</p>{/if}
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if settings && !runnerAvailable}
       <RunnerNotice feature="Listing GIS columns for strata and estimating simulation count and cost" />
     {/if}
     {#if settings}
       <div class="panel">
-        <h2>Training</h2>
+        <h2>Training <Explain text={help.training} tip /></h2>
+        <Explain text={help.training} />
         <div class="row">
           <span class="label">Strata <HelpTip text="GIS columns that split the stock into groups (strata), e.g. weather station × typology. Every stratum gets simulations in the first round, and training only stops once each stratum is accurate enough." /></span>
           <div class="chips">
@@ -143,12 +148,21 @@
               </span>
             {/each}
             {#if columns.length}
-              <select bind:value={addStratum} onchange={add} aria-label="Add stratum">
-                <option value="">+ Add column</option>
-                {#each available as column}
-                  <option value={column.name}>{column.name}{column.n_values ? ` (${column.n_values})` : ''}</option>
-                {/each}
-              </select>
+              <span class="pick">
+                <Select
+                  value=""
+                  options={available.map((column) => ({
+                    value: column.name,
+                    label: `${column.name}${column.n_values ? ` (${column.n_values})` : ''}`,
+                  }))}
+                  placeholder="+ Add column"
+                  ariaLabel="Add stratum"
+                  onChange={(value) => {
+                    addStratum = value;
+                    add();
+                  }}
+                />
+              </span>
             {:else}
               <input
                 type="text"
@@ -157,7 +171,7 @@
                 aria-label="Add stratum"
                 onkeydown={(event) => event.key === 'Enter' && add()}
               />
-              <button type="button" class="secondary" onclick={add} disabled={!addStratum}>+ Add</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick={add} disabled={!addStratum}>+ Add</button>
             {/if}
           </div>
         </div>
@@ -179,16 +193,27 @@
           <input type="number" min="1" bind:value={settings.context_per_stratum} oninput={changed} />
         </div>
 
-        <h2>Prediction</h2>
+        <h2>Prediction <Explain text={help.prediction} tip /></h2>
+        <Explain text={help.prediction} />
         <div class="row">
           <span class="label">Split stock by <span class="required" aria-label="required">*</span> <HelpTip text="GIS column that splits the stock into prediction jobs and output files, e.g. municipality. Required." /></span>
           {#if partitionChoices.length}
-            <select bind:value={settings.partition_field} onchange={changed}>
-              <option value={null}>Choose a GIS column…</option>
-              {#each partitionChoices as column}
-                <option value={column.name}>{column.name}{column.n_values ? ` (${column.n_values})` : ''}</option>
-              {/each}
-            </select>
+            <span class="pick">
+              <Select
+                value={settings.partition_field ?? ''}
+                options={partitionChoices.map((column) => ({
+                  value: column.name,
+                  label: `${column.name}${column.n_values ? ` (${column.n_values})` : ''}`,
+                }))}
+                placeholder="Choose a GIS column…"
+                ariaLabel="Partition field"
+                onChange={(value) => {
+                  if (!settings) return;
+                  settings.partition_field = value || null;
+                  changed();
+                }}
+              />
+            </span>
           {:else}
             <input type="text" bind:value={settings.partition_field} oninput={changed} placeholder="GIS column, e.g. municipality" />
           {/if}
@@ -203,33 +228,18 @@
 </section>
 
 <style>
-  .workflow { display: flex; flex-direction: column; height: 100%; }
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
+  .workflow-header { flex-direction: row; justify-content: space-between; align-items: center; }
   .subtitle { margin: 0; color: var(--text-muted); font-size: 13px; }
-  .workflow-content { padding: 32px; max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
-  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .workflow-content { max-width: 760px; }
   .row { display: flex; align-items: center; gap: 16px; font-size: 14px; }
-  .intro { margin: 0 0 2px; color: var(--text-muted); font-size: 14px; }
-  .panel h2 { margin: 6px 0 0; font-size: 14px; color: var(--text); }
   .label { width: 190px; color: var(--text-2); flex-shrink: 0; }
   .required { color: var(--err-text); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 2px; background: var(--surface-3); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 2px; background: var(--surface-3); border-radius: var(--radius-sm); padding: 4px 6px 4px 12px; font-size: 13px; }
   .chip-x { border: none; background: transparent; color: var(--text-faint); cursor: pointer; padding: 0 4px; font-size: 14px; }
   .chip-x:hover { color: var(--text); }
-  input, select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--surface); }
-  input[type='text'], select { min-width: 240px; }
+  input[type='text'], .pick { min-width: 240px; }
+  .pick { display: inline-block; }
   input[type='number'] { width: 110px; }
-  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button.secondary { background: var(--surface); color: var(--text-2); border: 1px solid var(--border-strong); padding: 5px 10px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
   .muted { color: var(--text-muted); }
-  .error { color: var(--err-text); font-size: 13px; margin: 0; }
 </style>
