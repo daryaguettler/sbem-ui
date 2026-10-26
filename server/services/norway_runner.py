@@ -105,13 +105,12 @@ def _last_json_line(stdout: str) -> Any:
     raise ValueError("no JSON output")
 
 
-def _run(job: Job, runner: Path, argv: list[str], timeout: int) -> None:
+def _run(job: Job, cmd: list[str], cwd: Path, timeout: int) -> None:
     env = {k: v for k, v in os.environ.items() if not _CLOUD_ENV.match(k)}
     env.pop("VIRTUAL_ENV", None)  # sbem-ui's own venv must not leak into the runner's
-    cmd = ["uv", "run", "--project", str(runner), "norway", *argv]
     try:
         proc = subprocess.run(  # noqa: S603 - fixed argv, no shell
-            cmd, cwd=runner, env=env, capture_output=True, text=True, timeout=timeout
+            cmd, cwd=cwd, env=env, capture_output=True, text=True, timeout=timeout
         )
         job.log = proc.stderr
         try:
@@ -131,7 +130,7 @@ def _run(job: Job, runner: Path, argv: list[str], timeout: int) -> None:
         job.error = f"timed out after {timeout // 60} min"
     except FileNotFoundError:
         job.status = "failed"
-        job.error = "`uv` is not on PATH"
+        job.error = f"`{cmd[0]}` is not on PATH"
 
 
 def start_job(runner: Path | None, command: str, options: dict[str, Any]) -> Job:
@@ -139,15 +138,19 @@ def start_job(runner: Path | None, command: str, options: dict[str, Any]) -> Job
     if not runner_status(runner)["available"]:
         raise RunnerError("This project has no runner repo (set \"runner\" in project.json).")
     argv = build_argv(command, options)
+    assert runner is not None
+    cmd = ["uv", "run", "--project", str(runner), "norway", *argv]
+    return start_command(command, cmd, runner, COMMANDS[command][1])
+
+
+def start_command(command: str, cmd: list[str], cwd: Path, timeout: int) -> Job:
+    """Run `cmd` in the background as job `command`, whose last stdout line is JSON."""
     with _LOCK:
         if any(j.command == command and j.status == "running" for j in _JOBS.values()):
             raise RunnerError(f"A {command} job is already running.")
         job = Job(id=uuid.uuid4().hex[:12], command=command)
         _JOBS[job.id] = job
-    assert runner is not None
-    threading.Thread(
-        target=_run, args=(job, runner, argv, COMMANDS[command][1]), daemon=True
-    ).start()
+    threading.Thread(target=_run, args=(job, cmd, cwd, timeout), daemon=True).start()
     return job
 
 

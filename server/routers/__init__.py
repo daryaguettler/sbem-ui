@@ -11,6 +11,7 @@ from .workspace import router as workspace_router
 from .norway import router as runner_router
 from .assist import router as assist_router
 from .inspect import router as inspect_router
+from .flat_model import router as flat_model_router
 
 __all__ = [
     "artifacts_router",
@@ -24,4 +25,5 @@ __all__ = [
     "runner_router",
     "assist_router",
     "inspect_router",
+    "flat_model_router",
 ]
