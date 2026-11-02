@@ -60,10 +60,25 @@ def test_pep604_optional_string_fields_classify_as_string_not_raw():
     `Optional[X]`/`Union[X, None]` (types.UnionType vs typing.Union), and an
     earlier version of _strip_optional only handled the latter, silently
     misclassifying these as the 'raw' fallback kind instead of 'string'."""
-    schema = lib.get_component_type_schema("Lighting")
-    fields_by_name = {f["name"]: f for f in schema["fields"]}
+    from epinterface.sbem.components.space_use import LightingComponent
+
+    type_map = lib._component_type_map()
     for name in ["Category", "Comment", "DataSource", "Version"]:
-        assert fields_by_name[name]["kind"] == "string", f"{name} misclassified as {fields_by_name[name]['kind']!r}"
+        descriptor = lib._field_descriptor(name, LightingComponent.model_fields[name], type_map)
+        assert descriptor["kind"] == "string", f"{name} misclassified as {descriptor['kind']!r}"
+
+
+def test_schema_leaves_out_fields_that_are_not_database_columns():
+    names = {f["name"] for f in lib.get_component_type_schema("ConstructionMaterial")["fields"]}
+    assert "Conductivity" in names
+    assert not names & {"Category", "Comment", "Cost", "EmbodiedCarbon"}
+
+
+def test_construction_layers_are_a_layers_field():
+    fields = {f["name"]: f for f in lib.get_component_type_schema("ConstructionAssembly")["fields"]}
+    assert fields["Layers"]["kind"] == "layers"
+    assert fields["Layers"]["relationType"] == "ConstructionMaterial"
+    assert not any(f["kind"] == "raw" for t in lib.list_component_types() for f in lib.get_component_type_schema(t)["fields"])
 
 
 def test_unknown_component_type_raises():
@@ -161,3 +176,66 @@ def test_relation_field_referencing_missing_record_raises(client):
                 "Schedule": "DoesNotExist",
             },
         )
+
+
+def _material(name: str, conductivity: float) -> dict:
+    return {
+        "Name": name,
+        "Conductivity": conductivity,
+        "Density": 1000.0,
+        "SpecificHeat": 1000.0,
+        "TemperatureCoefficientThermalConductivity": 0.0,
+        "ThermalAbsorptance": 0.9,
+        "SolarAbsorptance": 0.7,
+        "VisibleAbsorptance": 0.7,
+        "Roughness": "Rough",
+        "Type": "Concrete",
+    }
+
+
+def _wall(name: str, layers: list[tuple[str, float]], kind: str = "Facade") -> dict:
+    return {"Name": name, "Type": kind, "Layers": [{"ConstructionMaterial": m, "Thickness": t} for m, t in layers]}
+
+
+def test_construction_assembly_with_layers_round_trips(client):
+    for name, k in [("Concrete", 2.0), ("XPS", 0.034), ("Gypsum", 0.09)]:
+        lib.create_record(client, "ConstructionMaterial", _material(name, k))
+
+    created = lib.create_record(client, "ConstructionAssembly", _wall("Wall", [("Concrete", 0.2), ("XPS", 0.05), ("Gypsum", 0.013)]))
+    assert created["Layers"] == [
+        {"ConstructionMaterial": "Concrete", "Thickness": 0.2},
+        {"ConstructionMaterial": "XPS", "Thickness": 0.05},
+        {"ConstructionMaterial": "Gypsum", "Thickness": 0.013},
+    ]
+
+    # Reorder and drop a layer: old rows are replaced, not merged.
+    updated = lib.update_record(client, "ConstructionAssembly", "Wall", _wall("Wall", [("XPS", 0.1), ("Concrete", 0.2)]))
+    assert [layer["ConstructionMaterial"] for layer in updated["Layers"]] == ["XPS", "Concrete"]
+    deep = lib.get_record(client, "ConstructionAssembly", "Wall", deep=True)
+    assert [layer["LayerOrder"] for layer in deep["Layers"]] == [0, 1]
+
+    lib.delete_record(client, "ConstructionAssembly", "Wall")
+    assert lib.get_record(client, "ConstructionAssembly", "Wall") is None
+
+
+def test_construction_layer_needs_an_existing_material(client):
+    with pytest.raises(LookupError):
+        lib.create_record(client, "ConstructionAssembly", _wall("Wall", [("Unobtainium", 0.1)]))
+    with pytest.raises(ValueError):
+        lib.create_record(client, "ConstructionAssembly", {"Name": "Wall", "Type": "Facade", "Layers": [{"Thickness": 0.1}]})
+
+
+def test_envelope_assembly_references_constructions_with_layers(client):
+    lib.create_record(client, "ConstructionMaterial", _material("Concrete", 2.0))
+    slots = ["FlatRoof", "Facade", "FloorCeiling", "AtticRoof", "AtticFloor", "Partition",
+             "ExternalFloor", "GroundSlab", "GroundWall", "BasementCeiling"]
+    for slot in slots:
+        lib.create_record(client, "ConstructionAssembly", _wall(slot, [("Concrete", 0.2)], kind=slot))
+    payload = {"Name": "Assemblies", **{f"{slot}Assembly": slot for slot in slots}}
+    created = lib.create_record(client, "EnvelopeAssembly", payload)
+    assert created["FacadeAssembly"] == "Facade"
+
+
+def test_metadata_and_cost_fields_are_ignored_not_written(client):
+    material = lib.create_record(client, "ConstructionMaterial", {**_material("Brick", 0.7), "Comment": "x", "Cost": 3.0})
+    assert material["Name"] == "Brick"

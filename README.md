@@ -78,9 +78,10 @@ make check      # svelte-check type checking
 ### 1. Open a project
 
 On first load the app asks you to create or open a project workspace. Creating one makes
-the directory and provisions its `components-lib.db`, which takes a few seconds. Pick
-**Component library: GloBI tutorial library** to start from a populated library (globi's e2e
-records plus Boston weather) instead of an empty one. Use **Switch project** at the bottom
+the directory and provisions its `components-lib.db`, which takes a few seconds. Pick a
+**Component library** template instead of an empty one: **GloBI starter library** (globi's
+materials and schedules, to build the rest yourself) or **GloBI tutorial library** (globi's
+complete e2e library). Both include Boston weather. Use **Switch project** at the bottom
 of the sidebar to change projects later.
 
 Create projects inside your globi checkout (e.g. `globi/inputs/my-model`, which globi
@@ -154,8 +155,11 @@ Three utility pages sit below the steps:
 
 - **Component Library** lets you browse and edit the engineering records (lighting power,
   infiltration, HVAC efficiency, schedules) that model parts point to. A part picks a
-  record by joining its characteristics' values with `_`, for example `SFH_pre_1975`. Its
-  **Schedule variability** view sets seeded per-building noise on schedules, densities and
+  record by joining its characteristics' values with `_`, for example `SFH_pre_1975`.
+  **Needed by the model** lists every record your characteristics and model parts require,
+  with ✓/✕ and **+ Create**. Every type can be authored, including constructions (a layers
+  editor: material and thickness, outside first); **Copy values from** and **Duplicate** start
+  a record from an existing one. Its **Schedule variability** view sets seeded per-building noise on schedules, densities and
   setpoints (globi's `schedule_variability_config`).
 - **Single Building** types every parameter of one building into globi's flat model and
   simulates it with `make cli simulate-flat` (EnergyPlus in Docker; the first run builds

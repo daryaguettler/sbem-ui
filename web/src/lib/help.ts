@@ -50,6 +50,8 @@ export const HELP = {
     page: 'The engineering records (lighting power, infiltration, HVAC efficiency, schedules…) that model parts point to.',
     records:
       "A model part picks a record by joining its characteristics' values with “_” (e.g. SFH_pre_1975), so name records that way. Each characteristic's card on Building Characteristics lists the records its parts need and which are missing.",
+    needed:
+      'Every record your characteristics and model parts call for, named the way the model looks them up. Build bottom-up: materials → constructions (layers) → envelope assemblies → envelopes; schedules → loads → space uses; thermal systems → conditioning systems → HVAC. Copy values from an existing record to go faster.',
   },
   priorTrees: {
     generate:

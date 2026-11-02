@@ -1,0 +1,5 @@
+# Copied into a new project: globi-starter/components-lib.db (globi's e2e library with everything
+# but construction materials and day/week/year schedules removed) and Boston TMYx weather.
+# Participants build constructions, assemblies, envelopes, loads, systems and hot water from it.
+Name: GloBI starter library (materials and schedules)
+description: globi's 265 construction materials and its day/week/year schedules; build everything else in Component Library.

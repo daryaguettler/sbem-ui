@@ -11,6 +11,7 @@
   import AddCharacteristic from '../components/characteristics/AddCharacteristic.svelte';
   import InspectBuilding from '../components/characteristics/InspectBuilding.svelte';
   import GlobiFiles from '../components/characteristics/GlobiFiles.svelte';
+  import PartDecisions from '../components/characteristics/PartDecisions.svelte';
   import SamplePreview from '../components/priorTrees/SamplePreview.svelte';
   import Explain from '../components/Explain.svelte';
   import Select from '../components/Select.svelte';
@@ -33,7 +34,7 @@
   import { HELP } from '../help';
   const help = HELP.characteristics;
 
-  let tab = $state<'characteristics' | 'connections' | 'files'>('characteristics');
+  let tab = $state<'characteristics' | 'parts' | 'connections' | 'files'>('characteristics');
   let adding = $state(false);
   let inspecting = $state(false);
   let filesReload = $state(0);
@@ -329,6 +330,9 @@
         <button type="button" role="tab" aria-selected={tab === 'characteristics'} class:active={tab === 'characteristics'} onclick={() => (tab = 'characteristics')}>
           Characteristics
         </button>
+        <button type="button" role="tab" aria-selected={tab === 'parts'} class:active={tab === 'parts'} onclick={() => (tab = 'parts')}>
+          What decides each part?
+        </button>
         <button type="button" role="tab" aria-selected={tab === 'connections'} class:active={tab === 'connections'} onclick={() => showConnections()}>
           All connections <span class="globi">(component map)</span>
         </button>
@@ -391,6 +395,8 @@
             {#if fullSample}<SamplePreview sample={fullSample} />{/if}
           </div>
         {/if}
+      {:else if tab === 'parts'}
+        <PartDecisions {fieldOrder} />
       {:else if tab === 'files'}
         <GlobiFiles reloadKey={filesReload} />
       {:else}

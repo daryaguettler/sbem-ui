@@ -11,6 +11,13 @@ the frontend as a plain string: the related record's Name. On write, that name
 is resolved and deep-hydrated into the full nested object epinterface's
 pydantic model expects before validation, then flattened back down to just the
 foreign-key id for the Prisma write (see _hydrate_relations/_to_prisma_data).
+
+A construction's layers are the one list-of-objects field: the frontend sees
+`[{ConstructionMaterial: <name>, Thickness: <m>}, ...]`, outside layer first, and
+they are written as nested layer rows (LayerOrder = position).
+
+Fields that aren't Prisma columns (the metadata/cost fields epinterface keeps in
+separate tables) are left out of forms and writes.
 """
 
 import enum
@@ -99,6 +106,33 @@ def _relation_type_name(annotation: Any, type_map: dict[str, type]) -> str | Non
     return None
 
 
+def _layer_material_type(annotation: Any, type_map: dict[str, type]) -> str | None:
+    """'ConstructionMaterial' for a list of layer models (ConstructionAssembly.Layers), else None."""
+    if get_origin(annotation) is not list:
+        return None
+    (item,) = get_args(annotation) or (None,)
+    fields = getattr(item, "model_fields", {})
+    if "ConstructionMaterial" not in fields or "Thickness" not in fields:
+        return None
+    return _relation_type_name(_strip_optional(fields["ConstructionMaterial"].annotation), type_map)
+
+
+def _layers_field(component_type: str) -> str | None:
+    """The name of the type's layers field, if it has one."""
+    type_map = _component_type_map()
+    for name, info in type_map[component_type].model_fields.items():
+        if _layer_material_type(_strip_optional(info.annotation), type_map):
+            return name
+    return None
+
+
+def _prisma_fields(component_type: str) -> set[str]:
+    """Columns and relations the Prisma model actually has."""
+    import prisma.models
+
+    return set(getattr(prisma.models, component_type).model_fields)
+
+
 def _field_descriptor(name: str, info: Any, type_map: dict[str, type]) -> dict[str, Any]:
     annotation = _strip_optional(info.annotation)
     required = info.is_required()
@@ -107,6 +141,10 @@ def _field_descriptor(name: str, info: Any, type_map: dict[str, type]) -> dict[s
     relation_type = _relation_type_name(annotation, type_map)
     if relation_type is not None:
         return {**base, "kind": "relation", "relationType": relation_type}
+
+    material_type = _layer_material_type(annotation, type_map)
+    if material_type is not None:
+        return {**base, "kind": "layers", "relationType": material_type}
 
     if isinstance(annotation, type) and issubclass(annotation, enum.Enum):
         return {**base, "kind": "enum", "options": [member.value for member in annotation]}
@@ -141,10 +179,11 @@ def get_component_type_schema(component_type: str) -> dict[str, Any]:
     if cls is None:
         raise ValueError(f"Unknown component type: {component_type!r}")
 
+    columns = _prisma_fields(component_type)
     fields = [
         _field_descriptor(name, info, type_map)
         for name, info in cls.model_fields.items()
-        if name != "id"
+        if name != "id" and name in columns
     ]
     return {"type": component_type, "fields": fields}
 
@@ -168,9 +207,15 @@ def _pydantic_fields_only(component_type: str, data: dict[str, Any]) -> dict[str
     for key, value in data.items():
         if key not in known:
             continue
-        relation_type = _relation_type_name(_strip_optional(cls.model_fields[key].annotation), type_map)
+        annotation = _strip_optional(cls.model_fields[key].annotation)
+        relation_type = _relation_type_name(annotation, type_map)
         if relation_type is not None and isinstance(value, dict):
             filtered[key] = _pydantic_fields_only(relation_type, value)
+        elif _layer_material_type(annotation, type_map) and isinstance(value, list):
+            filtered[key] = [
+                {"ConstructionMaterial": (layer.get("ConstructionMaterial") or {}).get("Name"), "Thickness": layer["Thickness"]}
+                for layer in sorted(value, key=lambda layer: layer["LayerOrder"])
+            ]
         else:
             filtered[key] = value
     return filtered
@@ -204,8 +249,10 @@ def get_record(client: Prisma, component_type: str, name: str, deep: bool = Fals
     record = accessor.find_unique(where={"Name": name}, include=_include_for(component_type))
     if record is None:
         return None
-    data = _pydantic_fields_only(component_type, record.model_dump(exclude={"id"}))
-    return data if deep else _flatten_relations_to_names(data)
+    if deep:
+        # epinterface's own deep read: only declared fields, at every level (incl. layers)
+        return _component_type_map()[component_type].model_validate(record, from_attributes=True).model_dump()
+    return _flatten_relations_to_names(_pydantic_fields_only(component_type, record.model_dump(exclude={"id"})))
 
 
 def check_existence(client: Prisma, component_type: str, names: list[str]) -> dict[str, bool]:
@@ -227,6 +274,12 @@ def _hydrate_relations(component_type: str, payload: dict[str, Any], client: Pri
     hydrated = dict(payload)
     for name, info in cls.model_fields.items():
         annotation = _strip_optional(info.annotation)
+        material_type = _layer_material_type(annotation, type_map)
+        if material_type is not None and isinstance(payload.get(name), list):
+            hydrated[name] = [
+                _hydrate_layer(layer, index, material_type, client) for index, layer in enumerate(payload[name])
+            ]
+            continue
         relation_type = _relation_type_name(annotation, type_map)
         if relation_type is None or name not in payload:
             continue
@@ -239,6 +292,16 @@ def _hydrate_relations(component_type: str, payload: dict[str, Any], client: Pri
             raise LookupError(msg)
         hydrated[name] = related
     return hydrated
+
+
+def _hydrate_layer(layer: Any, index: int, material_type: str, client: Prisma) -> dict[str, Any]:
+    """`{ConstructionMaterial: name, Thickness}` -> the nested layer epinterface validates."""
+    if not isinstance(layer, dict) or not layer.get("ConstructionMaterial"):
+        raise ValueError(f"Layer {index + 1}: choose a material.")
+    material = get_record(client, material_type, layer["ConstructionMaterial"], deep=True)
+    if material is None:
+        raise LookupError(f"Layer {index + 1}: material {layer['ConstructionMaterial']!r} does not exist.")
+    return {"LayerOrder": index, "Thickness": layer.get("Thickness"), "ConstructionMaterial": material}
 
 
 def _validate_payload(component_type: str, payload: dict[str, Any], client: Prisma) -> Any:
@@ -261,18 +324,27 @@ def update_record(
     client: Prisma, component_type: str, name: str, payload: dict[str, Any]
 ) -> dict[str, Any]:
     validated = _validate_payload(component_type, payload, client)
-    accessor = _client_accessor(client, component_type)
-    record = accessor.update(
-        where={"Name": name}, data=_to_prisma_write_data(component_type, validated, client)
-    )
-    if record is None:
+    data = _to_prisma_write_data(component_type, validated, client)
+    existing = _client_accessor(client, component_type).find_unique(where={"Name": name})
+    if existing is None:
         raise LookupError(f"{component_type} record {name!r} not found.")
+    with client.tx() as tx:
+        if _layers_field(component_type):
+            # layer rows are unique per (assembly, LayerOrder): replace them, don't merge
+            tx.constructionassemblylayer.delete_many(where={"ConstructionAssemblyId": existing.id})
+        record = _client_accessor(tx, component_type).update(where={"Name": name}, data=data)
     return get_record(client, component_type, record.Name) or {}
 
 
 def delete_record(client: Prisma, component_type: str, name: str) -> None:
     accessor = _client_accessor(client, component_type)
-    accessor.delete(where={"Name": name})
+    existing = accessor.find_unique(where={"Name": name})
+    if existing is None:
+        raise LookupError(f"{component_type} record {name!r} not found.")
+    with client.tx() as tx:
+        if _layers_field(component_type):
+            tx.constructionassemblylayer.delete_many(where={"ConstructionAssemblyId": existing.id})
+        _client_accessor(tx, component_type).delete(where={"Name": name})
 
 
 def _to_prisma_write_data(component_type: str, validated: Any, client: Prisma) -> dict[str, Any]:
@@ -284,12 +356,25 @@ def _to_prisma_write_data(component_type: str, validated: Any, client: Prisma) -
     first)."""
     type_map = _component_type_map()
     cls = type_map[component_type]
+    columns = _prisma_fields(component_type)
     data: dict[str, Any] = {}
     for name, info in cls.model_fields.items():
-        if name not in validated.__class__.model_fields:
+        if name not in validated.__class__.model_fields or name not in columns:
             continue
         value = getattr(validated, name)
         annotation = _strip_optional(info.annotation)
+        if _layer_material_type(annotation, type_map):
+            data[name] = {
+                "create": [
+                    {
+                        "LayerOrder": layer.LayerOrder,
+                        "Thickness": layer.Thickness,
+                        "ConstructionMaterial": {"connect": {"Name": layer.ConstructionMaterial.Name}},
+                    }
+                    for layer in value
+                ]
+            }
+            continue
         relation_type = _relation_type_name(annotation, type_map)
         if relation_type is not None:
             if value is None:

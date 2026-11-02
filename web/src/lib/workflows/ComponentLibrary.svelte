@@ -6,8 +6,14 @@
     fetchComponentTypes,
     fetchComponentRecords,
     deleteComponentRecord,
+    checkComponentExistence,
     type ComponentRecord,
   } from '../api/componentLibrary';
+  import { componentMapStore } from '../stores/componentMapStore';
+  import { componentTreeStore } from '../stores/componentTreeStore';
+  import { semanticFieldsStore } from '../stores/semanticFieldsStore';
+  import { dirtyKinds } from '../stores/projectArtifacts';
+  import { buildSelectorCombinations, collectSelectors } from '../utils/componentMapTree';
   import Explain from '../components/Explain.svelte';
   import { HELP } from '../help';
   const help = HELP.componentLibrary;
@@ -18,11 +24,19 @@
   let loadingTypes = $state(true);
   let loadingRecords = $state(false);
   let error = $state<string | null>(null);
-  /** Records of each component type, or the per-building schedule noise applied on top of them. */
-  let view = $state<'records' | 'variability'>('records');
+  /** Records by type, the records the model needs, or the per-building schedule noise on top of them. */
+  let view = $state<'records' | 'needed' | 'variability'>('records');
 
-  type PanelState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; name: string };
+  type PanelState =
+    | { mode: 'closed' }
+    | { mode: 'create'; presetName?: string; copyFrom?: string }
+    | { mode: 'edit'; name: string };
   let panel = $state<PanelState>({ mode: 'closed' });
+
+  /** Every record name the characteristics and model parts require, by library type. */
+  type Needed = { type: string; records: Array<{ name: string; exists: boolean }> };
+  let needed = $state<Needed[]>([]);
+  let loadingNeeded = $state(false);
 
   async function loadTypes() {
     loadingTypes = true;
@@ -66,6 +80,10 @@
     panel = { mode: 'edit', name };
   }
 
+  function openDuplicate(name: string) {
+    panel = { mode: 'create', copyFrom: name };
+  }
+
   function closePanel() {
     panel = { mode: 'closed' };
   }
@@ -73,7 +91,58 @@
   function onSaved() {
     panel = { mode: 'closed' };
     loadRecords();
+    if (view === 'needed') loadNeeded();
   }
+
+  /** Open a needed record: edit it if it exists, otherwise create it with its name filled in. */
+  function openNeeded(type: string, name: string, exists: boolean) {
+    if (selectedType !== type) {
+      selectedType = type;
+      loadRecords();
+    }
+    panel = exists ? { mode: 'edit', name } : { mode: 'create', presetName: name };
+  }
+
+  async function loadNeeded() {
+    const map = $componentMapStore.map;
+    if (!map) {
+      needed = [];
+      return;
+    }
+    loadingNeeded = true;
+    error = null;
+    try {
+      const fields = $semanticFieldsStore.fields.map((field) => ({ name: field.name, options: field.options }));
+      const namesByType = new Map<string, Set<string>>();
+      for (const selector of collectSelectors(map)) {
+        const type = $componentTreeStore.nodesByPath[selector.path]?.componentType;
+        if (!type) continue;
+        const names = namesByType.get(type) ?? new Set<string>();
+        for (const combination of buildSelectorCombinations(selector.source_fields, fields, selector.suffix)) {
+          names.add(combination.name);
+        }
+        namesByType.set(type, names);
+      }
+      needed = await Promise.all(
+        [...namesByType].map(async ([type, names]) => {
+          const existence = await checkComponentExistence(type, [...names]);
+          return { type, records: [...names].sort().map((name) => ({ name, exists: Boolean(existence[name]) })) };
+        })
+      );
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to check the library.';
+    } finally {
+      loadingNeeded = false;
+    }
+  }
+
+  function showNeeded() {
+    view = 'needed';
+    panel = { mode: 'closed' };
+    loadNeeded();
+  }
+
+  const missingCount = $derived(needed.reduce((sum, group) => sum + group.records.filter((r) => !r.exists).length, 0));
 
   async function removeRecord(name: string) {
     if (!selectedType) return;
@@ -94,8 +163,11 @@
     <h1>Component Library <Explain text={help.page} tip /></h1>
     <Explain text={help.page} />
     <div class="tabs" role="tablist">
-      <button type="button" role="tab" aria-selected={view === 'records'} class:active={view === 'records'} onclick={() => (view = 'records')}>
+      <button type="button" role="tab" aria-selected={view === 'records'} class:active={view === 'records'} onclick={() => { view = 'records'; panel = { mode: 'closed' }; }}>
         Records
+      </button>
+      <button type="button" role="tab" aria-selected={view === 'needed'} class:active={view === 'needed'} onclick={showNeeded}>
+        Needed by the model
       </button>
       <button type="button" role="tab" aria-selected={view === 'variability'} class:active={view === 'variability'} onclick={() => (view = 'variability')}>
         Schedule variability
@@ -103,8 +175,79 @@
     </div>
   </header>
 
+  {#snippet editor()}
+    {#if panel.mode !== 'closed' && selectedType}
+      <div class="editor-slot">
+        <SidePanel
+          title={panel.mode === 'create' ? `New ${selectedType}` : `Edit ${panel.mode === 'edit' ? panel.name : ''}`}
+          subtitle={selectedType}
+          onClose={closePanel}
+        >
+          {#key `${selectedType}:${panel.mode}:${panel.mode === 'edit' ? panel.name : (panel.presetName ?? '') + (panel.copyFrom ?? '')}`}
+            <SchemaForm
+              componentType={selectedType}
+              mode={panel.mode === 'create' ? 'create' : 'edit'}
+              name={panel.mode === 'edit' ? panel.name : null}
+              presetName={panel.mode === 'create' ? (panel.presetName ?? '') : ''}
+              copyFrom={panel.mode === 'create' ? (panel.copyFrom ?? null) : null}
+              onSaved={onSaved}
+              onCancel={closePanel}
+            />
+          {/key}
+        </SidePanel>
+      </div>
+    {/if}
+  {/snippet}
+
   {#if view === 'variability'}
     <div class="variability-view"><ScheduleVariability /></div>
+  {:else if view === 'needed'}
+    <div class="body needed-body" class:panel-open={panel.mode !== 'closed'}>
+      <section class="records">
+        <div class="records-header">
+          <h2>Needed by the model <Explain text={help.needed} tip /></h2>
+          <button type="button" class="btn btn-secondary" onclick={loadNeeded} disabled={loadingNeeded}>Refresh</button>
+        </div>
+        <Explain text={help.needed} />
+        {#if $dirtyKinds.length > 0}
+          <p class="hint">Building Characteristics has unsaved changes; this list uses what is on screen there.</p>
+        {/if}
+        {#if error}<p class="error" role="alert">{error}</p>{/if}
+        {#if loadingNeeded}
+          <p class="hint">Checking the library…</p>
+        {:else if !$componentMapStore.map || needed.length === 0}
+          <div class="empty">
+            <p>No model parts are connected yet. On Building Characteristics, tick what each characteristic changes in the model.</p>
+          </div>
+        {:else}
+          <p class="summary-line">
+            {missingCount === 0 ? '✓ Every record the model needs exists.' : `${missingCount} record${missingCount === 1 ? '' : 's'} still missing.`}
+            Records these point to (assemblies, constructions, schedules) are picked inside each form; create them there with + New or under their own type.
+          </p>
+          {#each needed as group (group.type)}
+            <h3 class="group-title">{group.type} <span class="hint">{group.records.filter((r) => r.exists).length} of {group.records.length} exist</span></h3>
+            <table>
+              <tbody>
+                {#each group.records as record (record.name)}
+                  <tr>
+                    <td><code>{record.name}</code></td>
+                    <td class="status" class:ok={record.exists} class:missing={!record.exists}>
+                      <span aria-hidden="true">{record.exists ? '✓' : '✕'}</span> {record.exists ? 'Exists' : 'Missing'}
+                    </td>
+                    <td class="row-actions">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick={() => openNeeded(group.type, record.name, record.exists)}>
+                        {record.exists ? 'Edit' : '+ Create'}
+                      </button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          {/each}
+        {/if}
+      </section>
+      {@render editor()}
+    </div>
   {:else}
   <div class="body" class:panel-open={panel.mode !== 'closed'}>
     <nav class="types" aria-label="Component types">
@@ -155,6 +298,7 @@
                   <td>{record.Name}</td>
                   <td class="row-actions">
                     <button type="button" class="btn btn-secondary btn-sm" onclick={() => openEdit(record.Name)}>Edit</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick={() => openDuplicate(record.Name)}>Duplicate</button>
                     <button type="button" class="btn btn-danger btn-sm" onclick={() => removeRecord(record.Name)}>Delete</button>
                   </td>
                 </tr>
@@ -167,25 +311,7 @@
       {/if}
     </section>
 
-    {#if panel.mode !== 'closed' && selectedType}
-      <div class="editor-slot">
-        <SidePanel
-          title={panel.mode === 'create' ? `New ${selectedType}` : `Edit ${panel.mode === 'edit' ? panel.name : ''}`}
-          subtitle={selectedType}
-          onClose={closePanel}
-        >
-          {#key `${panel.mode}:${panel.mode === 'edit' ? panel.name : ''}`}
-            <SchemaForm
-              componentType={selectedType}
-              mode={panel.mode === 'create' ? 'create' : 'edit'}
-              name={panel.mode === 'edit' ? panel.name : null}
-              onSaved={onSaved}
-              onCancel={closePanel}
-            />
-          {/key}
-        </SidePanel>
-      </div>
-    {/if}
+    {@render editor()}
   </div>
   {/if}
 </div>
@@ -210,6 +336,33 @@
   .tabs button.active {
     border-bottom-color: var(--accent);
     color: var(--text);
+  }
+
+  .body.needed-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .body.needed-body.panel-open {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 560px);
+  }
+
+  .summary-line {
+    font-size: 13px;
+    color: var(--text-2);
+    margin: 0 0 8px;
+  }
+
+  .group-title {
+    margin: 16px 0 6px;
+    font-size: 14px;
+  }
+
+  .status.ok {
+    color: var(--ok-text);
+  }
+
+  .status.missing {
+    color: var(--err-text);
   }
 
   .variability-view {

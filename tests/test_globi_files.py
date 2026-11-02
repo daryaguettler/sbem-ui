@@ -61,7 +61,7 @@ def generate(**overrides):
 
 def test_template_is_listed_and_copied_into_a_new_project():
     templates = client.get("/api/workspace/templates").json()["templates"]
-    assert [t["filename"] for t in templates] == ["globi-tutorial.yml"]
+    assert [t["filename"] for t in templates] == ["globi-starter.yml", "globi-tutorial.yml"]
 
     workspace = template_project()
     assert workspace.path("components_db").stat().st_size == (TEMPLATE_DIR / "components-lib.db").stat().st_size

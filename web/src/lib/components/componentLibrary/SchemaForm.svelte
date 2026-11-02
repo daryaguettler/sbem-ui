@@ -16,12 +16,15 @@
   import Select from '../Select.svelte';
 
   type Mode = 'create' | 'edit';
+  /** One construction layer as the API carries it: outside layer first. */
+  type Layer = { ConstructionMaterial: string; Thickness: number | string };
 
   let {
     componentType,
     mode,
     name = null,
     presetName = '',
+    copyFrom = null,
     trail = [],
     onSaved,
     onCancel,
@@ -30,6 +33,8 @@
     mode: Mode;
     name?: string | null;
     presetName?: string;
+    /** Create mode: start from this existing record's values (the name stays presetName). */
+    copyFrom?: string | null;
     /** Parent forms when this one was opened from a "+ New" relation button, outermost first. */
     trail?: string[];
     onSaved: (record: Record<string, unknown>) => void;
@@ -42,6 +47,9 @@
   let schema = $state<ComponentTypeSchema | null>(null);
   let values = $state<Record<string, unknown>>({});
   let relationOptions = $state<Record<string, string[]>>({});
+  /** Existing records of this type, offered as "Copy values from…" in create mode. */
+  let sameTypeNames = $state<string[]>([]);
+  let copySource = $state('');
   let loading = $state(true);
   let saving = $state(false);
   let error = $state<string | null>(null);
@@ -54,6 +62,7 @@
     if (field.kind === 'boolean') return false;
     if (field.kind === 'enum') return field.options?.[0] ?? '';
     if (field.kind === 'number') return field.ge ?? 0;
+    if (field.kind === 'layers') return [{ ConstructionMaterial: '', Thickness: 0.1 }];
     return '';
   }
 
@@ -61,7 +70,7 @@
    * (a Year form has twelve Week fields). */
   async function loadRelationOptions(fields: ComponentFieldDescriptor[]) {
     const relationTypes = [
-      ...new Set(fields.filter((f) => f.kind === 'relation' && f.relationType).map((f) => f.relationType as string)),
+      ...new Set(fields.filter((f) => f.relationType).map((f) => f.relationType as string)),
     ];
     const entries = await Promise.all(
       relationTypes.map(async (relationType) => {
@@ -81,20 +90,24 @@
     error = null;
     try {
       schema = await fetchComponentSchema(componentType);
-      const initial: Record<string, unknown> =
-        mode === 'edit' && name ? await fetchComponentRecord(componentType, name) : {};
+      const source = mode === 'edit' ? name : copyFrom;
+      const initial: Record<string, unknown> = source ? await fetchComponentRecord(componentType, source) : {};
+      copySource = mode === 'create' && copyFrom ? copyFrom : '';
 
       const nextValues: Record<string, unknown> = {};
       for (const field of schema.fields) {
-        if (field.name in initial) {
-          nextValues[field.name] = initial[field.name];
-        } else if (field.name === 'Name') {
+        if (field.name === 'Name' && mode === 'create') {
           nextValues.Name = presetName;
+        } else if (field.name in initial) {
+          nextValues[field.name] = initial[field.name];
         } else if (field.required) {
           nextValues[field.name] = defaultValueFor(field);
         }
       }
       await loadRelationOptions(schema.fields);
+      if (mode === 'create') {
+        sameTypeNames = (await fetchComponentRecords(componentType).catch(() => [])).map((r) => r.Name);
+      }
       values = nextValues;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Failed to load form.';
@@ -108,12 +121,46 @@
     componentType;
     mode;
     name;
+    copyFrom;
     untrack(load);
   });
 
   function updateValue(fieldName: string, value: unknown) {
     values = { ...values, [fieldName]: value };
   }
+
+  /** Fill every field but Name from an existing record of this type. */
+  async function copyValuesFrom(source: string) {
+    copySource = source;
+    if (!schema || !source) return;
+    try {
+      const record = await fetchComponentRecord(componentType, source);
+      const next = { ...values };
+      for (const field of schema.fields) {
+        if (field.name !== 'Name' && field.name in record) next[field.name] = record[field.name];
+      }
+      values = next;
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Failed to copy values.';
+    }
+  }
+
+  const layersOf = (fieldName: string) => (values[fieldName] as Layer[] | undefined) ?? [];
+
+  function setLayers(fieldName: string, layers: Layer[]) {
+    updateValue(fieldName, layers);
+  }
+
+  function moveLayer(fieldName: string, index: number, delta: number) {
+    const layers = [...layersOf(fieldName)];
+    const target = index + delta;
+    if (target < 0 || target >= layers.length) return;
+    [layers[index], layers[target]] = [layers[target], layers[index]];
+    setLayers(fieldName, layers);
+  }
+
+  const totalThickness = (fieldName: string) =>
+    layersOf(fieldName).reduce((sum, layer) => sum + (Number(layer.Thickness) || 0), 0);
 
   function coerceForSubmit(): Record<string, unknown> {
     if (!schema) return values;
@@ -122,6 +169,13 @@
       const value = values[field.name];
       if (value === undefined || value === '') {
         if (field.required) payload[field.name] = value;
+        continue;
+      }
+      if (field.kind === 'layers') {
+        payload[field.name] = (value as Layer[]).map((layer) => ({
+          ConstructionMaterial: layer.ConstructionMaterial,
+          Thickness: Number(layer.Thickness),
+        }));
         continue;
       }
       payload[field.name] = field.kind === 'number' ? Number(value) : value;
@@ -136,6 +190,11 @@
     );
     if (missing.length > 0) {
       error = `Choose ${missing.map((field) => field.title).join(', ')} first.`;
+      return;
+    }
+    const layerFields = (schema?.fields ?? []).filter((field) => field.kind === 'layers');
+    if (layerFields.some((field) => layersOf(field.name).length === 0 || layersOf(field.name).some((l) => !l.ConstructionMaterial))) {
+      error = 'Add at least one layer and choose a material for every layer.';
       return;
     }
     saving = true;
@@ -188,7 +247,62 @@
     {/if}
 
     <form class="schema-form" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+      {#if mode === 'create' && sameTypeNames.length > 0}
+        <div class="field copy-field">
+          <span class="field-label">Copy values from</span>
+          <Select
+            value={copySource}
+            options={sameTypeNames.map((optionName) => ({ value: optionName, label: optionName }))}
+            placeholder={`Start from an existing ${componentType}…`}
+            onChange={copyValuesFrom}
+          />
+        </div>
+      {/if}
       {#each schema.fields as field (field.name)}
+        {#if field.kind === 'layers'}
+          <fieldset class="field layers-field">
+            <legend class="field-label">
+              {field.title} <span class="hint-inline">outside → inside</span>{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
+            </legend>
+            {#each layersOf(field.name) as layer, index}
+              <div class="layer-row">
+                <span class="layer-index" aria-hidden="true">{index + 1}</span>
+                <span class="relation-pick">
+                  <Select
+                    value={layer.ConstructionMaterial}
+                    options={(relationOptions[field.relationType ?? ''] ?? []).map((optionName) => ({ value: optionName, label: optionName }))}
+                    placeholder="Choose material…"
+                    ariaLabel={`Layer ${index + 1} material`}
+                    onChange={(value) =>
+                      setLayers(field.name, layersOf(field.name).map((l, i) => (i === index ? { ...l, ConstructionMaterial: value } : l)))}
+                  />
+                </span>
+                <input
+                  class="thickness"
+                  type="number"
+                  step="any"
+                  min="0"
+                  max="2"
+                  aria-label={`Layer ${index + 1} thickness (m)`}
+                  value={layer.Thickness}
+                  oninput={(event) =>
+                    setLayers(field.name, layersOf(field.name).map((l, i) =>
+                      i === index ? { ...l, Thickness: (event.currentTarget as HTMLInputElement).value } : l))}
+                />
+                <span class="unit">m</span>
+                <button type="button" class="btn btn-ghost btn-sm" title="Move outwards" aria-label={`Move layer ${index + 1} outwards`} disabled={index === 0} onclick={() => moveLayer(field.name, index, -1)}>↑</button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Move inwards" aria-label={`Move layer ${index + 1} inwards`} disabled={index === layersOf(field.name).length - 1} onclick={() => moveLayer(field.name, index, 1)}>↓</button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Remove layer" aria-label={`Remove layer ${index + 1}`} onclick={() => setLayers(field.name, layersOf(field.name).filter((_, i) => i !== index))}>×</button>
+              </div>
+            {/each}
+            <div class="layer-foot">
+              <button type="button" class="btn btn-secondary btn-sm" onclick={() => setLayers(field.name, [...layersOf(field.name), { ConstructionMaterial: '', Thickness: 0.1 }])}>
+                + Add layer
+              </button>
+              <span class="hint-inline">Total {totalThickness(field.name).toFixed(3)} m</span>
+            </div>
+          </fieldset>
+        {:else}
         <div class="field" class:checkbox-field={field.kind === 'boolean'}>
           <label class="field-label" for={fieldId(field.name)}>
             {field.title}{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
@@ -246,6 +360,7 @@
             />
           {/if}
         </div>
+        {/if}
       {/each}
 
       {#if error}
@@ -330,8 +445,49 @@
   }
 
   .actions,
-  .error {
+  .error,
+  .copy-field,
+  .layers-field {
     grid-column: 1 / -1;
+  }
+
+  .layers-field {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin: 0;
+  }
+
+  .layer-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .layer-index {
+    width: 18px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: right;
+  }
+
+  input.thickness {
+    width: 90px;
+    flex: none;
+  }
+
+  .unit,
+  .hint-inline {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+
+  .layer-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
   }
 
   .field-label {

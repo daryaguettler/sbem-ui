@@ -1,4 +1,4 @@
-export type FieldKind = 'string' | 'number' | 'boolean' | 'enum' | 'relation' | 'raw';
+export type FieldKind = 'string' | 'number' | 'boolean' | 'enum' | 'relation' | 'layers' | 'raw';
 
 export interface ComponentFieldDescriptor {
   name: string;

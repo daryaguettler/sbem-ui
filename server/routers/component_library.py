@@ -4,6 +4,7 @@ stored in the open workspace's components-lib.db."""
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from prisma import errors as prisma_errors
 from pydantic import BaseModel
 
 from dependencies import get_workspace
@@ -21,6 +22,15 @@ def _client(workspace: ProjectWorkspace):
     client = workspace.prisma_client()
     client.connect()
     return client
+
+
+def _db_error(component_type: str, exc: prisma_errors.PrismaError) -> HTTPException:
+    """Database refusals as a readable 400 rather than a 500."""
+    if isinstance(exc, prisma_errors.UniqueViolationError):
+        return HTTPException(status_code=400, detail=f"A {component_type} record with that name already exists.")
+    if isinstance(exc, prisma_errors.ForeignKeyViolationError):
+        return HTTPException(status_code=400, detail="Other records use this one; change or delete those first.")
+    return HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/types")
@@ -70,6 +80,8 @@ async def create_record(
         return lib.create_record(client, component_type, payload)
     except (ValueError, LookupError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except prisma_errors.PrismaError as exc:
+        raise _db_error(component_type, exc) from exc
     finally:
         client.disconnect()
 
@@ -86,6 +98,8 @@ async def update_record(
         return lib.update_record(client, component_type, name, payload)
     except (ValueError, LookupError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except prisma_errors.PrismaError as exc:
+        raise _db_error(component_type, exc) from exc
     finally:
         client.disconnect()
 
@@ -97,6 +111,10 @@ async def delete_record(component_type: str, name: str, workspace: ProjectWorksp
         lib.delete_record(client, component_type, name)
     except AttributeError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown component type: {component_type!r}") from exc
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except prisma_errors.PrismaError as exc:
+        raise _db_error(component_type, exc) from exc
     finally:
         client.disconnect()
     return {"deleted": True}
