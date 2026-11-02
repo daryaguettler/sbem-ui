@@ -12,6 +12,7 @@
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import Explain from '../components/Explain.svelte';
   import Select from '../components/Select.svelte';
+  import Icon from '../components/Icon.svelte';
   import { HELP } from '../help';
   const help = HELP.retrofits;
 
@@ -163,7 +164,7 @@
       <p class="saved-line">{formatSavedAt($savedAt['retrofits'])}{dirty ? ' · unsaved changes' : ''}</p>
     </div>
     <div class="actions">
-      <button type="button" class="btn" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
+      <button type="button" class="btn" onclick={save} disabled={saving || !dirty} data-tour="retro-save">{saving ? 'Saving…' : 'Save'}</button>
     </div>
   </div>
 
@@ -171,7 +172,7 @@
     {#if error}<p class="error" role="alert">{error}</p>{/if}
 
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="hint">Loading…</p>
     {:else if fieldNames.length === 0}
       <WorkflowGuide
         title="Define building characteristics first"
@@ -184,22 +185,22 @@
         <h2>Packages <Explain text={help.packages} tip /></h2>
         <Explain text={help.packages} />
         {#if doc.packages.length === 0}
-          <div class="empty">
+          <div class="empty empty-box">
             <p>No packages yet. A package is a set of measures applied together, and is compared against the baseline.</p>
-            <button type="button" class="btn" onclick={addPackage}>+ Add package</button>
+            <button type="button" class="btn" onclick={addPackage} data-tour="retro-add"><Icon name="plus" size={14} />Add package</button>
           </div>
         {/if}
         {#each doc.packages as pkg, p}
           <div class="package">
             <div class="package-head">
               <input class="name" bind:value={pkg.name} oninput={changed} aria-label="Package name" />
-              <button type="button" class="icon" title="Remove package" onclick={() => removePackage(p)}>×</button>
+              <button type="button" class="btn btn-ghost btn-sm remove" title="Remove package" aria-label="Remove package" onclick={() => removePackage(p)}><Icon name="x" /></button>
             </div>
-            <div class="chips">
+            <div class="chips" data-tour="retro-measure">
               {#each pkg.measures as measure, m}
                 <span class="chip">
                   {label(measure)}
-                  <button type="button" class="chip-x" title="Remove" onclick={() => removeMeasure(p, m)}>×</button>
+                  <button type="button" class="chip-x" title="Remove" aria-label="Remove measure" onclick={() => removeMeasure(p, m)}><Icon name="x" size={12} /></button>
                 </span>
               {/each}
               {#if adding === p}
@@ -213,7 +214,7 @@
                       onChange={(value) => (draft = { ...draft, field: value, to: '' })}
                     />
                   </span>
-                  →
+                  <Icon name="arrow-right" size={14} />
                   <span class="pick">
                     <Select
                       value={draft.to}
@@ -223,7 +224,7 @@
                       onChange={(value) => (draft = { ...draft, to: value })}
                     />
                   </span>
-                  <span class="muted">if</span>
+                  <span class="hint">if</span>
                   <span class="pick">
                     <Select
                       value={draft.ifField}
@@ -246,17 +247,17 @@
                       />
                     </span>
                   {/if}
-                  <button type="button" class="btn btn-sm" onclick={addMeasure} disabled={!draft.to || (!!draft.ifField && !draft.ifValue)}>Add</button>
-                  <button type="button" class="icon" title="Cancel" onclick={() => (adding = null)}>×</button>
+                  <button type="button" class="btn" onclick={addMeasure} disabled={!draft.to || (!!draft.ifField && !draft.ifValue)}>Add</button>
+                  <button type="button" class="btn btn-ghost square" title="Cancel" aria-label="Cancel" onclick={() => (adding = null)}><Icon name="x" /></button>
                 </span>
               {:else}
-                <button type="button" class="btn btn-link" onclick={() => openAdd(p)}>+ Add measure</button>
+                <button type="button" class="btn btn-link" onclick={() => openAdd(p)}><Icon name="plus" size={14} />Add measure</button>
               {/if}
             </div>
           </div>
         {/each}
         {#if doc.packages.length > 0}
-          <button type="button" class="btn btn-link" onclick={addPackage}>+ Add package</button>
+          <button type="button" class="btn btn-link" onclick={addPackage} data-tour="retro-add"><Icon name="plus" size={14} />Add package</button>
         {/if}
       </div>
 
@@ -274,9 +275,9 @@
                 <span class="order">
                   {#each doc.upgrade_order[field] as opt, i}
                     <span class="step">
-                      {#if i > 0}<button type="button" class="arrow" title="Move left (worse)" aria-label="Move {opt} left" onclick={() => move(field, i, -1)}>‹</button>{/if}
+                      {#if i > 0}<button type="button" class="arrow" title="Move left (worse)" aria-label="Move {opt} left" onclick={() => move(field, i, -1)}><Icon name="chevron-left" size={14} /></button>{/if}
                       {opt}
-                      {#if i < doc.upgrade_order[field].length - 1}<button type="button" class="arrow" title="Move right (better)" aria-label="Move {opt} right" onclick={() => move(field, i, 1)}>›</button>{/if}
+                      {#if i < doc.upgrade_order[field].length - 1}<button type="button" class="arrow" title="Move right (better)" aria-label="Move {opt} right" onclick={() => move(field, i, 1)}><Icon name="chevron-right" size={14} /></button>{/if}
                     </span>
                     {#if i < doc.upgrade_order[field].length - 1}<span class="lt">&lt;</span>{/if}
                   {/each}
@@ -292,27 +293,25 @@
 
 <style>
   .workflow-header { flex-direction: row; justify-content: space-between; align-items: center; }
-  .saved-line { margin: 2px 0 0; color: var(--text-faint); font-size: 12px; }
-  .empty { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; color: var(--text-muted); font-size: 14px; }
-  .actions { display: flex; gap: 8px; }
+  .saved-line { margin-top: var(--space-1); color: var(--text-faint); font-size: var(--text-xs); }
+  .empty { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
   .workflow-content { max-width: 960px; }
-  .package { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--surface-3); }
-  .package-head { display: flex; align-items: center; gap: 10px; }
-  .name { font-size: 15px; font-weight: 600; border: 1px solid transparent; border-radius: var(--radius); padding: 4px 6px; min-width: 200px; }
-  .name:hover, .name:focus { border-color: var(--border); outline: none; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-3); border-radius: var(--radius-sm); padding: 4px 6px 4px 12px; font-size: 13px; }
-  .chip-x, .icon, .arrow { border: none; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 14px; padding: 0 4px; }
-  .chip-x:hover, .icon:hover, .arrow:hover { color: var(--text); }
-  .icon { margin-left: auto; }
-  .add-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-  .add-row .icon { margin-left: 0; }
+  .package { display: flex; flex-direction: column; gap: var(--space-2); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+  .package-head { display: flex; align-items: center; gap: var(--space-3); }
+  .name { min-width: 200px; font-size: var(--text-md); font-weight: 600; border-color: transparent; }
+  .name:hover, .name:focus { border-color: var(--border-strong); }
+  .remove { margin-left: auto; }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+  .chip { display: inline-flex; align-items: center; gap: var(--space-1); background: var(--surface-3); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); font-size: var(--text-sm); }
+  .chip-x, .arrow { display: inline-flex; border: none; background: transparent; color: var(--text-faint); cursor: pointer; padding: 0 var(--space-1); }
+  .chip-x:hover, .arrow:hover { color: var(--text); }
+  .add-row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-muted); }
   .add-row .pick { min-width: 130px; }
+  .square { padding: 0; width: var(--control-h); }
   .btn-link { align-self: flex-start; }
-  .order-row { display: flex; align-items: center; gap: 16px; font-size: 13px; }
-  .toggle { display: inline-flex; align-items: center; gap: 6px; min-width: 180px; }
-  .order { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-  .step { display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px 4px; }
+  .order-row { display: flex; align-items: center; gap: var(--space-4); font-size: var(--text-sm); }
+  .toggle { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 180px; }
+  .order { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+  .step { display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px var(--space-1); }
   .lt { color: var(--text-faint); }
-  .muted { color: var(--text-muted); font-size: 13px; }
 </style>

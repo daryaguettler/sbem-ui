@@ -5,6 +5,7 @@
   import SelectorCoverageGrid from './SelectorCoverageGrid.svelte';
   import SchemaForm from '../componentLibrary/SchemaForm.svelte';
   import HelpTip from '../HelpTip.svelte';
+  import Icon from '../Icon.svelte';
   import {
     buildComponentLevels,
     getSelectorAtPath,
@@ -63,7 +64,7 @@
 {#if level && recordEdit && componentType}
   <div class="editor">
     <div class="record-header">
-      <button type="button" class="btn btn-ghost btn-sm" onclick={() => (recordEdit = null)}>← Back to selector</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick={() => (recordEdit = null)}><Icon name="arrow-left" size={14} />Back to selector</button>
       <h3>{recordEdit.exists ? 'Edit' : 'New'} {componentType}</h3>
       <p class="path">{recordEdit.name}</p>
     </div>
@@ -87,7 +88,7 @@
       </div>
     </div>
 
-    <p class="help">
+    <p class="hint">
       Which characteristics choose the record used here?
       <HelpTip
         text="Each combination of the ticked fields' options picks one library record, named by joining the option values with '_'. With nothing ticked, this component uses the nearest parent's selector, if any."
@@ -108,7 +109,7 @@
       {/each}
     </div>
 
-    <label class="suffix-row">
+    <label class="field">
       <span>
         Name suffix (optional)
         <HelpTip text="Appended to every generated record name, e.g. 'Res' turns 'SFH_Pre1975' into 'SFH_Pre1975_Res'. Use it to keep names unique." />
@@ -125,7 +126,7 @@
         onOpenRecord={(name, exists) => (recordEdit = { name, exists })}
       />
     {:else}
-      <div class="preview">
+      <div class="callout preview">
         <strong>{preview.count} generated names</strong>
         {#if preview.samples.length > 0}
           <ul>
@@ -160,94 +161,64 @@
   .editor {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: var(--space-4);
   }
 
   .record-header {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
-    padding-bottom: 10px;
+    gap: var(--space-1);
+    padding-bottom: var(--space-3);
     border-bottom: 1px dashed var(--border-strong);
   }
 
   .header h3,
   .record-header h3 {
-    font-size: 16px;
+    font-size: var(--text-lg);
+    font-weight: 600;
     color: var(--text);
   }
 
   .path {
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: var(--text-faint);
     font-family: var(--font-mono);
     overflow-wrap: anywhere;
   }
 
-  .help,
-  .empty {
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
+  /* One framed scroll list; rows are separated by rules, not boxed. */
   .field-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
     max-height: 220px;
     overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
 
   .field-row {
     display: grid;
     grid-template-columns: auto 120px 1fr;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: center;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    font-size: 13px;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--text-sm);
     color: var(--text);
+  }
+
+  .field-row:last-child {
+    border-bottom: none;
   }
 
   .options {
     color: var(--text-muted);
-    font-size: 12px;
-  }
-
-  .suffix-row {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-2);
-  }
-
-  .suffix-row input {
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    padding: 8px 10px;
-    font: inherit;
-  }
-
-  .preview {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px;
-    background: var(--surface-2);
-    font-size: 13px;
-    color: var(--text-2);
+    font-size: var(--text-xs);
   }
 
   .preview ul {
-    margin: 8px 0 0;
-    padding-left: 18px;
-  }
-
-  .actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    margin-top: var(--space-2);
+    padding-left: var(--space-4);
   }
 </style>

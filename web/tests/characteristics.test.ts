@@ -212,15 +212,7 @@ test('defaultSuffix only disambiguates components that share a library table', (
   assert.equal(getSelectorAtPath(kept, 'Envelope.Window')?.suffix, 'Win');
 });
 
-test('a characteristic nothing uses is flagged until a part or an estimate uses it', () => {
+test('a characteristic nothing uses yet is complete: parts are decided afterwards', () => {
   const typology = field('Typology', { type: 'deterministic', transformationRule: { id: 'r', type: 'categorical_mapping', sourceColumn: 'use', targetField: 'Typology', categoricalGroups: [{ groupLabel: 'a', sourceValues: ['x'] }] } });
-  const unused = (map: Record<string, unknown> | null, priors: PriorConfig) =>
-    characteristicView(typology, map, priors, [typology], ['Envelope.Window']).issues.some((i) => i.startsWith('Not used yet'));
-
-  assert.equal(unused(null, config()), true);
-  assert.equal(unused({ Envelope: { Window: { selector: { source_fields: ['Typology'] } } } }, config()), false);
-  assert.equal(
-    unused(null, config({ joints: [{ target: 'Heating', condition_on: ['Typology'], table: {} }] })),
-    false
-  );
+  assert.deepEqual(characteristicView(typology, null, config(), [typology], ['Envelope.Window']).issues, []);
 });

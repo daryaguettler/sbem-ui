@@ -15,12 +15,23 @@ export const HELP = {
     validate:
       'Validating saves the cleaned dataset that every later step reads. If you drop incomplete rows, check the remaining count is still representative of the stock.',
   },
+  componentMap: {
+    page: 'Which component each part of the model uses (GloBI: the component map plus the library records it points at). Every part starts on the template library’s archetype, so the model runs before you decide anything. Click a part to make it vary by one or more semantic fields (characteristics). Saving writes component-map.yaml with one selector per group (Envelope, SpaceUse, HVAC, DHW) and generates the group records it looks up, named auto_…; you never name records by key.',
+    start:
+      'Start from whatever you have, in any order. A buildings file gives you characteristics from its columns (GIS Cleaning). If you know what varies but have no data yet, make a part vary by a new characteristic here and bind it to data later. Parts you never touch stay on the archetype and are counted as defaults (assumptions).',
+    editor:
+      'Same for every building: one component for the whole stock. Varies by: one row per combination of the characteristics you pick, each with its own component. Rows with the same colour use the same library record, so Office and Hospital can share a lighting record without a copy. Each option is shown by the value that sets it apart (W/m², U-value, COP); hover for its record name.',
+    construction:
+      'By U-value builds a construction from a typical stack for this part (e.g. brick, mineral wool, gypsum for a wall) and sizes the insulation to reach the U-value. Build layers lets you set every layer; the form shows the U-value as you go. U-values are 1/Σ(thickness/conductivity) over the layers, as epinterface reports them.',
+  },
   characteristics: {
     page: 'The few things about each building that change its energy use, such as age, typology or heating system. For each one, say what values it can take, how we know it for every building, and which parts of the energy model it changes.',
     globi: 'GloBI calls these semantic fields; they are saved to semantic-fields.yaml.',
     list: 'Characteristics from your data come first, then estimated ones in the order they are drawn: each estimate comes after the characteristics it depends on. Every characteristic multiplies the library records and estimate rows you need, so keep the list short.',
     values:
       'Keep values few (2–6) and mutually exclusive, so every building has exactly one. Short, code-like names (pre_1975, SFH) work best: they become parts of library record names.',
+    spread:
+      'How many of your buildings get each value with the rule as it stands. A value with no buildings, or a red “no value” bar, means a range or a mapping still needs adjusting: buildings without a value can’t be simulated.',
     howKnown:
       '“From my data”: a rule on one of your GIS columns decides the value for every building, e.g. age band from year built. “Estimate it”: your data does not record it, e.g. heating system, so each simulated building draws a value from probabilities you set. The same building can come out differently in different draws; that spread is how the model carries what you do not know.',
     estimate:

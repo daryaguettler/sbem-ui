@@ -4,13 +4,17 @@
   import { readinessChecks } from '../stores/projectStore';
   import { themeChoice, type ThemeChoice } from '../stores/theme';
   import { helpMode, type HelpMode } from '../stores/helpMode';
+  import { startTutorial, tutorialOn } from '../stores/tutorial';
+  import Icon, { type IconName } from './Icon.svelte';
 
   export let currentWorkflow: WorkflowId;
   export let setWorkflow: (workflow: WorkflowId) => void;
 
+  // Characteristics come first and are complete on their own; Component Map then decides what depends on them.
   const steps: Array<{ id: WorkflowId; label: string }> = [
     { id: 'gis-cleaning', label: 'GIS Cleaning' },
     { id: 'characteristics', label: 'Building Characteristics' },
+    { id: 'model-parts', label: 'Component Map' },
     { id: 'retrofits', label: 'Retrofits' },
     { id: 'sampling', label: 'Sampling' },
     { id: 'model-execution', label: 'Model Execution' },
@@ -27,10 +31,10 @@
     { id: 'explain', label: 'Explain', title: 'Show how-to guidance under every section' },
   ];
 
-  const utilities: Array<{ id: WorkflowId; label: string; icon: string }> = [
-    { id: 'component-library', label: 'Component Library', icon: '▦' },
-    { id: 'single-building', label: 'Single Building', icon: '⌂' },
-    { id: 'project-files', label: 'Project Files', icon: '▤' },
+  const utilities: Array<{ id: WorkflowId; label: string; icon: IconName }> = [
+    { id: 'component-library', label: 'Component Library', icon: 'grid' },
+    { id: 'single-building', label: 'Single Building', icon: 'home' },
+    { id: 'project-files', label: 'Project Files', icon: 'file' },
   ];
 
   // Only the steps with readiness checks get a done/not-done mark; a step with several
@@ -71,7 +75,7 @@
             onclick={() => setWorkflow(step.id)}
           >
             <span class="step-badge" class:done={check?.ready}>
-              {#if check?.ready}<span aria-hidden="true">✓</span><span class="visually-hidden">Done:</span>{:else}{index + 1}{/if}
+              {#if check?.ready}<Icon name="check" size={12} /><span class="visually-hidden">Done:</span>{:else}{index + 1}{/if}
             </span>
             <span class="step-label">{step.label}</span>
           </button>
@@ -89,7 +93,7 @@
         aria-current={currentWorkflow === utility.id ? 'page' : undefined}
         onclick={() => setWorkflow(utility.id)}
       >
-        <span class="step-badge utility-badge" aria-hidden="true">{utility.icon}</span>
+        <span class="step-badge utility-badge"><Icon name={utility.icon} /></span>
         <span class="step-label">{utility.label}</span>
       </button>
     {/each}
@@ -100,18 +104,25 @@
       <p class="project-name" title={$workspaceStore.workspace.path}>
         {$workspaceStore.workspace.name}
       </p>
-      <button type="button" class="switch-project" onclick={() => workspaceStore.close()}>
+      <button type="button" class="btn btn-secondary btn-sm" onclick={() => workspaceStore.close()}>
         Switch project
       </button>
     {/if}
 
-    <div class="theme-toggle" role="radiogroup" aria-label="Help text">
+    <button
+      type="button"
+      class="btn btn-secondary btn-sm"
+      aria-pressed={$tutorialOn}
+      onclick={() => ($tutorialOn ? tutorialOn.set(false) : startTutorial())}
+    >
+      {$tutorialOn ? 'Exit tutorial' : 'Tutorial'}
+    </button>
+
+    <div class="segmented" role="group" aria-label="Help text">
       {#each helpModes as mode}
         <button
           type="button"
-          role="radio"
-          aria-checked={$helpMode === mode.id}
-          class:selected={$helpMode === mode.id}
+          aria-pressed={$helpMode === mode.id}
           title={mode.title}
           onclick={() => helpMode.set(mode.id)}
         >
@@ -120,13 +131,11 @@
       {/each}
     </div>
 
-    <div class="theme-toggle" role="radiogroup" aria-label="Color theme">
+    <div class="segmented" role="group" aria-label="Color theme">
       {#each themes as theme}
         <button
           type="button"
-          role="radio"
-          aria-checked={$themeChoice === theme.id}
-          class:selected={$themeChoice === theme.id}
+          aria-pressed={$themeChoice === theme.id}
           onclick={() => themeChoice.set(theme.id)}
         >
           {theme.label}
@@ -142,7 +151,7 @@
   .sidebar {
     width: 248px;
     flex: none;
-    background: var(--surface-2);
+    background: var(--bg);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -150,21 +159,24 @@
     overflow-y: auto;
   }
 
+  /* Same height as .workflow-header (one h1 line), so the two bottom rules meet. */
   .sidebar-header {
-    padding: 20px 20px 16px;
+    display: flex;
+    align-items: center;
+    min-height: calc(var(--text-xl) * 1.25 + 2 * var(--space-5) + 1px);
+    padding: 0 var(--space-5);
     border-bottom: 1px solid var(--border);
   }
 
   .sidebar-header h1 {
     font-size: var(--text-lg);
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text);
-    margin: 0;
   }
 
   .sidebar-nav {
     flex: 1;
-    padding: 12px;
+    padding: var(--space-3);
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -180,27 +192,27 @@
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--space-3);
     width: 100%;
-    padding: 8px 10px;
+    padding: var(--space-2) var(--space-3);
     border: none;
     background: transparent;
     border-radius: var(--radius);
     cursor: pointer;
     text-align: left;
-    font-size: 14px;
+    font-size: var(--text-md);
     color: var(--text-2);
     transition: background 0.15s ease;
   }
 
-  .nav-item:hover {
+  .nav-item:hover,
+  .nav-item.active {
     background: var(--surface-3);
   }
 
   .nav-item.active {
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-weight: 600;
+    color: var(--text);
+    font-weight: 500;
   }
 
   .step-badge {
@@ -214,98 +226,54 @@
     border: 1px solid var(--border-strong);
     background: var(--surface);
     color: var(--text-muted);
-    font-size: 11px;
+    font-size: var(--text-2xs);
     font-weight: 600;
   }
 
   .nav-item.active .step-badge {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--text-muted);
+    color: var(--text);
   }
 
   /* Done = filled + check mark, so it doesn't rely on the green alone. */
-  .step-badge.done {
+  .step-badge.done,
+  .nav-item.active .step-badge.done {
     border-color: var(--ok);
     background: var(--ok);
     color: var(--on-accent);
   }
 
-  .nav-item.active .step-badge.done {
-    border-color: var(--ok);
-    color: var(--on-accent);
-  }
-
-  .utility-badge {
-    border-style: dashed;
+  .utility-badge,
+  .nav-item.active .utility-badge {
+    border-color: transparent;
+    background: transparent;
   }
 
   .divider {
     height: 1px;
-    margin: 10px 4px;
+    margin: var(--space-3) var(--space-1);
     background: var(--border);
   }
 
   .sidebar-footer {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 14px 20px 16px;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-5);
     border-top: 1px solid var(--border);
   }
 
   .version {
-    font-size: 11px;
+    font-size: var(--text-2xs);
     color: var(--text-faint);
   }
 
   .project-name {
-    font-size: 13px;
+    font-size: var(--text-sm);
     font-weight: 600;
     color: var(--text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .switch-project {
-    width: 100%;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--text-2);
-    font-size: 12px;
-    cursor: pointer;
-  }
-
-  .switch-project:hover {
-    background: var(--surface-3);
-  }
-
-  .theme-toggle {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    padding: 2px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--surface-3);
-  }
-
-  .theme-toggle button {
-    padding: 4px 0;
-    border: none;
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--text-muted);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .theme-toggle button.selected {
-    background: var(--surface);
-    color: var(--text);
-    box-shadow: inset 0 0 0 1px var(--border-strong);
   }
 </style>

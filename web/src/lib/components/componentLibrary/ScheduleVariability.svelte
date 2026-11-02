@@ -10,6 +10,7 @@
   import { fetchComponentRecords } from '../../api/componentLibrary';
   import { markSaved, savedAt } from '../../stores/projectArtifacts';
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
+  import Select from '../Select.svelte';
 
   type ParamKey =
     | 'time_shift_std_h'
@@ -153,7 +154,7 @@
 <section class="variability">
   <div class="section-head">
     <div>
-      <p class="intro">Give each building its own seeded variation, so buildings sharing a schedule don't all switch on at once. globi applies it in batch runs (<code>schedule_variability_config</code>).</p>
+      <p class="hint intro">Give each building its own seeded variation, so buildings sharing a schedule don't all switch on at once. globi applies it in batch runs (<code>schedule_variability_config</code>).</p>
       <p class="saved-line">{formatSavedAt($savedAt['schedule-variability'])}{dirty ? ' · unsaved changes' : ''}</p>
     </div>
     <button type="button" class="btn" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
@@ -161,29 +162,30 @@
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="hint">Loading…</p>
     {:else}
       <div class="panel">
-        <div class="controls">
-          <label>Seed <input type="number" min="0" step="1" bind:value={doc.seed} oninput={() => (dirty = true)} /></label>
-          <label>
+        <div class="field-grid settings">
+          <label class="field">Seed <input type="number" min="0" step="1" bind:value={doc.seed} oninput={() => (dirty = true)} /></label>
+          <label class="field">
             Vary by
-            <select value={doc.semantic_field ?? ''} onchange={(e) => setField(e.currentTarget.value)}>
-              <option value="">— nothing —</option>
-              {#each Object.keys(options) as name}<option value={name}>{name}</option>{/each}
-            </select>
+            <Select
+              value={doc.semantic_field ?? ''}
+              options={[{ value: '', label: 'Nothing' }, ...Object.keys(options).map((name) => ({ value: name, label: name }))]}
+              onChange={setField}
+            />
           </label>
         </div>
-        <table>
+        <table class="data-table">
           <thead>
-            <tr><th></th>{#each COLUMNS as col}<th>{col.label}</th>{/each}</tr>
+            <tr><th></th>{#each COLUMNS as col}<th class="num">{col.label}</th>{/each}</tr>
           </thead>
           <tbody>
             <tr>
               <td>Default</td>
               {#each COLUMNS as col}
-                <td>
-                  <input type="number" min="0" max={col.max} step={col.step} bind:value={doc.default[col.key]} oninput={() => (dirty = true)} />
+                <td class="num">
+                  <input class="input-sm" type="number" min="0" max={col.max} step={col.step} bind:value={doc.default[col.key]} oninput={() => (dirty = true)} />
                 </td>
               {/each}
             </tr>
@@ -191,8 +193,9 @@
               <tr>
                 <td>{value}</td>
                 {#each COLUMNS as col}
-                  <td>
+                  <td class="num">
                     <input
+                      class="input-sm"
                       type="number"
                       min="0"
                       max={col.max}
@@ -207,30 +210,46 @@
             {/each}
           </tbody>
         </table>
-        {#if rows.length}<p class="muted">Empty cells use the default.</p>{/if}
+        {#if rows.length}<p class="hint">Empty cells use the default.</p>{/if}
       </div>
 
       <div class="panel">
         <div class="controls">
           <h2>Preview</h2>
           {#if spaceUses.length}
-            <select bind:value={spaceUse} aria-label="SpaceUse">
-              {#each spaceUses as name}<option value={name}>{name}</option>{/each}
-            </select>
+            <span class="pick">
+              <Select
+                value={spaceUse}
+                options={spaceUses.map((name) => ({ value: name, label: name }))}
+                ariaLabel="SpaceUse"
+                onChange={(value) => (spaceUse = value)}
+              />
+            </span>
             {#if rows.length}
-              <select bind:value={previewValue} aria-label="Parameters to preview">
-                <option value="">Default</option>
-                {#each rows as value}<option value={value}>{value}</option>{/each}
-              </select>
+              <span class="pick">
+                <Select
+                  value={previewValue}
+                  options={[{ value: '', label: 'Default' }, ...rows.map((value) => ({ value, label: value }))]}
+                  ariaLabel="Parameters to preview"
+                  onChange={(value) => (previewValue = value)}
+                />
+              </span>
             {/if}
-            <select bind:value={load} aria-label="Schedule">
-              <option value="occupancy">Occupancy</option>
-              <option value="equipment">Equipment</option>
-            </select>
+            <span class="pick">
+              <Select
+                value={load}
+                options={[
+                  { value: 'occupancy', label: 'Occupancy' },
+                  { value: 'equipment', label: 'Equipment' },
+                ]}
+                ariaLabel="Schedule"
+                onChange={(value) => (load = value as typeof load)}
+              />
+            </span>
           {/if}
         </div>
         {#if !spaceUses.length}
-          <p class="muted">Add a SpaceUse in the Component Library to preview.</p>
+          <p class="hint">Add a SpaceUse in the Component Library to preview.</p>
         {:else if preview}
           <svg viewBox="-28 -4 {W + 48} {H + 22}" role="img" aria-label="Base {load} schedule and 20 sampled buildings, January weekday">
             <line x1="0" y1={H} x2={W} y2={H} class="axis" />
@@ -242,7 +261,7 @@
             {#each preview.samples as sample}<path d={path(sample.curves[load])} class="sample" />{/each}
             <path d={path(preview.base[load])} class="base" />
           </svg>
-          <p class="muted">
+          <p class="hint">
             January weekday: library schedule (dark) and 20 sampled buildings.
             {#if shifts.length}Time shifts {Math.min(...shifts).toFixed(1)} to {Math.max(...shifts).toFixed(1)} h.{/if}
           </p>
@@ -252,21 +271,17 @@
 </section>
 
 <style>
-  .variability { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
-  .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
-  .intro { margin: 0; color: var(--text-muted); font-size: 14px; }
-  .saved-line { margin: 2px 0 0; color: var(--text-faint); font-size: 12px; }
-  .controls { display: flex; align-items: center; gap: 12px; font-size: 13px; flex-wrap: wrap; }
-  table { border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; font-weight: 500; color: var(--text-muted); padding: 0 6px 6px 0; }
-  td { padding: 2px 6px 2px 0; }
-  input, select { border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font-size: 13px; background: var(--surface); color: var(--text); }
-  td input { width: 90px; }
-  .controls input { width: 64px; }
+  .variability { display: flex; flex-direction: column; gap: var(--space-5); max-width: 960px; }
+  .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); }
+  .intro { font-size: var(--text-md); }
+  .saved-line { margin-top: var(--space-1); color: var(--text-faint); font-size: var(--text-xs); }
+  .settings { --field-min: 180px; }
+  .controls { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .pick { width: 200px; }
+  td input { width: 90px; text-align: right; }
   svg { width: 100%; max-width: 640px; }
-  svg text { font-size: 11px; fill: var(--text-muted); }
+  svg text { font-size: var(--text-2xs); fill: var(--text-muted); }
   .axis { stroke: var(--border); }
   .sample { fill: none; stroke: var(--accent); stroke-opacity: 0.3; stroke-width: 1; }
   .base { fill: none; stroke: var(--text); stroke-width: 2; }
-  .muted { color: var(--text-muted); font-size: 13px; margin: 0; }
 </style>

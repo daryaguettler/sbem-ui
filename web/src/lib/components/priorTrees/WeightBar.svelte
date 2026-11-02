@@ -52,7 +52,7 @@
   .weight-bar {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .track {
@@ -77,25 +77,22 @@
   }
 
   .inline-label {
-    font-size: 11px;
+    font-size: var(--text-2xs);
     font-weight: 600;
-    /* fixed white + shadow: legible on every series step in both themes */
-    color: #ffffff;
+    color: #ffffff; /* raw-ok: fixed white + shadow, legible on every series step in both themes */
     text-shadow: 0 0 2px rgba(0, 0, 0, 0.55);
     white-space: nowrap;
   }
 
   .empty {
-    padding: 0 8px;
-    font-size: 12px;
-    color: var(--text-faint);
+    padding: 0 var(--space-2);
     line-height: 20px;
   }
 
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 14px;
+    gap: var(--space-1) var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -104,8 +101,8 @@
   .legend li {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
   }
 
   .swatch {

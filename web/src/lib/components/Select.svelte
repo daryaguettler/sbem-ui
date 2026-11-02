@@ -17,6 +17,7 @@
    * should pick goes in `placeholder` instead.
    */
   import { Select } from 'bits-ui';
+  import Icon from './Icon.svelte';
 
   let {
     value,
@@ -52,7 +53,7 @@
 {#snippet item(option: SelectOption)}
   <Select.Item class="ui-select-item" value={option.value} label={option.label} disabled={option.disabled}>
     {#snippet children({ selected })}
-      <span class="ui-select-check" aria-hidden="true">{selected ? '✓' : ''}</span>
+      <span class="ui-select-check">{#if selected}<Icon name="check" size={14} />{/if}</span>
       {option.label}
     {/snippet}
   </Select.Item>
@@ -63,10 +64,10 @@
     <span class="ui-select-value" class:ui-select-placeholder={selectedLabel === undefined}>
       {selectedLabel ?? placeholder}
     </span>
-    <span class="ui-select-chevron" aria-hidden="true">▾</span>
+    <span class="ui-select-chevron"><Icon name="chevron-down" size={14} /></span>
   </Select.Trigger>
   <Select.Portal>
-    <Select.Content class="ui-select-content" sideOffset={4}>
+    <Select.Content class="ui-select-content" sideOffset={4} align="start">
       <Select.Viewport>
         {#each groups as group (group.heading ?? '')}
           {#if group.heading}
@@ -100,7 +101,7 @@
     color: var(--text);
     font: inherit;
     font-size: var(--text-sm);
-    font-weight: 400;
+    font-weight: 300;
     text-align: left;
     cursor: pointer;
   }
@@ -123,16 +124,18 @@
 
   :global(.ui-select-chevron) {
     flex: none;
+    display: inline-flex;
     color: var(--text-muted);
-    font-size: 11px;
   }
 
   :global(.ui-select-content) {
     z-index: 50;
     min-width: var(--bits-floating-anchor-width);
+    /* long labels (265 material names) wrap instead of widening the list off its field */
+    max-width: min(420px, var(--bits-floating-available-width));
     max-height: min(320px, var(--bits-floating-available-height));
     overflow-y: auto;
-    padding: 4px;
+    padding: var(--space-1);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
@@ -142,13 +145,14 @@
   :global(.ui-select-item) {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
+    gap: var(--space-2);
+    padding: var(--space-2);
     border-radius: var(--radius-sm);
     font-size: var(--text-sm);
     color: var(--text);
     cursor: pointer;
     user-select: none;
+    overflow-wrap: anywhere;
   }
 
   :global(.ui-select-item[data-highlighted]) {
@@ -161,13 +165,14 @@
   }
 
   :global(.ui-select-check) {
-    width: 1em;
+    display: inline-flex;
+    width: 14px;
     flex: none;
     color: var(--accent);
   }
 
   :global(.ui-select-heading) {
-    padding: 6px 8px 2px;
+    padding: var(--space-2) var(--space-2) var(--space-1);
     font-size: var(--text-xs);
     font-weight: 600;
     color: var(--text-muted);

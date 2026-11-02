@@ -178,14 +178,11 @@ export function characteristicView(
           0
         )
     : 0;
-  const unused =
-    field.name && parts.length === 0 && dependentsOf(config, field.name).length === 0
-      ? ['Not used yet: tick a model part it changes, or make an estimate depend on it.']
-      : [];
   return {
     field,
     howKnown: howKnown(field),
-    issues: [...ruleIssues(field), ...estimateIssues(field, config), ...unused],
+    // a characteristic nothing uses yet is still complete: parts are decided afterwards, on Component Map
+    issues: [...ruleIssues(field), ...estimateIssues(field, config)],
     hasEstimate: priorTargets(config).includes(field.name),
     dependsOn: dependsOn(config, field.name),
     parts,

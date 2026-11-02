@@ -1,0 +1,5 @@
+# Copied into a new project: resstock/components-lib.db (the globi-starter library plus one record per
+# option of the ResStock characteristics in resstock-preset.yml) and Boston TMYx weather. Regenerate
+# with scripts/convert_resstock.py; NOTICE carries ResStock's license.
+Name: Derived from ResStock™ v3.4.0 (residential)
+description: The starter library plus ~200 records converted from ResStock's options (wall/ceiling/roof insulation, windows, infiltration, heating, cooling, heating setpoint, water heater). Add them as characteristics in Characteristics.

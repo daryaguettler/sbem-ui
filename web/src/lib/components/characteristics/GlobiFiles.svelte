@@ -13,7 +13,7 @@
   import { HELP } from '../../help';
   const help = HELP.characteristics;
 
-  const LABELS = { 'semantic-fields': 'Characteristics', 'component-map': 'Model parts', priors: 'Estimates' };
+  const LABELS = { 'semantic-fields': 'Characteristics', 'component-map': 'Component map', priors: 'Estimates', 'part-rules': 'Part rules (the component map’s source)' };
 
   let { reloadKey = 0 }: { /** Bump to re-read the files, e.g. after a save. */ reloadKey?: number } = $props();
 
@@ -71,8 +71,8 @@
 <Explain text={help.files} />
 
 <section class="panel">
-  <label class="name">
-    <span>Model name <span class="muted">(the Name in semantic-fields.yaml)</span></span>
+  <label class="field name">
+    <span>Model name <span class="field-hint">(the Name in semantic-fields.yaml)</span></span>
     <input
       value={$semanticFieldsStore.configName}
       onchange={(event) =>
@@ -84,8 +84,8 @@
 {#each files as file (file.kind)}
   <section class="panel file">
     <h2>
-      {LABELS[file.kind]} <code class="muted">{file.path}</code>
-      {#if $dirtyKinds.includes(file.kind)}<span class="unsaved">unsaved changes: Save to update</span>{/if}
+      {LABELS[file.kind]} <code class="path">{file.path}</code>
+      {#if $dirtyKinds.includes(file.kind)}<span class="tag tag-warn">unsaved changes: Save to update</span>{/if}
       {#if file.content}
         <button
           type="button"
@@ -99,21 +99,21 @@
     {#if file.content}
       <pre>{file.content}</pre>
     {:else}
-      <p class="muted">Not saved yet.</p>
+      <p class="hint">Not saved yet.</p>
     {/if}
   </section>
 {/each}
 
 <section class="panel">
   <h2>Buildings with their characteristics</h2>
-  <p class="muted">
+  <p class="hint">
     Your GIS data with a column per characteristic that comes from data. GloBI reads these columns, so the file it
     runs on must have them.
   </p>
-  <div class="row">
+  <div class="actions">
     <button type="button" class="btn btn-secondary btn-sm" onclick={() => exportGis(false)}>Download GeoJSON</button>
     <button type="button" class="btn btn-secondary btn-sm" onclick={() => exportGis(true)}>Save to project</button>
-    {#if savedGis}<span class="muted">Saved to {savedGis}</span>{/if}
+    {#if savedGis}<span class="hint">Saved to {savedGis}</span>{/if}
   </div>
 </section>
 
@@ -121,10 +121,6 @@
 
 <style>
   .name {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
     max-width: 420px;
   }
 
@@ -137,6 +133,12 @@
     font-size: var(--text-md);
   }
 
+  .path {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    font-weight: 300;
+  }
+
   .download {
     margin-left: auto;
   }
@@ -145,32 +147,9 @@
     margin: 0;
     max-height: 360px;
     overflow: auto;
-    font-size: 12px;
+    font-size: var(--text-xs);
     background: var(--surface-2);
     padding: var(--space-3);
     border-radius: var(--radius);
-  }
-
-  p {
-    margin: 0;
-    font-size: var(--text-sm);
-  }
-
-  .muted {
-    color: var(--text-muted);
-    font-weight: 400;
-  }
-
-  .unsaved {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--warn-text);
-  }
-
-  .row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
   }
 </style>

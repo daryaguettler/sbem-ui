@@ -304,11 +304,21 @@ def _hydrate_layer(layer: Any, index: int, material_type: str, client: Prisma) -
     return {"LayerOrder": index, "Thickness": layer.get("Thickness"), "ConstructionMaterial": material}
 
 
+#: Links epinterface types as optional but globi can't build a zone without.
+REQUIRED_LINKS = {"ConditioningSystems": ("Heating", "Cooling"), "Envelope": ("Window",)}
+
+
 def _validate_payload(component_type: str, payload: dict[str, Any], client: Prisma) -> Any:
     type_map = _component_type_map()
     cls = type_map.get(component_type)
     if cls is None:
         raise ValueError(f"Unknown component type: {component_type!r}")
+    for link in REQUIRED_LINKS.get(component_type, ()):
+        if not payload.get(link):
+            raise ValueError(
+                f"{link}: choose a record. globi can't build a zone with an empty {link}; "
+                f"for no {link.lower()}, pick a record that is switched off."
+            )
     hydrated = _hydrate_relations(component_type, payload, client)
     return cls.model_validate(hydrated)
 
@@ -389,3 +399,45 @@ def _to_prisma_write_data(component_type: str, validated: Any, client: Prisma) -
         if value is not None:
             data[name] = value
     return data
+
+
+# -- a construction for a target U-value ---------------------------------------------
+
+INSULATION = "Mineral Wool"
+#: Layers (outside first) a target-U construction is built around; None is the insulation,
+#: sized so the construction reaches the U-value.
+CONSTRUCTION_BASES: dict[str, list[tuple[str, float] | None]] = {
+    "Facade": [("Brick", 0.1), None, ("Gypsum Board", 0.013)],
+    "FlatRoof": [("Concrete", 0.15), None, ("Gypsum Board", 0.013)],
+    "AtticRoof": [("Concrete", 0.15), None, ("Gypsum Board", 0.013)],
+    "GroundSlab": [("Concrete", 0.15), None],
+    "GroundWall": [("Concrete", 0.2), None],
+    "Partition": [("Gypsum Board", 0.013), None, ("Gypsum Board", 0.013)],
+}
+DEFAULT_BASE: list[tuple[str, float] | None] = [("Concrete", 0.1), None, ("Gypsum Board", 0.013)]
+MAX_INSULATION = 1.0
+
+
+def construction_for_u(client: Prisma, name: str, construction_type: str, u_value: float) -> dict[str, Any]:
+    """Create a construction of `construction_type` whose U-value is `u_value` (W/m²K), by sizing
+    an insulation layer in a typical stack. U is 1/Σ(thickness/conductivity) over the layers, as
+    epinterface computes it. -> {record, u_value} with the U-value the layers actually reach."""
+    if u_value <= 0:
+        raise ValueError("The U-value has to be above 0.")
+    base = CONSTRUCTION_BASES.get(construction_type, DEFAULT_BASE)
+    conductivity = {}
+    for material in {layer[0] for layer in base if layer} | {INSULATION}:
+        record = get_record(client, "ConstructionMaterial", material)
+        if record is None:
+            raise LookupError(f"The library has no {material!r} material to build the construction from.")
+        conductivity[material] = record["Conductivity"]
+    fixed = sum(thickness / conductivity[material] for material, thickness in (layer for layer in base if layer))
+    insulation = round(min(max(conductivity[INSULATION] * (1 / u_value - fixed), 0.0), MAX_INSULATION), 3)
+    layers = [
+        {"ConstructionMaterial": INSULATION, "Thickness": insulation} if layer is None else {"ConstructionMaterial": layer[0], "Thickness": layer[1]}
+        for layer in base
+        if layer is not None or insulation > 0
+    ]
+    record = create_record(client, "ConstructionAssembly", {"Name": name, "Type": construction_type, "Layers": layers})
+    reached = 1 / (fixed + insulation / conductivity[INSULATION])
+    return {"record": record, "u_value": round(reached, 3)}

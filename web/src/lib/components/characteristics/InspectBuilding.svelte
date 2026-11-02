@@ -12,6 +12,7 @@
   import { MODEL_PARTS } from '../../utils/modelParts';
   import { formatPercent } from '../../utils/priorViz';
   import WeightBar from '../priorTrees/WeightBar.svelte';
+  import Icon from '../Icon.svelte';
 
   let { onClose }: { onClose: () => void } = $props();
 
@@ -57,7 +58,7 @@
       void run(buildingId.trim() || null);
     }}
   >
-    <label>
+    <label class="field">
       <span>{$semanticFieldsStore.buildingIdCol}</span>
       <input bind:value={buildingId} placeholder="Building ID" />
     </label>
@@ -76,16 +77,16 @@
         {#each trace.known as entry}
           <p>
             <strong>{entry.name}</strong> = {entry.value ?? '—'}
-            <span class="muted">({entry.because})</span>
+            <span class="hint">({entry.because})</span>
           </p>
         {:else}
-          <p class="muted">No characteristics come from data yet.</p>
+          <p class="hint">No characteristics come from data yet.</p>
         {/each}
       </section>
 
       <section>
         <h3>Estimated, over {trace.n} draws</h3>
-        <p class="muted">The spread is what the model doesn't know about this building.</p>
+        <p class="hint">The spread is what the model doesn't know about this building.</p>
         {#each trace.estimated as entry}
           {@const distribution = Object.fromEntries(entry.shares.map((s) => [s.value ?? '—', s.share]))}
           <div class="estimate">
@@ -93,7 +94,7 @@
             <WeightBar {distribution} order={Object.keys(distribution)} />
           </div>
         {:else}
-          <p class="muted">No estimates yet.</p>
+          <p class="hint">No estimates yet.</p>
         {/each}
       </section>
     </div>
@@ -101,11 +102,11 @@
     <section>
       <h3>Library records it uses</h3>
       {#if trace.parts.length === 0}
-        <p class="muted">No model parts are connected yet.</p>
+        <p class="hint">No model parts are connected yet.</p>
       {:else}
-        <table>
+        <table class="data-table">
           <thead>
-            <tr><th>Model part</th><th>Record</th><th>Share of draws</th><th>In library</th></tr>
+            <tr><th>Model part</th><th>Record</th><th class="num">Share of draws</th><th>In library</th></tr>
           </thead>
           <tbody>
             {#each trace.parts as part}
@@ -113,11 +114,11 @@
                 <tr>
                   <td>{index === 0 ? partLabel(part.path) : ''}</td>
                   <td><code>{record.name ?? `missing a value for ${part.sourceFields.join(' / ')}`}</code></td>
-                  <td>{formatPercent(record.share)}</td>
+                  <td class="num">{formatPercent(record.share)}</td>
                   <td>
-                    {#if record.exists === true}<span class="ok">✓ exists</span>
-                    {:else if record.exists === false}<span class="bad">✕ missing</span>
-                    {:else}<span class="muted">unknown</span>{/if}
+                    {#if record.exists === true}<span class="status-ok"><Icon name="check" size={14} />exists</span>
+                    {:else if record.exists === false}<span class="status-err"><Icon name="x" size={14} />missing</span>
+                    {:else}<span class="hint">unknown</span>{/if}
                   </td>
                 </tr>
               {/each}
@@ -131,8 +132,6 @@
 
 <style>
   .inspect {
-    display: flex;
-    flex-direction: column;
     gap: var(--space-4);
   }
 
@@ -155,16 +154,8 @@
   .pick {
     display: flex;
     align-items: flex-end;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
-  }
-
-  .pick label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    color: var(--text-2);
   }
 
   .columns {
@@ -178,42 +169,11 @@
     font-size: var(--text-sm);
   }
 
-  .muted {
-    color: var(--text-muted);
-  }
-
   .estimate {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
     margin-bottom: var(--space-3);
     font-size: var(--text-sm);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  th,
-  td {
-    border-bottom: 1px solid var(--border);
-    padding: 6px 8px;
-    text-align: left;
-  }
-
-  th {
-    font-size: var(--text-xs);
-    font-weight: 500;
-    color: var(--text-muted);
-  }
-
-  .ok {
-    color: var(--ok-text);
-  }
-
-  .bad {
-    color: var(--err-text);
   }
 </style>

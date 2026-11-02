@@ -46,7 +46,8 @@ def apply_categorical_mapping(
         source_values = [str(source).strip() for source in group.get("source_values", [])]
         if text in source_values:
             label = group.get("group_label")
-            return str(label) if label is not None else None
+            # a row still pointing at a value that was renamed or removed maps to nothing yet
+            return str(label) if label is not None and (not options or str(label) in options) else None
 
     if text in options:
         return text
@@ -96,12 +97,19 @@ def apply_semantic_fields_to_rows(
 
 
 def field_coverage_stats(rows: list[dict[str, Any]], field: dict[str, Any]) -> dict[str, Any]:
+    values = [apply_field_to_row(row, field) for row in rows]
     total_count = len(rows)
-    mapped_count = sum(1 for row in rows if apply_field_to_row(row, field) is not None)
+    # buildings per value, so the editor can show how the grouping splits the stock
+    counts = {option: 0 for option in field.get("options") or []}
+    for value in values:
+        if value is not None:
+            counts[value] = counts.get(value, 0) + 1
+    mapped_count = sum(counts.values())
     unmapped_count = total_count - mapped_count
     coverage_percent = round((mapped_count / total_count) * 100, 1) if total_count else 0.0
 
     return {
+        "counts": counts,
         "mapped_count": mapped_count,
         "unmapped_count": unmapped_count,
         "total_count": total_count,

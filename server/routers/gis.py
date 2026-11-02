@@ -324,7 +324,9 @@ async def export_enriched_dataset(
         )
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content)
-        return {"path": target.relative_to(workspace.root).as_posix(), "bytes": len(content)}
+        from services.part_rules import compile_project  # large rules only build the combinations these buildings have
+
+        return {"path": target.relative_to(workspace.root).as_posix(), "bytes": len(content), "compile": compile_project(workspace)}
 
     return Response(
         content=content,

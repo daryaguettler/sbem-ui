@@ -27,7 +27,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
-    padding: 10px 12px;
+    padding: var(--space-3);
     position: relative;
     overflow: hidden;
     color: var(--text);
@@ -50,8 +50,8 @@
   .title {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12px;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
     font-weight: 600;
   }
 
@@ -62,8 +62,8 @@
   }
 
   .meta {
-    margin-top: 6px;
-    font-size: 11px;
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 </style>

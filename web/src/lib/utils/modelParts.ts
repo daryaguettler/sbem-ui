@@ -94,3 +94,40 @@ export function defaultSuffix(
   const segments = path.split('.');
   return `${segments[segments.length - 2]}${name}`;
 }
+
+/** A part path's plain label; parts with several paths name which one ("Roof: flat"). */
+export function partLabel(path: string): string {
+  const part = MODEL_PARTS.find((entry) => entry.paths.includes(path));
+  const last = path.split('.').pop() as string;
+  if (!part) return last;
+  if (part.paths.length === 1) return part.label;
+  const which = last.replace(/Assembly$/, '').replace(/(Roof|Ceiling)$/, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+  return `${part.label}: ${which || last.toLowerCase()}`;
+}
+
+export function partGroup(path: string): ModelPartGroup {
+  return MODEL_PARTS.find((entry) => entry.paths.includes(path))?.group ?? 'Envelope';
+}
+
+/** The guided walk's order: what usually moves energy use most comes first (heating climates). */
+const WALK = [
+  `${ASSEMBLIES}.FacadeAssembly`,
+  `${ASSEMBLIES}.FlatRoofAssembly`,
+  `${ASSEMBLIES}.AtticRoofAssembly`,
+  'Envelope.Window',
+  `${CONDITIONING}.Heating`,
+  'Envelope.Infiltration',
+  `${CONDITIONING}.Cooling`,
+  'Operations.HVAC.Ventilation',
+  `${SPACE_USE}.Lighting`,
+  `${SPACE_USE}.Equipment`,
+  `${SPACE_USE}.Occupancy`,
+  `${SPACE_USE}.Thermostat`,
+  `${SPACE_USE}.WaterUse`,
+  'Operations.DHW',
+];
+
+export function walkOrder(paths: string[]): string[] {
+  const rank = (path: string) => (WALK.includes(path) ? WALK.indexOf(path) : WALK.length + paths.indexOf(path));
+  return [...paths].sort((a, b) => rank(a) - rank(b));
+}

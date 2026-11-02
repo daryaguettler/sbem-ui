@@ -88,7 +88,7 @@
 </script>
 
 <div class="field-grid">
-  <label>
+  <label class="field">
     GIS column
     <Select
       value={field.transformationRule?.sourceColumn || ''}
@@ -97,7 +97,7 @@
       onChange={setSourceColumn}
     />
   </label>
-  <label>
+  <label class="field">
     Rule type
     <Select
       value={field.transformationRule?.type || 'categorical_mapping'}
@@ -114,7 +114,7 @@
   <h3>Ranges <Explain text={help.ranges} tip /></h3>
   <Explain text={help.ranges} />
   <div class="table-wrap">
-    <table>
+    <table class="data-table">
       <thead>
         <tr>
           <th>Option</th>
@@ -127,12 +127,14 @@
           <tr>
             <td>
               <input
+                class="input-sm"
                 value={range.label}
                 oninput={(event) => setRange(index, 'label', (event.currentTarget as HTMLInputElement).value)}
               />
             </td>
             <td>
               <input
+                class="input-sm"
                 type="number"
                 value={range.min}
                 oninput={(event) => setRange(index, 'min', (event.currentTarget as HTMLInputElement).value)}
@@ -140,6 +142,7 @@
             </td>
             <td>
               <input
+                class="input-sm"
                 type="number"
                 value={range.max}
                 oninput={(event) => setRange(index, 'max', (event.currentTarget as HTMLInputElement).value)}
@@ -156,7 +159,7 @@
   <h3>Value mapping <Explain text={help.mapping} tip /></h3>
   <Explain text={help.mapping} />
   <div class="table-wrap">
-    <table>
+    <table class="data-table">
       <thead>
         <tr>
           <th>Value in GIS</th>
@@ -184,53 +187,24 @@
 
 <style>
   .field-grid {
-    align-items: end;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    margin-bottom: 16px;
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
+    --field-min: 220px;
+    margin-bottom: var(--space-4);
   }
 
   h3 {
-    margin: var(--space-2) 0 var(--space-2);
+    margin: var(--space-2) 0;
     font-size: var(--text-md);
     font-weight: 600;
   }
 
   .table-wrap {
     overflow: auto;
-    margin-bottom: 16px;
+    margin-bottom: var(--space-4);
   }
 
   /* Inputs inside rule tables shrink to their cell instead of forcing a scrollbar. */
   td input {
     width: 100%;
     min-width: 0;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-
-  th,
-  td {
-    border-bottom: 1px solid var(--border);
-    padding: 10px;
-    text-align: left;
-  }
-
-  th {
-    font-size: var(--text-xs);
-    font-weight: 500;
-    color: var(--text-muted);
   }
 </style>

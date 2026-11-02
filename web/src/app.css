@@ -21,9 +21,9 @@
   --border-strong: #d1d5db;
 
   --text: #111827;
-  --text-2: #374151;
-  --text-muted: #6b7280;
-  --text-faint: #9ca3af;
+  --text-2: #1f2937;
+  --text-muted: #4b5563;
+  --text-faint: #6b7280;
 
   --accent: #143454;
   --accent-hover: #0f2236;
@@ -31,6 +31,10 @@
   --accent-soft: #eceff3;
   --accent-border: #b9c1cd;
   --focus-ring: rgba(20, 52, 84, 0.25);
+  /* the one filled action; dark mode inverts it (near-white) so it never reads as disabled */
+  --primary: #143454;
+  --primary-hover: #0f2236;
+  --on-primary: #ffffff;
 
   --danger: #dc2626;
   --danger-hover: #b91c1c;
@@ -79,8 +83,9 @@
   --seq-ink-high: #ffffff;
 
   /* One sans family, fixed scale (~1.15 ratio), 4px spacing base. */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --text-2xs: 11px; /* tags and pills only; nothing smaller */
   --text-xs: 12px;
   --text-sm: 13px;
   --text-md: 14px;
@@ -94,12 +99,13 @@
   --space-6: 24px;
   --space-8: 32px;
   --control-h: 32px;
+  --control-h-sm: 28px;
   --radius: 6px;
   --radius-sm: 4px;
 
   font-family: var(--font-sans);
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 300;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -112,17 +118,17 @@
   :root:not([data-theme='light']) {
     color-scheme: dark;
 
-    --bg: #121418;
-    --surface: #181a1f;
-    --surface-2: #1d2026;
-    --surface-3: #262a31;
-    --border: #2e333b;
-    --border-strong: #3d434d;
+    --bg: #111111;
+    --surface: #161616;
+    --surface-2: #1c1c1c;
+    --surface-3: #242424;
+    --border: #2a2a2a;
+    --border-strong: #3a3a3a;
 
-    --text: #eceef1;
-    --text-2: #c9ced6;
-    --text-muted: #9aa1ac;
-    --text-faint: #6f7682;
+    --text: #f5f6f8;
+    --text-2: #dde1e6;
+    --text-muted: #b8bec7;
+    --text-faint: #8b929d;
 
     --accent: #849eca;
     --accent-hover: #9dadc9;
@@ -130,6 +136,9 @@
     --accent-soft: #1a2533;
     --accent-border: #2c5d96;
     --focus-ring: rgba(132, 158, 202, 0.35);
+  --primary: #eceef1;
+  --primary-hover: #ffffff;
+  --on-primary: #111111;
 
     --danger: #e66767;
     --danger-hover: #ee8a8a;
@@ -179,17 +188,17 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg: #121418;
-  --surface: #181a1f;
-  --surface-2: #1d2026;
-  --surface-3: #262a31;
-  --border: #2e333b;
-  --border-strong: #3d434d;
+  --bg: #111111;
+  --surface: #161616;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+  --border: #2a2a2a;
+  --border-strong: #3a3a3a;
 
-  --text: #eceef1;
-  --text-2: #c9ced6;
-  --text-muted: #9aa1ac;
-  --text-faint: #6f7682;
+  --text: #f5f6f8;
+  --text-2: #dde1e6;
+  --text-muted: #b8bec7;
+  --text-faint: #8b929d;
 
   --accent: #849eca;
   --accent-hover: #9dadc9;
@@ -197,6 +206,9 @@
   --accent-soft: #1a2533;
   --accent-border: #2c5d96;
   --focus-ring: rgba(132, 158, 202, 0.35);
+  --primary: #eceef1;
+  --primary-hover: #ffffff;
+  --on-primary: #111111;
 
   --danger: #e66767;
   --danger-hover: #ee8a8a;
@@ -258,6 +270,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   color: var(--text);
+  font-size: var(--text-md);
 }
 
 #app {
@@ -275,10 +288,24 @@ body {
   color: var(--text);
   font: inherit;
   font-size: var(--text-sm);
+  font-weight: 300; /* a control inside a .field label stays at body weight */
 }
 
 :where(textarea) {
   padding: var(--space-2);
+}
+
+::placeholder {
+  color: var(--text-muted);
+}
+
+:where(button) {
+  font: inherit;
+}
+
+:where(input[type='file']) {
+  font: inherit;
+  font-size: var(--text-sm);
 }
 
 /* The file input's built-in button matches .btn-secondary. */
@@ -357,8 +384,9 @@ body {
 .workflow-header h1 {
   margin: 0;
   font-size: var(--text-xl);
-  font-weight: 650;
+  font-weight: 600;
   line-height: 1.25;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
@@ -409,7 +437,7 @@ body {
   margin: 0;
   max-width: 72ch;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
   line-height: 1.5;
   text-wrap: pretty;
 }
@@ -419,7 +447,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-2);
   min-height: var(--control-h);
   border: 1px solid transparent;
   border-radius: var(--radius);
@@ -430,12 +458,12 @@ body {
   line-height: 1.3;
   white-space: nowrap;
   cursor: pointer;
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--primary);
+  color: var(--on-primary);
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--primary-hover);
 }
 
 /* Feedback on press, not release (Apple: response). */
@@ -458,8 +486,15 @@ body {
 }
 
 .btn:disabled {
-  opacity: 0.55;
+  background: var(--surface-3);
+  color: var(--text-faint);
+  border-color: transparent;
   cursor: not-allowed;
+}
+
+.btn-ghost:disabled,
+.btn-link:disabled {
+  background: transparent;
 }
 
 .btn-secondary {
@@ -493,7 +528,7 @@ body {
 }
 
 .btn-sm {
-  min-height: 26px;
+  min-height: var(--control-h-sm);
   padding: 0 var(--space-2);
   font-size: var(--text-xs);
 }
@@ -513,6 +548,255 @@ body {
   text-underline-offset: 2px;
 }
 
+/* ---- Shared primitives. Components use these instead of local look-alikes. ---- */
+
+/* Label stack: label text, optional .field-hint, then the control. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field-hint {
+  font-size: var(--text-xs);
+  font-weight: 300;
+  color: var(--text-muted);
+}
+
+/* Grid cells stretch to the row's height; pushing each field's last child (the control)
+   down puts every control in a row on one line, however tall its label or hint wraps. */
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--field-min, 240px), 1fr));
+  gap: var(--space-4);
+}
+
+.field-grid > .field > :last-child {
+  margin-top: auto;
+}
+
+/* Small status label beside a name or value: pale tint, dark text of the same hue. */
+.tag {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.tag-err {
+  background: var(--err-bg);
+  color: var(--err-text);
+}
+
+.tag-warn {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.tag-ok {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+/* Secondary prose: notes, counts, how a value was derived. */
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 300;
+}
+
+/* A message that needs reading before going on. */
+.callout {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+
+.callout-warn {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.callout-err {
+  border-color: var(--err-border);
+  background: var(--err-bg);
+  color: var(--err-text);
+}
+
+/* Inline outcome text, always with an Icon beside it. */
+.status-ok,
+.status-warn,
+.status-err {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 500;
+}
+
+.status-ok {
+  color: var(--ok-text);
+}
+
+.status-warn {
+  color: var(--warn-text);
+}
+
+.status-err {
+  color: var(--err-text);
+}
+
+/* A row of buttons. Also stops a lone button stretching in a column flexbox. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Tables: rules and alignment, no header band. */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.data-table th {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.data-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scroll frame for wide or long tables; the header stays in view. */
+.data-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* separate borders so the header's rule travels with the sticky header */
+.data-table-wrap .data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table-wrap .data-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.empty-box {
+  padding: var(--space-4);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+/* Pick-one control: buttons with aria-pressed on a tinted track. */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--radius);
+  background: var(--surface-3);
+}
+
+.segmented button {
+  flex: 1;
+  min-height: calc(var(--control-h-sm) - 4px);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+/* Underline tabs on a full-width rule. */
+.tabs {
+  display: flex;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  margin-bottom: -1px;
+  padding: var(--space-2) 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tabs button:hover {
+  color: var(--text);
+}
+
+.tabs button[aria-selected='true'],
+.tabs button.active {
+  border-bottom-color: var(--text);
+  color: var(--text);
+}
+
+/* Compact input for table cells and dense rows. */
+.input-sm {
+  min-height: var(--control-h-sm);
+  font-size: var(--text-xs);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -522,3 +806,22 @@ body {
   white-space: nowrap;
 }
 
+
+/* The control the open tutorial step is about (components/TutorialPanel.svelte). */
+.tour-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  animation: tour-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tour-pulse {
+  50% {
+    outline-offset: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-target {
+    animation: none;
+  }
+}

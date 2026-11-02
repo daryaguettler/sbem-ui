@@ -1,5 +1,6 @@
 <script lang="ts">
   import { componentMapStore } from '../../stores/componentMapStore';
+  import Icon from '../Icon.svelte';
   import {
     buildComponentLevels,
     collectSelectors,
@@ -20,8 +21,8 @@
 {#if !$componentMapStore.map}
   <p class="empty">No model parts are connected yet.</p>
 {:else}
-  <div class="table-wrap">
-    <table>
+  <div class="data-table-wrap">
+    <table class="data-table">
       <thead>
         <tr>
           <th>Component path</th>
@@ -37,14 +38,20 @@
           {@const selector = selectors.find((entry) => entry.path === level.path)}
           <tr class:selected={$componentMapStore.selectedPath === level.path}>
             <td>
-              <span style={`padding-left:${level.depth * 16}px`}>{level.displayName}</span>
-              <div class="path">{level.path}</div>
+              <div style={`padding-left: calc(${level.depth} * var(--space-4))`}>
+                {level.displayName}
+                <div class="path">{level.path}</div>
+              </div>
             </td>
-            <td><span class="status {status}"><span aria-hidden="true">{status === 'mapped' ? '✓' : status === 'inherited' ? '↳' : '✕'}</span> {status}</span></td>
+            <td>
+              <span class="tag status" class:tag-ok={status === 'mapped'} class:tag-err={status === 'unmapped'}>
+                <Icon name={status === 'mapped' ? 'check' : status === 'inherited' ? 'corner-down-right' : 'x'} size={12} />{status}
+              </span>
+            </td>
             <td>{selector?.source_fields.join(', ') || '—'}</td>
             <td>{selector?.suffix || '—'}</td>
             <td>
-              <button type="button" class="link-btn" onclick={() => selectPath(level.path)}>Edit</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick={() => selectPath(level.path)}>Edit</button>
             </td>
           </tr>
         {/each}
@@ -54,75 +61,18 @@
 {/if}
 
 <style>
-  .empty {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14px;
-  }
-
-  .table-wrap {
-    overflow: auto;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-
-  th,
-  td {
-    border-bottom: 1px solid var(--border);
-    padding: 10px 12px;
-    text-align: left;
-    vertical-align: top;
-    color: var(--text);
-  }
-
   tr.selected {
     background: var(--accent-soft);
   }
 
   .path {
-    font-size: 11px;
+    margin-top: var(--space-1);
     color: var(--text-faint);
     font-family: var(--font-mono);
-    margin-top: 2px;
+    font-size: var(--text-xs);
   }
 
   .status {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    font-size: 11px;
-    font-weight: 600;
     text-transform: capitalize;
-  }
-
-  .status.mapped {
-    background: var(--ok-bg);
-    color: var(--ok-text);
-  }
-
-  .status.inherited {
-    background: var(--accent-soft);
-    color: var(--accent);
-  }
-
-  .status.unmapped {
-    background: var(--err-bg);
-    color: var(--err-text);
-  }
-
-  .link-btn {
-    border: 1px solid var(--accent);
-    background: var(--surface);
-    color: var(--accent);
-    border-radius: var(--radius);
-    padding: 4px 10px;
-    cursor: pointer;
-    font-size: 12px;
   }
 </style>

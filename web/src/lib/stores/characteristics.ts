@@ -8,7 +8,9 @@ import { derived, get } from 'svelte/store';
 import { componentMapStore } from './componentMapStore';
 import { componentTreeStore } from './componentTreeStore';
 import { priorTargets, priorTreesStore } from './priorTreesStore';
+import { partRulesStore } from './partRulesStore';
 import { semanticFieldsStore } from './semanticFieldsStore';
+import { removeFromRules, renameInRules } from '../utils/partRules';
 import { ensureTransformationRule } from '../utils/semanticFieldRules';
 import { removeFieldFromSelector, collectSelectors, renameFieldInMap } from '../utils/componentMapTree';
 import {
@@ -47,6 +49,9 @@ export function renameCharacteristic(from: string, to: string): void {
     if (renamed !== map) componentMapStore.setMap(renamed);
   }
 
+  const { rules } = get(partRulesStore);
+  if (rules) partRulesStore.setRules(renameInRules(rules, from, to));
+
   const { config, selectedTarget } = get(priorTreesStore);
   const renamedConfig = renameInPriorConfig(config, from, to);
   if (renamedConfig !== config) priorTreesStore.setConfig(renamedConfig);
@@ -58,6 +63,11 @@ export function renameCharacteristic(from: string, to: string): void {
 export function removeCharacteristic(name: string): void {
   const field = findField(name);
   if (!field) return;
+  const { rules } = get(partRulesStore);
+  if (rules) {
+    const options = Object.fromEntries(get(semanticFieldsStore).fields.map((f) => [f.name, f.options]));
+    partRulesStore.setRules(removeFromRules(rules, name, options));
+  }
   semanticFieldsStore.removeField(field.id);
 
   const map = get(componentMapStore).map;

@@ -80,13 +80,17 @@ make check      # svelte-check type checking
 On first load the app asks you to create or open a project workspace. Creating one makes
 the directory and provisions its `components-lib.db`, which takes a few seconds. Pick a
 **Component library** template instead of an empty one: **GloBI starter library** (globi's
-materials and schedules, to build the rest yourself) or **GloBI tutorial library** (globi's
-complete e2e library). Both include Boston weather. Use **Switch project** at the bottom
+materials and schedules plus one residential archetype, to build the rest yourself) or
+**GloBI tutorial library** (globi's complete e2e library). Both include Boston weather, and
+a new project's parts start on the library's first archetype, so it runs straight away. An
+empty library has nothing to start from: every part then waits for an option. Use **Switch project** at the bottom
 of the sidebar to change projects later.
 
-Create projects inside your globi checkout (e.g. `globi/inputs/my-model`, which globi
-gitignores) if you want to run them: Single Building requires it, and the generated run
-files then use repo-relative paths that globi's Docker runs can see.
+New projects go in `sbem-ui/data/<project name>` (git-ignored) unless you type another
+folder; `make cli-native simulate` runs them from there. Create projects inside your globi
+checkout instead (e.g. `globi/inputs/my-model`, which globi gitignores) for Single Building
+and Docker batch runs: the generated run files then use repo-relative paths that globi's
+Docker runs can see.
 
 A project looks like this on disk:
 
@@ -95,7 +99,8 @@ A project looks like this on disk:
 ├── project.json                  # name, created date, schema version
 ├── gis/                          # uploaded GIS file, cleaned data, column mappings
 ├── semantic-fields.yaml          # building characteristics
-├── component-map.selectors.yaml  # which characteristics choose each model part
+├── part-rules.yaml               # what each model part depends on, and its options
+├── component-map.selectors.yaml  # the component map's editor copy (compiled from part rules)
 ├── component-map.yaml            # generated component map
 ├── components-lib.db             # component library (epinterface schema)
 ├── priors/priors.yaml            # estimates for characteristics not in your data
@@ -115,10 +120,13 @@ layout (such as a globi `inputs/` folder) can be opened as a project.
 ### 2. Work through the steps
 
 The sidebar lists the steps in order. A step shows a check once its readiness checks pass;
-hover over it to see what is missing.
+hover over it to see what is missing. You don't need to know up front whether you start from
+data or from component values: a new project already runs, and each step refines it.
 
 1. **GIS Cleaning**. Upload a CSV or GeoJSON with one row per building, or use the sample
-   buildings (globi's 100-building tutorial stock). Match your
+   buildings (globi's 100-building tutorial stock, with a `YEAR_BUILT` column in place of its
+   age bands, so you make the bands yourself; `YEAR_BUILT` and `use` are synthetic, drawn inside
+   each building's original age band and typology). Match your
    columns to the model's inputs, tick the columns later steps depend on so missing
    values are caught, then **Validate**. Every later step reads the cleaned dataset, so
    include any column you will want to classify or stratify by.
@@ -131,33 +139,52 @@ hover over it to see what is missing.
      even split or estimate the table from a column that records the value for some
      buildings.
 
-   Then choose which model parts each characteristic changes. **Check** validates;
-   **Save & check library** saves and confirms that sampled combinations each find a record
-   in the component library. **Inspect** follows one real building through the model.
+   Which parts each characteristic changes is set on Component Map. **Check** validates;
+   **Save & check library** saves and resolves every combination your buildings have against
+   the component library. **Inspect** follows one real building through the model.
    Column roles matched in GIS Cleaning (`Building_ID_col`, `Height_col`, `WWR_col`, ...)
    are written into `semantic-fields.yaml` on every save.
-3. **Retrofits**. Bundle measures into packages, such as "oil boiler to heat pump where
+3. **Component Map**. One card per part of the model (walls, windows, heating, lighting, ...),
+   each starting on the template library's archetype, so the whole stock already simulates as
+   one building type. A card's swatches are the components it uses, one colour per library
+   record; a dashed swatch is a part nobody has decided yet. Click a card to open it: **Same for
+   every building**, or **Varies by…** one or more characteristics (from your GIS columns, or
+   typed here with **New** and bound to data later). Each row shows its component by the value
+   that sets it apart (W/m², U-value, COP…); rows with the same colour share one record, so
+   Office and Hospital can use one lighting record. A construction can be made **By U-value**
+   (a typical stack with the insulation sized to reach it) or with **Build layers**, which shows
+   the U-value as you go. **Save** writes `part-rules.yaml` and compiles it into
+   `component-map.yaml` (one selector per group: Envelope, SpaceUse, HVAC, DHW) plus generated
+   group records named `auto_…`. **Check** resolves every combination your buildings have (the
+   sampled or saved buildings, else every combination) with globi's composer. A project from
+   before part rules is converted when it opens; nothing changes on disk until you save a part.
+4. **Retrofits**. Bundle measures into packages, such as "oil boiler to heat pump where
    built before 1975". Each package is compared against the baseline. Use **Never
    downgrade** to order a characteristic's values from worst to best, so measures only
-   move buildings towards the better values.
-4. **Sampling**. Choose which buildings to simulate (all, a random subset, or a number per
+   move buildings towards the better values. With part rules, packages compile into a
+   generated `Scenario` characteristic (Baseline plus one value per package): a group whose
+   parts depend on a changed characteristic gets rows for each package, and globi sets
+   `Scenario` from each manifest.
+5. **Sampling**. Choose which buildings to simulate (all, a random subset, or a number per
    combination of characteristics) and how many draws of the estimated characteristics
    each one gets. **Write sampled buildings** writes `gis/buildings-sampled.geojson`, one
    row per building and draw, so globi can run estimated characteristics (it doesn't
    sample priors itself). The page shows the resulting number of simulations.
-5. **Model Execution**. Review readiness for every step, then **Generate globi files**:
+6. **Model Execution**. Review readiness for every step, then **Generate globi files**:
    `building.yml` for one building (`globi simulate`) and, once buildings are saved,
-   `manifest.yml`, `artifacts.yml` and `gis-preprocessor.yml` for a batch run, each checked
-   against globi's own models. The page prints the commands to run from the globi repo.
+   `manifest.yml` (plus `manifest-<scenario>.yml` for every other `Scenario` value),
+   `artifacts.yml` and `gis-preprocessor.yml` for a batch run, each checked against globi's
+   own models. Nothing is written unless every building resolves against the library. The page prints the commands to run from the globi repo.
    **Export** downloads a JSON snapshot of the editors (not a globi file).
 
 Three utility pages sit below the steps:
 
 - **Component Library** lets you browse and edit the engineering records (lighting power,
-  infiltration, HVAC efficiency, schedules) that model parts point to. A part picks a
-  record by joining its characteristics' values with `_`, for example `SFH_pre_1975`.
-  **Needed by the model** lists every record your characteristics and model parts require,
-  with ✓/✕ and **+ Create**. Every type can be authored, including constructions (a layers
+  infiltration, HVAC efficiency, schedules) that model parts point to. With part rules,
+  **Options in use** lists the records your rules pick; editing one changes every building
+  that uses it. The `auto_…` records rebuilt from the rules are hidden unless you ask for
+  them. (A project without part rules shows **Needed by the model** instead: every record
+  name its selectors build, with ✓/✕ and **+ Create**.) Every type can be authored, including constructions (a layers
   editor: material and thickness, outside first); **Copy values from** and **Duplicate** start
   a record from an existing one. Its **Schedule variability** view sets seeded per-building noise on schedules, densities and
   setpoints (globi's `schedule_variability_config`).

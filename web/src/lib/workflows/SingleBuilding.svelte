@@ -12,6 +12,7 @@
     type FlatModelField,
     type FlatModelResult,
   } from '../api/flatModel';
+  import Select from '../components/Select.svelte';
 
   let fields: FlatModelField[] = [];
   let values: Record<string, unknown> = {};
@@ -60,7 +61,7 @@
 <section class="workflow">
   <div class="workflow-header">
     <h1>Single Building</h1>
-    <p class="subtitle">Type in every parameter of one building and simulate it. Saved to <code>{file || 'flat-building.yml'}</code>.</p>
+    <p class="hint">Type in every parameter of one building and simulate it. Saved to <code>{file || 'flat-building.yml'}</code>.</p>
   </div>
 
   <div class="workflow-content">
@@ -69,16 +70,16 @@
     {#if result}
       <div class="panel">
         <h2>Results</h2>
-        <table>
-          <thead><tr><th>End use</th><th>kWh/m²</th></tr></thead>
+        <table class="data-table">
+          <thead><tr><th>End use</th><th class="num">kWh/m²</th></tr></thead>
           <tbody>
             {#each endUses as [name, value]}
-              <tr><td>{name}</td><td>{value.toFixed(1)}</td></tr>
+              <tr><td>{name}</td><td class="num">{value.toFixed(1)}</td></tr>
             {/each}
-            <tr class="total"><td>Total</td><td>{total.toFixed(1)}</td></tr>
+            <tr class="total"><td>Total</td><td class="num">{total.toFixed(1)}</td></tr>
           </tbody>
         </table>
-        <p class="muted">
+        <p class="hint">
           Peak: {peaks.map(([name, v]) => `${name} ${v.toFixed(3)} kW/m²`).join(' · ')} · files in <code>{result.output_dir}</code>
         </p>
       </div>
@@ -88,20 +89,24 @@
       <div class="panel">
         <div class="head">
           <h2>Building</h2>
-          <button type="button" onclick={run} disabled={running}>{running ? 'Running…' : 'Save and run'}</button>
+          <button type="button" class="btn" onclick={run} disabled={running}>{running ? 'Running…' : 'Save and run'}</button>
         </div>
-        {#if running}<p class="muted">The first run builds globi's Docker image, which takes several minutes.</p>{/if}
+        {#if running}<p class="hint">The first run builds globi's Docker image, which takes several minutes.</p>{/if}
 
         {#each groups as group}
           <h3>{group}</h3>
-          <div class="grid">
+          <div class="field-grid" style="--field-min: 220px">
             {#each fields.filter((f) => f.group === group) as field (field.name)}
-              <label class:invalid={fieldErrors[field.name]}>
+              <label class="field" class:invalid={fieldErrors[field.name]}>
                 <span class="name">{field.name}</span>
+                <span class="field-hint">{fieldErrors[field.name] ?? field.hint}</span>
                 {#if field.type === 'choice'}
-                  <select bind:value={values[field.name]}>
-                    {#each field.options ?? [] as option}<option value={option}>{option}</option>{/each}
-                  </select>
+                  <Select
+                    value={String(values[field.name] ?? '')}
+                    options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
+                    onChange={(value) => (values[field.name] = value)}
+                    ariaLabel={field.name}
+                  />
                 {:else if field.type === 'text'}
                   <input type="text" bind:value={values[field.name]} />
                 {:else}
@@ -113,7 +118,6 @@
                     bind:value={values[field.name]}
                   />
                 {/if}
-                <span class="hint">{fieldErrors[field.name] ?? field.hint}</span>
               </label>
             {/each}
           </div>
@@ -124,28 +128,11 @@
 </section>
 
 <style>
-  .workflow { display: flex; flex-direction: column; height: 100%; }
-  .workflow-header { padding: 24px 32px; border-bottom: 1px solid var(--border); }
-  .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
-  .subtitle { margin: 0; color: var(--text-muted); font-size: 13px; }
-  .workflow-content { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 20px; }
-  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .panel h2 { margin: 0; font-size: 15px; }
-  .panel h3 { margin: 6px 0 0; font-size: 13px; color: var(--text-muted); font-weight: 600; }
-  .head { display: flex; justify-content: space-between; align-items: center; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px 16px; }
-  label { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
-  .name { font-weight: 500; }
-  .hint { color: var(--text-muted); font-size: 11px; min-height: 13px; }
-  .invalid .hint { color: var(--err-text); }
-  .invalid input, .invalid select { border-color: var(--err-border); }
-  input, select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; background: var(--bg); color: var(--text); }
-  table { border-collapse: collapse; font-size: 13px; width: 100%; max-width: 360px; }
-  th { text-align: left; color: var(--text-muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-  td { padding: 6px 8px; border-bottom: 1px solid var(--surface-3); }
+  .workflow-content { max-width: 860px; }
+  .data-table { max-width: 360px; }
   .total td { font-weight: 600; }
-  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .muted { color: var(--text-muted); font-size: 13px; margin: 0; }
-  .error { color: var(--err-text); font-size: 13px; margin: 0; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }
+  .name { font-weight: 500; }
+  .invalid .field-hint { color: var(--err-text); }
+  .invalid input, .invalid :global(.ui-select-trigger) { border-color: var(--err-border); }
 </style>

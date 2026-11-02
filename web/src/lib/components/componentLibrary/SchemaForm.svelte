@@ -14,6 +14,8 @@
   // is deprecated in Svelte 5 in favor of this pattern.
   import SchemaForm from './SchemaForm.svelte';
   import Select from '../Select.svelte';
+  import Icon from '../Icon.svelte';
+  import { uValue } from '../../utils/optionValues';
 
   type Mode = 'create' | 'edit';
   /** One construction layer as the API carries it: outside layer first. */
@@ -47,6 +49,8 @@
   let schema = $state<ComponentTypeSchema | null>(null);
   let values = $state<Record<string, unknown>>({});
   let relationOptions = $state<Record<string, string[]>>({});
+  /** Material conductivities, so a construction shows its U-value as layers change. */
+  let conductivity = $state<Record<string, number>>({});
   /** Existing records of this type, offered as "Copy values from…" in create mode. */
   let sameTypeNames = $state<string[]>([]);
   let copySource = $state('');
@@ -76,8 +80,13 @@
       relationTypes.map(async (relationType) => {
         try {
           const records = await fetchComponentRecords(relationType);
-          return [relationType, records.map((r) => r.Name)] as const;
-        } catch {
+          if (relationType === 'ConstructionMaterial') {
+            conductivity = Object.fromEntries(records.map((r) => [r.Name, Number(r.Conductivity)]));
+          }
+          return [relationType, records.map((r) => r.Name).sort((a, b) => a.localeCompare(b))] as const;
+        } catch (err) {
+          // an empty picker reads as broken; say why it is empty
+          error = `Couldn't load the ${relationType} list: ${err instanceof Error ? err.message : 'request failed'}`;
           return [relationType, [] as string[]] as const;
         }
       })
@@ -238,18 +247,18 @@
   <div class="form-frame" hidden={creatingRelationFor !== null}>
     {#if trail.length > 0}
       <nav class="crumbs" aria-label="Nested record">
-        <button type="button" class="btn btn-ghost btn-sm back" onclick={onCancel}>← Back</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick={onCancel}><Icon name="arrow-left" size={14} />Back</button>
         <span class="trail">
-          {#each trail as crumb}<span>{crumb}</span><span class="sep">›</span>{/each}
+          {#each trail as crumb}<span>{crumb}</span><span class="sep"><Icon name="chevron-right" size={12} /></span>{/each}
           <strong>New {componentType}</strong>
         </span>
       </nav>
     {/if}
 
-    <form class="schema-form" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+    <form class="schema-form field-grid" onsubmit={(event) => { event.preventDefault(); submit(); }}>
       {#if mode === 'create' && sameTypeNames.length > 0}
         <div class="field copy-field">
-          <span class="field-label">Copy values from</span>
+          <span>Copy values from</span>
           <Select
             value={copySource}
             options={sameTypeNames.map((optionName) => ({ value: optionName, label: optionName }))}
@@ -261,8 +270,8 @@
       {#each schema.fields as field (field.name)}
         {#if field.kind === 'layers'}
           <fieldset class="field layers-field">
-            <legend class="field-label">
-              {field.title} <span class="hint-inline">outside → inside</span>{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
+            <legend>
+              {field.title} <span class="field-hint">outside <Icon name="arrow-right" size={12} /> inside</span>{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
             </legend>
             {#each layersOf(field.name) as layer, index}
               <div class="layer-row">
@@ -290,21 +299,36 @@
                       i === index ? { ...l, Thickness: (event.currentTarget as HTMLInputElement).value } : l))}
                 />
                 <span class="unit">m</span>
-                <button type="button" class="btn btn-ghost btn-sm" title="Move outwards" aria-label={`Move layer ${index + 1} outwards`} disabled={index === 0} onclick={() => moveLayer(field.name, index, -1)}>↑</button>
-                <button type="button" class="btn btn-ghost btn-sm" title="Move inwards" aria-label={`Move layer ${index + 1} inwards`} disabled={index === layersOf(field.name).length - 1} onclick={() => moveLayer(field.name, index, 1)}>↓</button>
-                <button type="button" class="btn btn-ghost btn-sm" title="Remove layer" aria-label={`Remove layer ${index + 1}`} onclick={() => setLayers(field.name, layersOf(field.name).filter((_, i) => i !== index))}>×</button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Move outwards" aria-label={`Move layer ${index + 1} outwards`} disabled={index === 0} onclick={() => moveLayer(field.name, index, -1)}><Icon name="arrow-up" size={14} /></button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Move inwards" aria-label={`Move layer ${index + 1} inwards`} disabled={index === layersOf(field.name).length - 1} onclick={() => moveLayer(field.name, index, 1)}><Icon name="arrow-down" size={14} /></button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Remove layer" aria-label={`Remove layer ${index + 1}`} onclick={() => setLayers(field.name, layersOf(field.name).filter((_, i) => i !== index))}><Icon name="x" size={14} /></button>
               </div>
             {/each}
             <div class="layer-foot">
               <button type="button" class="btn btn-secondary btn-sm" onclick={() => setLayers(field.name, [...layersOf(field.name), { ConstructionMaterial: '', Thickness: 0.1 }])}>
                 + Add layer
               </button>
-              <span class="hint-inline">Total {totalThickness(field.name).toFixed(3)} m</span>
+              <span class="field-hint">
+                Total {totalThickness(field.name).toFixed(3)} m{#if uValue(layersOf(field.name), conductivity) !== null}{' · '}<strong
+                    >U {uValue(layersOf(field.name), conductivity)?.toFixed(2)} W/m²K</strong
+                  >{/if}
+              </span>
             </div>
           </fieldset>
+        {:else if field.kind === 'boolean'}
+          <div class="field">
+            <label class="check">
+              <input
+                type="checkbox"
+                checked={Boolean(values[field.name])}
+                onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).checked)}
+              />
+              {field.title}{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
+            </label>
+          </div>
         {:else}
-        <div class="field" class:checkbox-field={field.kind === 'boolean'}>
-          <label class="field-label" for={fieldId(field.name)}>
+        <div class="field">
+          <label for={fieldId(field.name)}>
             {field.title}{#if field.required}<span class="required" aria-hidden="true">*</span>{/if}
           </label>
 
@@ -322,7 +346,7 @@
                   onChange={(value) => updateValue(field.name, value)}
                 />
               </span>
-              <button type="button" class="btn btn-secondary btn-sm" onclick={() => openCreateRelation(field.name)}>
+              <button type="button" class="btn btn-secondary" onclick={() => openCreateRelation(field.name)}>
                 + New
               </button>
             </div>
@@ -332,13 +356,6 @@
               value={String(values[field.name] ?? '')}
               options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
               onChange={(value) => updateValue(field.name, value)}
-            />
-          {:else if field.kind === 'boolean'}
-            <input
-              id={fieldId(field.name)}
-              type="checkbox"
-              checked={Boolean(values[field.name])}
-              onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLInputElement).checked)}
             />
           {:else if field.kind === 'number'}
             <input
@@ -396,52 +413,39 @@
   .crumbs {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    padding-bottom: var(--space-3);
     border-bottom: 1px dashed var(--border-strong);
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
   .trail {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    align-items: center;
+    gap: var(--space-1);
     min-width: 0;
   }
 
   .trail strong {
     color: var(--text);
+    font-weight: 600;
   }
 
   .sep {
+    display: inline-flex;
     color: var(--text-faint);
   }
 
   /* Two columns where the panel is wide enough, one otherwise. */
   .schema-form {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px 16px;
-    align-items: start;
+    --field-min: 200px;
   }
 
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 14px;
-    color: var(--text-2);
+  .schema-form > * {
     min-width: 0;
-  }
-
-  .checkbox-field {
-    flex-direction: row-reverse;
-    justify-content: flex-end;
-    align-items: center;
-    align-self: end;
-    min-height: 38px;
   }
 
   .actions,
@@ -452,22 +456,25 @@
   }
 
   .layers-field {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 12px;
-    margin: 0;
+    min-width: 0;
+    border: none;
+  }
+
+  .layers-field legend {
+    margin-bottom: var(--space-1);
   }
 
   .layer-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
   }
 
   .layer-index {
-    width: 18px;
+    width: var(--space-4);
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--text-xs);
+    font-weight: 300;
     text-align: right;
   }
 
@@ -476,23 +483,28 @@
     flex: none;
   }
 
-  .unit,
-  .hint-inline {
+  .unit {
     color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 400;
+    font-size: var(--text-xs);
+    font-weight: 300;
   }
 
   .layer-foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 4px;
   }
 
-  .field-label {
-    font-weight: 600;
+  .field label,
+  .field legend {
     overflow-wrap: anywhere;
+  }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--control-h);
   }
 
   .required {
@@ -500,56 +512,24 @@
     margin-left: 2px;
   }
 
-  input[type='text'],
-  input[type='number'] {
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    padding: 8px 10px;
-    font: inherit;
-    min-width: 0;
-    width: 100%;
-  }
-
-  input:disabled {
-    background: var(--surface-3);
-    color: var(--text-muted);
-  }
-
-  input[type='checkbox'] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--accent);
-  }
-
   .relation-row {
     display: flex;
-    gap: 8px;
+    gap: var(--space-2);
     align-items: center;
   }
 
   .relation-pick {
     flex: 1;
-  }
-
-  .hint {
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
-  .error {
-    font-size: 13px;
-    color: var(--err-text);
+    min-width: 0;
   }
 
   /* Pinned to the bottom of the scrolling side panel so Save is always reachable. */
   .actions {
     position: sticky;
     bottom: 0;
-    display: flex;
-    gap: 8px;
     justify-content: flex-end;
-    margin: 4px calc(-1 * var(--panel-pad, 0px)) 0;
-    padding: 12px var(--panel-pad, 0px);
+    margin: var(--space-1) calc(-1 * var(--panel-pad, 0px)) 0;
+    padding: var(--space-3) var(--panel-pad, 0px);
     background: var(--surface);
     border-top: 1px solid var(--border);
   }

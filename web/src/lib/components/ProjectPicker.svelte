@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { workspaceStore } from '../stores/workspaceStore';
+  import { startTutorial, tutorialOn } from '../stores/tutorial';
   import Select from './Select.svelte';
 
   let mode: 'create' | 'open' = 'create';
@@ -8,12 +9,24 @@
   let name = 'My Project';
   let templates: Array<{ name: string; filename: string; description: string }> = [];
   let template = '';
+  /** sbem-ui/data: new projects go in a subfolder named after the project unless the user types a path. */
+  let projectsDir = '';
+  let pathEdited = false;
+
+  const slug = (text: string) =>
+    text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'my-project';
+  $: if (!pathEdited) path = mode === 'create' && projectsDir ? `${projectsDir}/${slug(name)}` : '';
 
   onMount(async () => {
     try {
       templates = (await (await fetch('/api/workspace/templates')).json()).templates ?? [];
     } catch {
       templates = [];
+    }
+    try {
+      projectsDir = (await (await fetch('/api/workspace/defaults')).json()).projectsDir ?? '';
+    } catch {
+      projectsDir = '';
     }
   });
 
@@ -34,24 +47,31 @@
       A project is a folder on disk holding your building characteristics, their estimates and
       model parts, and the component library -- so your work survives closing the browser.
     </p>
+    {#if !$tutorialOn}
+      <p class="hint">
+        New here?
+        <button type="button" class="btn btn-link" onclick={() => { mode = 'create'; startTutorial(); }}>Take the tutorial</button>
+        from a new project to globi's run files.
+      </p>
+    {/if}
 
-    <div class="mode-toggle">
-      <button type="button" class:active={mode === 'create'} onclick={() => (mode = 'create')}>
+    <div class="segmented" role="group" aria-label="Project mode">
+      <button type="button" aria-pressed={mode === 'create'} onclick={() => (mode = 'create')}>
         Create new
       </button>
-      <button type="button" class:active={mode === 'open'} onclick={() => (mode = 'open')}>
+      <button type="button" aria-pressed={mode === 'open'} onclick={() => (mode = 'open')}>
         Open existing
       </button>
     </div>
 
     <form onsubmit={(event) => { event.preventDefault(); submit(); }}>
       {#if mode === 'create'}
-        <label>
+        <label class="field" data-tour="picker-name">
           Project name
           <input type="text" bind:value={name} placeholder="My Project" />
         </label>
         {#if templates.length > 0}
-          <div class="field">
+          <div class="field" data-tour="template">
             <span>Component library</span>
             <Select
               value={template}
@@ -65,9 +85,12 @@
           </div>
         {/if}
       {/if}
-      <label>
+      <label class="field" data-tour="picker-path">
         Folder path
-        <input type="text" bind:value={path} placeholder="/Users/you/sbem-projects/my-project" />
+        <input type="text" bind:value={path} oninput={() => (pathEdited = true)} placeholder="/Users/you/sbem-projects/my-project" />
+        {#if mode === 'create'}
+          <span class="hint">To run batches or Single Building, use a folder in globi's inputs/ instead.</span>
+        {/if}
       </label>
 
       {#if $workspaceStore.error}
@@ -93,85 +116,35 @@
 
   .card {
     width: 420px;
+    max-width: calc(100% - 2 * var(--space-4));
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 32px;
+    padding: var(--space-8);
   }
 
   h1 {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: var(--text-xl);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     color: var(--text);
-    margin: 0 0 8px 0;
+    margin-bottom: var(--space-2);
   }
 
   .subtitle {
-    font-size: 13px;
+    font-size: var(--text-sm);
     color: var(--text-muted);
-    margin: 0 0 24px 0;
-    line-height: 1.5;
+    margin-bottom: var(--space-6);
   }
 
-  .mode-toggle {
+  .segmented {
     display: flex;
-    gap: 4px;
-    background: var(--surface-3);
-    border-radius: var(--radius);
-    padding: 4px;
-    margin-bottom: 20px;
-  }
-
-  .mode-toggle button {
-    flex: 1;
-    padding: 8px 12px;
-    border: none;
-    background: transparent;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
-  .mode-toggle button.active {
-    background: var(--surface);
-    color: var(--text);
-    font-weight: 600;
+    margin-bottom: var(--space-5);
   }
 
   form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-4);
   }
-
-  label,
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-2);
-  }
-
-  input {
-    font-weight: 400;
-    padding: 8px 12px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    font-size: 14px;
-  }
-
-  .hint {
-    font-weight: 400;
-    color: var(--text-muted);
-  }
-
-  .error {
-    margin: 0;
-    font-size: 13px;
-    color: var(--err-text);
-  }
-
 </style>

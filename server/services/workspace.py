@@ -12,6 +12,7 @@ real project directory that survives restarts:
       semantic-fields.yaml          # SemanticFieldsConfig
       component-map.selectors.yaml  # per-node selector declarations (source of truth)
       component-map.yaml            # generated output
+      part-rules.yaml               # what each model part depends on (compiled into the map)
       components-lib.db             # real Prisma SQLite DB (epinterface schema)
       priors/priors.yaml            # semantic-priors RegionConfig shape
       schedule-variability.yaml     # globi ScheduleVariabilityConfig
@@ -53,6 +54,7 @@ FILE_KEYS: dict[str, str] = {
     "semantic_fields": SEMANTIC_FIELDS_FILE,
     "component_map_selectors": COMPONENT_MAP_SELECTORS_FILE,
     "component_map": COMPONENT_MAP_FILE,
+    "part_rules": "part-rules.yaml",
     "components_db": COMPONENTS_DB_FILE,
     "priors": PRIORS_FILE,
     "retrofits": RETROFITS_FILE,
@@ -60,6 +62,8 @@ FILE_KEYS: dict[str, str] = {
     "gis_dir": GIS_DIR,
     "weather_dir": "weather",
     "sampling": "sampling.yaml",
+    # ready-made characteristics a stock-model template ships (scripts/convert_resstock.py)
+    "stock_preset": "resstock-preset.yml",
     # globi run files, generated from the files above (services/globi_run_files.py)
     "building": "building.yml",
     "artifacts": "artifacts.yml",

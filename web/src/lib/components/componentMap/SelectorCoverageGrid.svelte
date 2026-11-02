@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { checkComponentExistence } from '../../api/componentLibrary';
+  import Icon from '../Icon.svelte';
   import { buildSelectorCombinations, type SelectorCombination } from '../../utils/componentMapTree';
 
   let {
@@ -78,8 +79,8 @@
   {#if combinations.length === 0}
     <p class="hint">Tick at least one characteristic to see which records this part needs.</p>
   {:else}
-    <div class="table-scroll">
-      <table>
+    <div class="data-table-wrap">
+      <table class="data-table">
         <thead>
           <tr>
             {#each sourceFields as field}
@@ -102,9 +103,9 @@
                 {#if loading}
                   <span class="hint">…</span>
                 {:else if exists}
-                  <span class="state ok"><span aria-hidden="true">✓</span> Exists</span>
+                  <span class="status-ok"><Icon name="check" size={14} />Exists</span>
                 {:else}
-                  <span class="state missing"><span aria-hidden="true">✕</span> Missing</span>
+                  <span class="status-err"><Icon name="x" size={14} />Missing</span>
                 {/if}
               </td>
               <td class="row-action">
@@ -113,7 +114,7 @@
                   class={exists ? 'btn btn-secondary btn-sm' : 'btn btn-sm'}
                   onclick={() => onOpenRecord(combo.name, exists)}
                 >
-                  {exists ? 'Edit' : '+ Create'}
+                  {#if exists}Edit{:else}<Icon name="plus" size={14} />Create{/if}
                 </button>
               </td>
             </tr>
@@ -126,77 +127,38 @@
 
 <style>
   .coverage {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px;
-    background: var(--surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .coverage-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-size: 13px;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
     color: var(--text);
   }
 
-  .hint {
-    font-size: 12px;
-    color: var(--text-muted);
+  .coverage-header strong {
+    font-weight: 600;
   }
 
   .error {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin: 0 0 8px;
-    font-size: 12px;
-    color: var(--err-text);
-  }
-
-  .table-scroll {
-    overflow-x: auto;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  th {
-    text-align: left;
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-muted);
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--surface-3);
-    color: var(--text);
+    gap: var(--space-2);
   }
 
   .record-name {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: var(--text-xs);
     overflow-wrap: anywhere;
   }
 
-  .state {
-    font-weight: 600;
+  .status-ok,
+  .status-err {
     white-space: nowrap;
-  }
-
-  .state.ok {
-    color: var(--ok-text);
-  }
-
-  .state.missing {
-    color: var(--err-text);
   }
 
   .row-action {

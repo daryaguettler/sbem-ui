@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Handle, Position } from '@xyflow/svelte';
   import { componentMapStore } from '../../stores/componentMapStore';
+  import Icon from '../Icon.svelte';
 
   type ComponentNodeData = {
     path: string;
@@ -18,9 +19,9 @@
   // Status is carried by border style and an icon as well as hue, so it survives
   // colorblindness and zoomed-out views: solid = mapped, dashed = inherited, dotted = unmapped.
   const STATUS = {
-    mapped: { color: 'var(--ok)', icon: '✓', label: 'Mapped' },
-    inherited: { color: 'var(--accent)', icon: '↳', label: 'Inherited' },
-    unmapped: { color: 'var(--err)', icon: '✕', label: 'Unmapped' },
+    mapped: { color: 'var(--ok)', icon: 'check', label: 'Mapped' },
+    inherited: { color: 'var(--accent)', icon: 'corner-down-right', label: 'Inherited' },
+    unmapped: { color: 'var(--err)', icon: 'x', label: 'Unmapped' },
   } as const;
   const status = $derived(STATUS[data.status]);
 
@@ -54,11 +55,16 @@
     </div>
     <div class="actions">
       {#if data.canExpand}
-        <button type="button" class="icon-btn" onclick={handleToggleExpand}>
-          {data.isExpanded ? '−' : '+'}
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          aria-label={data.isExpanded ? 'Collapse children' : 'Expand children'}
+          onclick={handleToggleExpand}
+        >
+          <Icon name={data.isExpanded ? 'minus' : 'plus'} size={12} />
         </button>
       {/if}
-      <button type="button" class="icon-btn" onclick={(event) => { event.stopPropagation(); handleConfigure(); }}>
+      <button type="button" class="btn btn-secondary btn-sm" onclick={(event) => { event.stopPropagation(); handleConfigure(); }}>
         edit
       </button>
     </div>
@@ -70,7 +76,7 @@
       <span>{data.hiddenChildCount} hidden</span>
     {/if}
   </div>
-  <div class="status-badge"><span aria-hidden="true">{status.icon}</span> {status.label}</div>
+  <div class="tag status-badge"><Icon name={status.icon} size={12} />{status.label}</div>
 </div>
 
 <style>
@@ -79,7 +85,7 @@
     border: 2px solid var(--status-color);
     border-radius: var(--radius);
     background: var(--surface);
-    padding: 10px 12px;
+    padding: var(--space-3);
     color: var(--text);
     cursor: pointer;
   }
@@ -95,7 +101,7 @@
 
   .status-bar {
     height: 4px;
-    margin: -10px -12px 8px;
+    margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) var(--space-2);
     background: var(--status-color);
     border-radius: var(--radius) var(--radius) 0 0;
   }
@@ -107,57 +113,43 @@
   .header {
     display: flex;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .title {
-    font-size: 13px;
+    font-size: var(--text-sm);
     font-weight: 600;
   }
 
   .path {
-    font-size: 10px;
+    font-size: var(--text-xs);
     color: var(--text-faint);
     font-family: var(--font-mono);
   }
 
   .actions {
-    display: flex;
-    gap: 4px;
-  }
-
-  .icon-btn {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-2);
-    border-radius: var(--radius);
-    padding: 2px 6px;
-    font-size: 10px;
-    cursor: pointer;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: var(--space-1);
   }
 
   .description {
-    margin-top: 6px;
-    font-size: 11px;
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
   .stats {
     display: flex;
-    gap: 10px;
-    margin-top: 8px;
-    font-size: 10px;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
   .status-badge {
-    margin-top: 8px;
-    display: inline-block;
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
+    margin-top: var(--space-2);
     background: color-mix(in srgb, var(--status-color) 14%, var(--surface));
     color: var(--text);
-    font-weight: 600;
   }
 </style>

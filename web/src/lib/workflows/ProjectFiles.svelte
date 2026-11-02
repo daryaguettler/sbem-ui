@@ -20,6 +20,7 @@
   const WORKFLOW_FOR_KIND: Record<ArtifactKind, WorkflowId> = {
     'semantic-fields': 'characteristics',
     'component-map': 'characteristics',
+    'part-rules': 'model-parts',
     priors: 'characteristics',
     retrofits: 'retrofits',
     'schedule-variability': 'component-library',
@@ -96,7 +97,7 @@
   <div class="workflow-content">
     <div class="toolbar panel">
       <p class="path" title={root}>{$workspaceStore.workspace?.name ?? 'Project'} &mdash; {root}</p>
-      <div class="toolbar-actions">
+      <div class="actions">
         <button type="button" class="btn btn-secondary" onclick={() => loadFiles()}>Refresh</button>
       </div>
     </div>
@@ -108,9 +109,9 @@
     <div class="browser">
       <aside class="file-list panel">
         {#if loadingFiles}
-          <p class="help">Loading files…</p>
+          <p class="hint">Loading files…</p>
         {:else if files.length === 0}
-          <p class="help">This project directory is empty.</p>
+          <p class="hint">This project directory is empty.</p>
         {:else}
           {#each files as file (file.path)}
             <button
@@ -121,7 +122,7 @@
             >
               <span class="file-name">
                 {file.path}
-                {#if file.kind}<span class="badge">{file.label}</span>{/if}
+                {#if file.kind}<span class="tag">{file.label}</span>{/if}
               </span>
               <span class="file-meta">
                 {formatFileSize(file.size)} &middot; {formatRelativeTime(file.modifiedAt)}
@@ -133,13 +134,13 @@
 
       <section class="viewer panel">
         {#if loadingContent}
-          <p class="help">Reading file…</p>
+          <p class="hint">Reading file…</p>
         {:else if !selected}
-          <p class="help">Select a file to view its contents.</p>
+          <p class="hint">Select a file to view its contents.</p>
         {:else}
           <div class="viewer-header">
             <h2>{selected.path}</h2>
-            <div class="toolbar-actions">
+            <div class="actions">
               {#if selected.kind}
                 <button type="button" class="btn" onclick={() => loadIntoEditor(selected!.kind!)}>
                   Load into editor
@@ -157,12 +158,12 @@
           </div>
 
           {#if !selected.viewable}
-            <p class="help">
+            <p class="hint">
               {selected.name} is a binary file ({formatFileSize(selected.size)}) and can't be shown here.
             </p>
           {:else}
             {#if selected.truncated}
-              <p class="truncated">
+              <p class="callout callout-warn">
                 Showing the first {formatFileSize(selected.content?.length ?? 0)} of
                 {formatFileSize(selected.size)}. Download gives you the same portion.
               </p>
@@ -176,12 +177,6 @@
 </section>
 
 <style>
-  .help {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-
   .workflow-content {
     min-height: 0;
   }
@@ -189,14 +184,13 @@
   .toolbar {
     flex-direction: row;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--space-4);
     flex-wrap: wrap;
     align-items: center;
   }
 
   .path {
-    margin: 0;
-    font-size: 13px;
+    font-size: var(--text-sm);
     color: var(--text-muted);
     font-family: var(--font-mono);
     overflow: hidden;
@@ -204,22 +198,16 @@
     white-space: nowrap;
   }
 
-  .toolbar-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   .browser {
     display: grid;
     grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
-    gap: 24px;
+    gap: var(--space-6);
     align-items: start;
   }
 
   .file-list {
-    gap: 4px;
-    padding: 12px;
+    gap: var(--space-1);
+    padding: var(--space-3);
     max-height: 70vh;
     overflow: auto;
   }
@@ -227,53 +215,42 @@
   .file-row {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--space-1);
     width: 100%;
     text-align: left;
-    padding: 10px 12px;
+    padding: var(--space-2) var(--space-3);
     border: none;
     border-radius: var(--radius);
     background: transparent;
     color: var(--text);
-    font: inherit;
     cursor: pointer;
   }
 
-  .file-row:hover {
+  .file-row:hover,
+  .file-row.active {
     background: var(--surface-3);
   }
 
-  .file-row.active {
-    background: var(--accent-soft);
-  }
-
   .file-name {
-    font-size: 13px;
+    font-size: var(--text-sm);
     color: var(--text);
-    font-family: var(--font-mono);
     word-break: break-all;
   }
 
+  .file-row.active .file-name {
+    font-weight: 500;
+  }
+
+  .file-name .tag {
+    margin-left: var(--space-2);
+  }
+
   .file-meta {
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
-  .badge {
-    margin-left: 6px;
-    padding: 1px 6px;
-    border-radius: var(--radius-sm);
-    background: var(--accent-soft);
-    color: var(--accent-hover);
-    font-size: 11px;
-    font-family: var(--font-sans);
-    white-space: nowrap;
-  }
-
   .viewer {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
     min-width: 0;
   }
 
@@ -281,40 +258,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-4);
     flex-wrap: wrap;
   }
 
   .viewer-header h2 {
-    margin: 0;
-    font-size: 16px;
-    color: var(--text);
-    font-family: var(--font-mono);
     word-break: break-all;
   }
 
   pre {
-    margin: 0;
-    padding: 16px;
+    padding: var(--space-4);
     background: var(--surface-2);
-    border: 1px solid var(--border);
     border-radius: var(--radius);
-    font-size: 12px;
+    font-size: var(--text-xs);
     line-height: 1.6;
     max-height: 60vh;
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-word;
-  }
-
-  .truncated {
-    margin: 0;
-    font-size: 13px;
-    color: var(--warn-text);
-    background: var(--warn-bg);
-    border: 1px solid var(--warn-border);
-    border-radius: var(--radius);
-    padding: 8px 12px;
   }
 
   @media (max-width: 1100px) {

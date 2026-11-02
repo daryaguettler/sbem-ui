@@ -76,7 +76,7 @@
           {@const numeric = distribution.numericBreakdown}
           {@const lo = Math.min(...numeric.rows.map((row) => row.mean - row.std))}
           {@const hi = Math.max(...numeric.rows.map((row) => row.mean + row.std))}
-          <button type="button" class="toggle" onclick={() => toggle(distribution.feature)}>
+          <button type="button" class="btn btn-secondary btn-sm toggle" onclick={() => toggle(distribution.feature)}>
             {expanded[distribution.feature] ? 'Hide' : 'Show'} breakdown by
             {numeric.field.replace('compound.', '')}
             ({numeric.rows.length} {numeric.rows.length === 1 ? 'combination' : 'combinations'})
@@ -123,19 +123,19 @@
 
         {#if distribution.breakdown}
           {@const breakdown = distribution.breakdown}
-          <button type="button" class="toggle" onclick={() => toggle(distribution.feature)}>
+          <button type="button" class="btn btn-secondary btn-sm toggle" onclick={() => toggle(distribution.feature)}>
             {expanded[distribution.feature] ? 'Hide' : 'Show'} breakdown by
             {breakdown.field.replace('compound.', '')}
             ({breakdown.rows.length} {breakdown.rows.length === 1 ? 'combination' : 'combinations'})
           </button>
 
           {#if expanded[distribution.feature]}
-            <div class="breakdown-scroll">
-              <table>
+            <div class="data-table-wrap breakdown-scroll">
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th scope="col">{breakdown.field.replace('compound.', '')}</th>
-                    <th scope="col" class="count">n</th>
+                    <th scope="col" class="num">n</th>
                     {#each breakdown.values as value}
                       <th scope="col" class="value-head">
                         <span class="swatch" style="background: {colorOf(value)};"></span>
@@ -148,7 +148,7 @@
                   {#each breakdown.rows as row}
                     <tr>
                       <th scope="row">{row.key}</th>
-                      <td class="count">{row.count.toLocaleString()}</td>
+                      <td class="num count">{row.count.toLocaleString()}</td>
                       {#each row.shares as share}
                         <td
                           class="cell"
@@ -171,12 +171,12 @@
   .preview {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--space-5);
   }
 
   .context {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--text-sm);
     color: var(--text-2);
     line-height: 1.5;
   }
@@ -184,32 +184,33 @@
   .feature {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-top: 16px;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
     border-top: 1px solid var(--surface-3);
   }
 
   .feature header {
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: var(--space-3);
     flex-wrap: wrap;
   }
 
   .feature h4 {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--text-md);
+    font-weight: 600;
   }
 
   .kind {
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
   .marginal {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -219,8 +220,8 @@
     display: grid;
     grid-template-columns: minmax(120px, 210px) 1fr 52px;
     align-items: center;
-    gap: 10px;
-    font-size: 12px;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
   }
 
   .value-name {
@@ -253,7 +254,7 @@
   .numeric-rows {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -263,8 +264,8 @@
     display: grid;
     grid-template-columns: minmax(120px, 210px) 1fr 60px 62px;
     align-items: center;
-    gap: 10px;
-    font-size: 12px;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
   }
 
   .plot {
@@ -310,7 +311,7 @@
     align-items: flex-end;
     gap: 2px;
     height: 110px;
-    padding: 4px;
+    padding: var(--space-1);
     background: var(--surface-2);
     border-radius: var(--radius);
   }
@@ -324,51 +325,21 @@
 
   .stats {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
 
   .toggle {
     align-self: flex-start;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--accent);
-    border-radius: var(--radius);
-    padding: 5px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .toggle:hover {
-    background: var(--surface-2);
   }
 
   .breakdown-scroll {
-    overflow: auto;
     max-height: 360px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
   }
 
-  table {
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    font-size: 12px;
-  }
-
-  thead th {
-    position: sticky;
-    top: 0;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border);
-    padding: 8px;
-    text-align: left;
-    font-weight: 600;
-    color: var(--text-2);
-    white-space: nowrap;
+  .data-table {
+    font-size: var(--text-xs);
   }
 
   .value-head {
@@ -380,27 +351,22 @@
     width: 9px;
     height: 9px;
     border-radius: var(--radius-sm);
-    margin-right: 4px;
+    margin-right: var(--space-1);
   }
 
+  /* Row headers: plain bold labels, not sticky column headers. */
   tbody th {
-    padding: 6px 8px;
-    text-align: left;
-    font-weight: 600;
+    position: static;
     color: var(--text);
-    border-bottom: 1px solid var(--surface-3);
-    white-space: nowrap;
+    font-weight: 600;
+    border-bottom-color: var(--border);
   }
 
   tbody td {
-    border-bottom: 1px solid var(--surface-3);
-    padding: 6px 8px;
     text-align: center;
-    font-variant-numeric: tabular-nums;
   }
 
   .count {
-    text-align: right;
     color: var(--text-muted);
   }
 

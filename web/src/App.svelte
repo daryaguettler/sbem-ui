@@ -3,6 +3,7 @@
   import Sidebar from './lib/components/Sidebar.svelte';
   import ProjectPicker from './lib/components/ProjectPicker.svelte';
   import BuildingCharacteristics from './lib/workflows/BuildingCharacteristics.svelte';
+  import ModelParts from './lib/workflows/ModelParts.svelte';
   import ComponentLibrary from './lib/workflows/ComponentLibrary.svelte';
   import Retrofits from './lib/workflows/Retrofits.svelte';
   import Sampling from './lib/workflows/Sampling.svelte';
@@ -14,6 +15,8 @@
   import { workspaceStore } from './lib/stores/workspaceStore';
   import { componentTreeStore } from './lib/stores/componentTreeStore';
   import { resetProjectArtifacts, restoreProjectArtifacts } from './lib/stores/projectArtifacts';
+  import TutorialPanel from './lib/components/TutorialPanel.svelte';
+  import { tutorialMarks, tutorialOn } from './lib/stores/tutorial';
 
   let checkingWorkspace = true;
   /** The project whose saved artifacts are currently in the editors, so opening the
@@ -26,6 +29,7 @@
     if (path === loadedProjectPath) return;
     loadedProjectPath = path;
     resetProjectArtifacts();
+    tutorialMarks.set({ sampling: false, runFiles: false });
     if (path) {
       restoreLastWorkflow(path);
       await restoreProjectArtifacts();
@@ -57,7 +61,9 @@
   <main class="layout">
     <Sidebar currentWorkflow={$currentWorkflow} setWorkflow={navigateTo} />
     <section class="main">
-      {#if $currentWorkflow === 'characteristics'}
+      {#if $currentWorkflow === 'model-parts'}
+        <ModelParts />
+      {:else if $currentWorkflow === 'characteristics'}
         <BuildingCharacteristics />
       {:else if $currentWorkflow === 'component-library'}
         <ComponentLibrary />
@@ -77,6 +83,8 @@
     </section>
   </main>
 {/if}
+
+{#if $tutorialOn && !checkingWorkspace && !$workspaceStore.backendUnreachable}<TutorialPanel />{/if}
 
 <style>
   /* Fixed to the viewport:the sidebar stays put and only .main scrolls. */
@@ -102,7 +110,7 @@
     align-items: center;
     justify-content: center;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: var(--text-md);
   }
 
   .unreachable {
@@ -111,7 +119,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
   }
-
 </style>

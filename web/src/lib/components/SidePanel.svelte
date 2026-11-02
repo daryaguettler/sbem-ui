@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import Icon from './Icon.svelte';
 
   let {
     title,
@@ -28,8 +29,8 @@
       <h2>{title}</h2>
       {#if subtitle}<p>{subtitle}</p>{/if}
     </div>
-    <button type="button" class="btn btn-ghost close" onclick={onClose} aria-label="Close panel" title="Close (Esc)">
-      &times;
+    <button type="button" class="btn btn-ghost btn-sm" onclick={onClose} aria-label="Close panel" title="Close (Esc)">
+      <Icon name="x" />
     </button>
   </header>
   <div class="side-panel-body">
@@ -51,8 +52,8 @@
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    padding: 16px 20px;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--border);
   }
 
@@ -61,27 +62,24 @@
   }
 
   h2 {
-    font-size: 16px;
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: 600;
     color: var(--text);
     overflow-wrap: anywhere;
   }
 
   p {
-    font-size: 12px;
+    margin: 0;
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
-  .close {
-    font-size: 20px;
-    line-height: 1;
-    padding: 2px 8px;
-  }
-
   .side-panel-body {
-    --panel-pad: 20px;
+    --panel-pad: var(--space-5);
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding: 16px var(--panel-pad) 0;
+    padding: var(--space-4) var(--panel-pad) 0;
   }
 </style>

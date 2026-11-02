@@ -10,9 +10,11 @@
 
 import { derived, get, writable } from 'svelte/store';
 import { fetchSavedArtifact, saveArtifact, type ArtifactKind } from '../api/artifacts';
+import { baselineRules, importRules } from '../api/partRules';
 import { componentMapStore } from './componentMapStore';
+import { partRulesStore } from './partRulesStore';
 import { priorTreesStore } from './priorTreesStore';
-import { gisDataset } from './projectStore';
+import { gisDataset, libraryCheck, runLibraryCheck } from './projectStore';
 import { semanticFieldsStore } from './semanticFieldsStore';
 import type { PriorConfig } from '../types/priorTrees';
 
@@ -20,13 +22,15 @@ import type { PriorConfig } from '../types/priorTrees';
 export const savedAt = writable<Record<ArtifactKind, string | null>>({
   'semantic-fields': null,
   'component-map': null,
+  'part-rules': null,
   priors: null,
   retrofits: null,
   'schedule-variability': null,
 });
 
-/** The three files the characteristics page writes, in the order they are saved. */
-export const EDITOR_KINDS = ['semantic-fields', 'component-map', 'priors'] as const;
+/** The files the characteristics and model parts pages write, in the order they are saved:
+ * part rules compile against the saved characteristics, so they come after them. */
+export const EDITOR_KINDS = ['semantic-fields', 'component-map', 'priors', 'part-rules'] as const;
 type EditorKind = (typeof EDITOR_KINDS)[number];
 
 /** Each editor file as it was last saved or loaded, to tell which have unsaved edits. */
@@ -37,17 +41,20 @@ function documentFor(
   kind: EditorKind,
   semantic = get(semanticFieldsStore),
   map = get(componentMapStore).map,
-  config = get(priorTreesStore).config
+  config = get(priorTreesStore).config,
+  rules = get(partRulesStore).rules
 ): Record<string, unknown> | null {
   if (kind === 'semantic-fields') return semanticFieldsStore.buildApiPayload(semantic);
-  if (kind === 'component-map') return map;
+  // with part rules, the map is their compiled output and is never saved on its own
+  if (kind === 'component-map') return rules ? null : map;
+  if (kind === 'part-rules') return rules as unknown as Record<string, unknown> | null;
   return config as unknown as Record<string, unknown>;
 }
 
 function hasContent(kind: EditorKind, doc: Record<string, unknown> | null): boolean {
   if (!doc) return false;
   if (kind === 'semantic-fields') return (doc.fields as unknown[]).length > 0;
-  if (kind === 'component-map') return true;
+  if (kind === 'component-map' || kind === 'part-rules') return true;
   const config = doc as unknown as PriorConfig;
   return config.registry.fields.length > 0 || Object.keys(config.priors).length > 0 || config.joints.length > 0;
 }
@@ -62,10 +69,12 @@ export function markSaved(kind: ArtifactKind, timestamp: string | null) {
 
 /** Editor files whose current content differs from what is on disk (or was never saved). */
 export const dirtyKinds = derived(
-  [semanticFieldsStore, componentMapStore, priorTreesStore, savedSnapshot],
-  ([$semantic, $map, $priors, $snapshot]) =>
+  [semanticFieldsStore, componentMapStore, priorTreesStore, partRulesStore, savedSnapshot],
+  ([$semantic, $map, $priors, $rules, $snapshot]) =>
     EDITOR_KINDS.filter((kind) => {
-      const doc = documentFor(kind, $semantic, $map.map, $priors.config);
+      const doc = documentFor(kind, $semantic, $map.map, $priors.config, $rules.rules);
+      // nothing to save on its own (the map, once part rules compile it) is never unsaved
+      if (doc === null) return false;
       const saved = $snapshot[kind];
       return saved === undefined ? hasContent(kind, doc) : saved !== JSON.stringify(doc);
     })
@@ -75,6 +84,7 @@ const FILE_NAMES: Record<EditorKind, string> = {
   'semantic-fields': 'semantic-fields.yaml',
   'component-map': 'component-map.yaml',
   priors: 'priors/priors.yaml',
+  'part-rules': 'part-rules.yaml',
 };
 
 /**
@@ -89,13 +99,21 @@ export async function saveDirtyArtifacts(): Promise<EditorKind[]> {
     try {
       const file = await saveArtifact(kind, doc);
       markSaved(kind, file.modifiedAt);
+      if (file.compile && !file.compile.skipped) partRulesStore.setCompile(file.compile);
       saved.push(kind);
     } catch (e) {
       const reason = e instanceof Error ? e.message : 'unknown error';
       throw new Error(`Could not save ${FILE_NAMES[kind]}: ${reason}`);
     }
   }
+  if (saved.length > 0 && get(partRulesStore).rules) await afterCompile();
   return saved;
+}
+
+/** The compile rewrote the map: show it in the advanced view, and check the library again. */
+async function afterCompile(): Promise<void> {
+  await loadSavedArtifact('component-map').catch(() => false);
+  await runLibraryCheck();
 }
 
 function isEmptyDocument(kind: ArtifactKind, content: Record<string, unknown>): boolean {
@@ -121,6 +139,8 @@ export async function loadSavedArtifact(kind: ArtifactKind): Promise<boolean> {
     componentMapStore.loadFromTemplate(artifact.content, artifact.path);
   } else if (kind === 'priors') {
     priorTreesStore.loadFromTemplate(artifact.content, artifact.path);
+  } else if (kind === 'part-rules') {
+    partRulesStore.load(artifact.content);
   }
 
   markSaved(kind, artifact.savedAt);
@@ -180,6 +200,28 @@ export async function restoreProjectArtifacts(): Promise<void> {
   ]);
   // Needs both the map and the semantic fields loaded.
   await revalidateComponentMap().catch(() => {});
+  await ensurePartRules();
+  void runLibraryCheck();
+}
+
+/**
+ * A project from before part rules gets them silently: read from its component map and
+ * library, or the library's archetype when it has no map. They stay unsaved-but-clean, so
+ * nothing on disk changes until the user changes a part.
+ */
+async function ensurePartRules(): Promise<void> {
+  if (get(partRulesStore).rules) return;
+  partRulesStore.setConverting(true);
+  try {
+    const map = get(componentMapStore).map;
+    const { rules } = map && Object.keys(map).length > 0 ? await importRules() : await baselineRules();
+    partRulesStore.setRules(rules);
+    savedSnapshot.update((state) => ({ ...state, 'part-rules': JSON.stringify(rules) }));
+  } catch {
+    // the page says the map couldn't be read; the rest of the project still opens
+  } finally {
+    partRulesStore.setConverting(false);
+  }
 }
 
 /** Clear every editor, so the next project opens without the previous one's state. */
@@ -187,10 +229,13 @@ export function resetProjectArtifacts(): void {
   semanticFieldsStore.reset();
   componentMapStore.reset();
   priorTreesStore.reset();
+  partRulesStore.reset();
+  libraryCheck.set(null);
   gisDataset.set(null);
   savedAt.set({
     'semantic-fields': null,
     'component-map': null,
+    'part-rules': null,
     priors: null,
     retrofits: null,
     'schedule-variability': null,

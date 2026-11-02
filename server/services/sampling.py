@@ -173,7 +173,14 @@ def write_sample(
     target = workspace.path("gis_dir") / SAMPLED_GIS
     target.write_text(json.dumps({"type": "FeatureCollection", "features": out}))
     workspace.path("sampling").write_text(yaml.safe_dump(settings, sort_keys=False))
-    return {**summary, "path": target.relative_to(workspace.root).as_posix(), "rows": len(out)}
+    from services.part_rules import compile_project  # large rules only build the combinations these buildings have
+
+    return {
+        **summary,
+        "path": target.relative_to(workspace.root).as_posix(),
+        "rows": len(out),
+        "compile": compile_project(workspace),
+    }
 
 
 def _plain(value: Any) -> Any:

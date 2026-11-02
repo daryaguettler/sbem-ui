@@ -1,14 +1,29 @@
 import { derived, get, writable } from 'svelte/store';
 import type { GisDatasetSummary, ReadinessCheck, WorkflowId } from '../types/workflow';
-import { componentMapStore } from './componentMapStore';
+import { checkLibrary, type LibraryCheck } from '../api/partRules';
 import { priorTargets, priorTreesStore } from './priorTreesStore';
 import { workspaceStore } from './workspaceStore';
 import { characteristics } from './characteristics';
 
 export const currentWorkflow = writable<WorkflowId>('gis-cleaning');
 export const gisDataset = writable<GisDatasetSummary | null>(null);
+/** The last library check: every combination the buildings have, resolved with globi's composer. */
+export const libraryCheck = writable<LibraryCheck | null>(null);
+
+export async function runLibraryCheck(): Promise<LibraryCheck | null> {
+  try {
+    const result = await checkLibrary();
+    libraryCheck.set(result);
+    return result;
+  } catch (e) {
+    const error = e instanceof Error ? e.message : 'The check failed.';
+    libraryCheck.set({ ok: false, tested: 0, failed: 0, errors: [error], missing: [], unmapped: [], buildings: 0, source: '' });
+    return null;
+  }
+}
 
 const WORKFLOW_IDS: WorkflowId[] = [
+  'model-parts',
   'gis-cleaning',
   'characteristics',
   'component-library',
@@ -54,8 +69,8 @@ const RETIRED_WORKFLOWS: Record<string, WorkflowId> = {
 };
 
 export const readinessChecks = derived(
-  [gisDataset, characteristics, componentMapStore, priorTreesStore],
-  ([$gis, $characteristics, $componentMap, $priors]): ReadinessCheck[] => {
+  [gisDataset, characteristics, libraryCheck, priorTreesStore],
+  ([$gis, $characteristics, $check, $priors]): ReadinessCheck[] => {
     const toFinish = $characteristics.filter((view) => view.issues.length > 0);
     const estimated = $characteristics.filter((view) => view.howKnown === 'estimate');
     // A field's prior lives in `priors` when unconditioned and in `joints` when not.
@@ -86,12 +101,14 @@ export const readinessChecks = derived(
       },
       {
         id: 'model-parts',
-        label: 'Model parts connected and checked',
-        ready: $componentMap.valid,
-        workflow: 'characteristics',
-        detail: $componentMap.valid
-          ? 'Every model part refers to a defined characteristic.'
-          : 'Connect model parts, then press Check on Building Characteristics.',
+        label: 'Every building finds its model parts in the library',
+        ready: Boolean($check?.ok),
+        workflow: 'model-parts',
+        detail: $check?.ok
+          ? $check.buildings
+            ? `All ${$check.buildings.toLocaleString()} buildings resolve.`
+            : 'Every combination of values resolves.'
+          : ($check?.errors[0] ?? 'Open Component Map and press Check.'),
       },
       {
         id: 'estimates',

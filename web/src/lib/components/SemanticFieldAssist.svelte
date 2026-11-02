@@ -11,6 +11,7 @@
   import { draftSemanticField, fetchAssistStatus, type SemanticFieldDraft } from '../api/assist';
   import type { SemanticField } from '../types/semanticFields';
   import { fromApiField } from '../utils/semanticFieldRules';
+  import Icon from './Icon.svelte';
 
   let {
     field,
@@ -97,13 +98,13 @@
 {#if available}
   <div class="assist" class:open>
     {#if !open}
-      <button type="button" class="assist-toggle" onclick={() => (open = true)}>
-        <span class="spark" aria-hidden="true">✦</span>
+      <button type="button" class="btn btn-link" onclick={() => (open = true)}>
+        <Icon name="sparkle" size={14} />
         Describe this field in plain words and get a draft
       </button>
     {:else}
       <div class="assist-head">
-        <h3><span class="spark" aria-hidden="true">✦</span> Draft with AI</h3>
+        <h3><Icon name="sparkle" size={14} /> Draft with AI</h3>
         <button type="button" class="btn btn-ghost btn-sm" onclick={() => (open = false)} aria-label="Hide AI drafting">Hide</button>
       </div>
 
@@ -117,16 +118,16 @@
             onkeydown={(event) => (event.metaKey || event.ctrlKey) && event.key === 'Enter' && run(false)}
           ></textarea>
         </label>
-        <div class="row">
+        <div class="actions">
           <button type="button" class="btn" onclick={() => run(false)} disabled={loading || description.trim().length < 3}>
             {loading ? 'Drafting…' : 'Draft'}
           </button>
-          <span class="privacy">Sends column names and sampled values (not whole rows) to Anthropic.</span>
+          <span class="hint privacy">Sends column names and sampled values (not whole rows) to Anthropic.</span>
         </div>
       {/if}
 
       {#if error}
-        <p class="msg err" role="alert"><span aria-hidden="true">✕</span> {error}</p>
+        <p class="status-err msg" role="alert"><Icon name="x" size={14} /><span>{error}</span></p>
       {/if}
 
       {#if result && proposal}
@@ -140,16 +141,16 @@
           </div>
 
           {#if proposal.transformationRule?.numericRanges?.length}
-            <table>
-              <thead><tr><th>Option</th><th>From</th><th>To</th></tr></thead>
+            <table class="data-table">
+              <thead><tr><th>Option</th><th class="num">From</th><th class="num">To</th></tr></thead>
               <tbody>
                 {#each proposal.transformationRule.numericRanges as range}
-                  <tr><td>{range.label}</td><td>{range.min}</td><td>{range.max}</td></tr>
+                  <tr><td>{range.label}</td><td class="num">{range.min}</td><td class="num">{range.max}</td></tr>
                 {/each}
               </tbody>
             </table>
           {:else if proposal.transformationRule?.categoricalGroups?.length}
-            <table>
+            <table class="data-table">
               <thead><tr><th>Option</th><th>Values in GIS</th></tr></thead>
               <tbody>
                 {#each proposal.transformationRule.categoricalGroups as group}
@@ -158,14 +159,14 @@
               </tbody>
             </table>
           {:else}
-            <p class="muted">Options: {proposal.options.join(', ')}</p>
+            <p class="hint">Options: {proposal.options.join(', ')}</p>
           {/if}
 
           {#each result.errors as message}
-            <p class="msg err"><span aria-hidden="true">✕</span> {message}</p>
+            <p class="status-err msg"><Icon name="x" size={14} /><span>{message}</span></p>
           {/each}
           {#each result.warnings as message}
-            <p class="msg warn"><span aria-hidden="true">!</span> {message}</p>
+            <p class="status-warn msg"><Icon name="alert" size={14} /><span>{message}</span></p>
           {/each}
 
           {#if result.assumptions.length}
@@ -199,7 +200,7 @@
             </button>
           </div>
 
-          <div class="row">
+          <div class="actions">
             <button type="button" class="btn" onclick={apply} disabled={loading}>Apply to field</button>
             <button type="button" class="btn btn-secondary" onclick={() => (result = null)} disabled={loading}>Discard</button>
           </div>
@@ -208,38 +209,22 @@
     {/if}
   </div>
 {:else if available === false && unavailableReason}
-  <p class="unavailable" title={unavailableReason}>✦ AI drafting is off: {unavailableReason}</p>
+  <p class="hint unavailable" title={unavailableReason}><Icon name="sparkle" size={12} /> AI drafting is off: {unavailableReason}</p>
 {/if}
 
 <style>
   .assist {
+    padding: var(--space-3) var(--space-4);
     border: 1px dashed var(--accent-border);
     border-radius: var(--radius);
     background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
-    margin-bottom: 16px;
+    margin-bottom: var(--space-4);
   }
 
   .assist.open {
-    padding: 14px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-  }
-
-  .assist-toggle {
-    width: 100%;
-    padding: 10px 14px;
-    border: none;
-    background: transparent;
-    color: var(--accent);
-    font-size: 13px;
-    font-weight: 600;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .spark {
-    color: var(--accent);
+    gap: var(--space-3);
   }
 
   .assist-head {
@@ -249,35 +234,35 @@
   }
 
   h3 {
-    margin: 0;
-    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-md);
+    font-weight: 600;
     color: var(--text);
+  }
+
+  h3 :global(.icon),
+  .unavailable :global(.icon) {
+    color: var(--accent);
   }
 
   h4 {
-    margin: 0 0 2px;
-    font-size: 12px;
+    margin-bottom: 2px;
+    font-size: var(--text-xs);
+    font-weight: 600;
     color: var(--text-muted);
   }
 
-  textarea,
-  .refine input {
+  textarea {
     width: 100%;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    padding: 8px 10px;
-    font: inherit;
-    font-size: 13px;
-    background: var(--surface);
-    color: var(--text);
     resize: vertical;
   }
 
-  .row,
   .refine {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
   }
 
@@ -287,22 +272,20 @@
   }
 
   .privacy,
-  .muted,
   .unavailable {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: var(--text-xs);
   }
 
   .unavailable {
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
   }
 
+  /* A tone step inside the dashed box, not a second frame. */
   .proposal {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    border: 1px solid var(--border);
+    gap: var(--space-3);
+    padding: var(--space-3);
     border-radius: var(--radius);
     background: var(--surface);
   }
@@ -310,65 +293,29 @@
   .proposal-head {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
-    font-size: 14px;
-  }
-
-  .tag {
-    font-size: 11px;
-    padding: 1px 8px;
-    border-radius: var(--radius-sm);
-    background: var(--surface-3);
-    color: var(--text-2);
+    font-size: var(--text-md);
   }
 
   .coverage {
     margin-left: auto;
-    font-size: 12px;
+    font-size: var(--text-xs);
     font-weight: 600;
     color: var(--text-2);
   }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12px;
-  }
-
-  th {
-    text-align: left;
-    color: var(--text-muted);
-    font-weight: 600;
-    padding: 4px 6px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  td {
-    padding: 4px 6px;
-    border-bottom: 1px solid var(--surface-3);
-    color: var(--text);
+  .data-table td {
     overflow-wrap: anywhere;
   }
 
   .msg {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .msg.err {
-    color: var(--err-text);
-  }
-
-  .msg.warn {
-    color: var(--warn-text);
+    font-size: var(--text-xs);
   }
 
   .notes ul {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 12px;
+    padding-left: var(--space-4);
+    font-size: var(--text-xs);
     color: var(--text-2);
   }
 </style>

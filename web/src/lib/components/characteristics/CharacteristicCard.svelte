@@ -16,6 +16,10 @@
   import DataRuleEditor from './DataRuleEditor.svelte';
   import EstimateEditor from './EstimateEditor.svelte';
   import ModelPartsChecklist from './ModelPartsChecklist.svelte';
+  import { partRulesStore } from '../../stores/partRulesStore';
+  import { navigateTo } from '../../stores/projectStore';
+  import { partsUsing } from '../../utils/partRules';
+  import { partLabel } from '../../utils/modelParts';
   import Explain from '../Explain.svelte';
   import { HELP } from '../../help';
   const help = HELP.characteristics;
@@ -80,7 +84,7 @@
 
 </script>
 
-<article class="card">
+<article class="panel card">
   <header class="card-header">
     <label class="name">
       <span class="visually-hidden">Name</span>
@@ -94,20 +98,20 @@
   </header>
 
   {#if view.issues.length > 0}
-    <ul class="issues" aria-label="To fix">
+    <ul class="callout callout-err issues" aria-label="To fix">
       {#each view.issues as issue}
         <li>{issue}</li>
       {/each}
     </ul>
   {/if}
 
-  <section>
-    <h3>1. What values can it take? <Explain text={help.values} tip /></h3>
+  <section data-tour="char-values">
+    <h3>What values can it take? <Explain text={help.values} tip /></h3>
     <Explain text={help.values} />
     {#key field.id}
       <SemanticFieldAssist {field} {apiFields} onApply={(draft) => onFieldChange({ ...draft, id: field.id })} />
     {/key}
-    <label>
+    <label class="field">
       Values (comma-separated)
       <input
         value={field.options.join(', ')}
@@ -120,8 +124,8 @@
     </label>
   </section>
 
-  <section>
-    <h3>2. How do we know it for each building? <Explain text={help.howKnown} tip /></h3>
+  <section data-tour="char-known">
+    <h3>How do we know it for each building? <Explain text={help.howKnown} tip /></h3>
     <Explain text={help.howKnown} />
     <div class="choice" role="radiogroup" aria-label="How we know it">
       <button
@@ -149,29 +153,27 @@
     {#if view.howKnown === 'data'}
       <DataRuleEditor {field} {gisColumns} onChange={onFieldChange} />
       {#if previewLoading}
-        <p class="muted">Updating preview…</p>
+        <p class="hint">Updating preview…</p>
       {:else if preview}
-        <p class="coverage">
-          {preview.stats.coverage_percent}% of buildings get a value · {preview.stats.unmapped_count} don't
-        </p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>{preview.source_column}</th>
-                <th>{preview.field_name}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each preview.samples as sample}
-                <tr>
-                  <td>{sample.source_value ?? ''}</td>
-                  <td>{sample.semantic_value ?? '—'}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
+        {@const stats = preview.stats}
+        {@const most = Math.max(1, ...Object.values(stats.counts), stats.unmapped_count)}
+        <Explain text={help.spread} />
+        <ul class="spread" aria-label="Buildings per value">
+          {#each Object.entries(stats.counts) as [value, count] (value)}
+            <li>
+              <span class="label">{value}</span>
+              <span class="bar" style:width="{(count / most) * 100}%"></span>
+              <span class="count">{count}</span>
+            </li>
+          {/each}
+          {#if stats.unmapped_count > 0}
+            <li class="missing">
+              <span class="label">no value</span>
+              <span class="bar" style:width="{(stats.unmapped_count / most) * 100}%"></span>
+              <span class="count">{stats.unmapped_count}</span>
+            </li>
+          {/if}
+        </ul>
       {/if}
     {:else}
       <p class="subtitle">Estimate <span class="globi">(GloBI: prior)</span> <Explain text={help.estimate} tip /></p>
@@ -181,36 +183,36 @@
           <EstimateEditor target={field.name} asCounts showPreview />
         {/key}
       {:else}
-        <p class="muted">Name it first.</p>
+        <p class="hint">Name it first.</p>
       {/if}
     {/if}
   </section>
 
   <section>
-    <h3>3. What does it change in the model? <Explain text={help.parts} tip /></h3>
+    <h3>What does it change in the model? <Explain text={help.parts} tip /></h3>
     <Explain text={help.parts} />
-    <p class="subtitle">Model parts <span class="globi">(GloBI: component map)</span></p>
-    {#if field.name}
+    <p class="subtitle">Parts <span class="globi">(GloBI: component map)</span></p>
+    {#if field.name && $partRulesStore.rules}
+      {@const using = partsUsing($partRulesStore.rules, field.name)}
+      <p class="hint">
+        {using.length ? `Decides ${using.map(partLabel).join(', ')}.` : 'No model part depends on it yet.'}
+        <button type="button" class="btn btn-link" onclick={() => navigateTo('model-parts')}>Change on Component Map</button>
+      </p>
+    {:else if field.name}
       <ModelPartsChecklist fieldName={field.name} {fieldOrder} {onShowConnections} />
       {#if view.recordCount > 0}
-        <p class="muted totals">
+        <p class="hint totals">
           Together these need {view.recordCount.toLocaleString()} library record{view.recordCount === 1 ? '' : 's'}.
         </p>
       {/if}
     {:else}
-      <p class="muted">Name it first.</p>
+      <p class="hint">Name it first.</p>
     {/if}
   </section>
 </article>
 
 <style>
   .card {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: var(--space-5);
-    background: var(--surface);
-    display: flex;
-    flex-direction: column;
     gap: var(--space-5);
   }
 
@@ -244,20 +246,9 @@
     margin-bottom: var(--space-3);
   }
 
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
-  }
-
   p {
     margin: 0 0 var(--space-2);
     font-size: var(--text-sm);
-  }
-
-  .muted {
-    color: var(--text-muted);
   }
 
   .subtitle {
@@ -265,18 +256,12 @@
   }
 
   .globi {
-    font-weight: 400;
+    font-weight: 300;
     color: var(--text-muted);
   }
 
   .issues {
-    margin: 0;
-    padding: var(--space-3) var(--space-3) var(--space-3) var(--space-6);
-    border: 1px solid var(--err-border);
-    border-radius: var(--radius);
-    background: var(--err-bg);
-    color: var(--err-text);
-    font-size: var(--text-sm);
+    padding-left: var(--space-6);
   }
 
   .choice {
@@ -296,9 +281,12 @@
     border-radius: var(--radius);
     background: var(--surface);
     color: var(--text);
-    font-weight: 400;
     text-align: left;
     cursor: pointer;
+  }
+
+  .choice button strong {
+    font-weight: 600;
   }
 
   .choice button span {
@@ -315,30 +303,39 @@
     margin-top: var(--space-3);
   }
 
-  .coverage {
-    font-weight: 600;
+  .spread {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(80px, max-content) minmax(0, 1fr) auto;
+    gap: 4px var(--space-2);
+    align-items: center;
+    font-size: var(--text-sm);
   }
 
-  .table-wrap {
-    overflow: auto;
+  .spread li {
+    display: contents;
   }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
+  .spread .bar {
+    height: 12px;
+    min-width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
   }
 
-  th,
-  td {
-    border-bottom: 1px solid var(--border);
-    padding: 8px 10px;
-    text-align: left;
-  }
-
-  th {
-    font-size: var(--text-xs);
-    font-weight: 500;
+  .spread .count {
     color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spread .missing .label,
+  .spread .missing .count {
+    color: var(--err-text);
+  }
+
+  .spread .missing .bar {
+    background: var(--err-text);
   }
 </style>

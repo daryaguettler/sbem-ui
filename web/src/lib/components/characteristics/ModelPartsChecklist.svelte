@@ -17,6 +17,7 @@
   } from '../../utils/componentMapTree';
   import SelectorCoverageGrid from '../componentMap/SelectorCoverageGrid.svelte';
   import SchemaForm from '../componentLibrary/SchemaForm.svelte';
+  import Icon from '../Icon.svelte';
 
   let {
     fieldName,
@@ -129,7 +130,7 @@
         {#if state.inheritedFrom}
           <span class="via">
             via {nodes[state.inheritedFrom]?.displayName ?? state.inheritedFrom}
-            <button type="button" class="link" onclick={() => onShowConnections(state.inheritedFrom!)}>change</button>
+            <button type="button" class="btn btn-link" onclick={() => onShowConnections(state.inheritedFrom!)}>change</button>
           </span>
         {/if}
       </label>
@@ -141,7 +142,7 @@
           <details class="records">
             <summary>
               Records named <code>{pattern(path)}</code>
-              {#if state.paths.length > 1}<span class="muted">({nodes[path]?.displayName})</span>{/if}
+              {#if state.paths.length > 1}<span class="hint">({nodes[path]?.displayName})</span>{/if}
             </summary>
             <SelectorCoverageGrid
               {componentType}
@@ -159,7 +160,7 @@
 
 {#if recordEdit}
   <div class="record-edit">
-    <button type="button" class="btn btn-ghost btn-sm" onclick={() => (recordEdit = null)}>← Back to model parts</button>
+    <button type="button" class="btn btn-ghost btn-sm" onclick={() => (recordEdit = null)}><Icon name="arrow-left" size={14} />Back to model parts</button>
     <h4>{recordEdit.exists ? 'Edit' : 'New'} {recordEdit.componentType} <code>{recordEdit.name}</code></h4>
     {#key recordEdit.name}
       <SchemaForm
@@ -173,7 +174,7 @@
     {/key}
   </div>
 {:else if Object.keys(nodes).length === 0}
-  <p class="muted">The model's component list hasn't loaded. Check that the backend is running.</p>
+  <p class="hint">The model's component list hasn't loaded. Check that the backend is running.</p>
 {:else}
   <div class="groups">
     {#each GROUPS as group}
@@ -206,11 +207,9 @@
 
   h5 {
     margin: 0 0 var(--space-2);
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    color: var(--text-2);
   }
 
   ul {
@@ -219,13 +218,13 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--space-2);
   }
 
   .part {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
     font-size: var(--text-sm);
     flex-wrap: wrap;
   }
@@ -235,19 +234,12 @@
     color: var(--text-muted);
   }
 
-  .link {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--accent);
-    text-decoration: underline;
+  .via .btn-link {
     font-size: inherit;
-    font-weight: 400;
-    cursor: pointer;
   }
 
   .records {
-    margin: 4px 0 4px 24px;
+    margin: var(--space-1) 0 var(--space-1) var(--space-6);
     font-size: var(--text-sm);
   }
 
@@ -267,12 +259,9 @@
     margin-bottom: var(--space-2);
   }
 
-  .muted {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-
   .record-edit h4 {
     margin: var(--space-2) 0;
+    font-size: var(--text-md);
+    font-weight: 600;
   }
 </style>

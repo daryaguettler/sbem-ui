@@ -280,8 +280,8 @@
     </fieldset>
 
     {#if method === 'empirical'}
-      <div class="empirical-options">
-        <label>
+      <div class="field-grid empirical-options">
+        <label class="field">
           <span>Observed in column</span>
           <Select
             value={observedColumn}
@@ -293,10 +293,10 @@
             onChange={(value) => (observedColumn = value)}
           />
         </label>
-        <label>
+        <label class="field">
           <span>Minimum buildings per combination</span>
+          <span class="field-hint">Combinations with fewer use “Everything else” instead.</span>
           <input type="number" min="1" step="1" bind:value={minCount} />
-          <small>Combinations with fewer use “Everything else” instead.</small>
         </label>
       </div>
     {/if}
@@ -311,7 +311,7 @@
     </button>
 
     {#if generationWarnings.length > 0}
-      <ul class="warnings">
+      <ul class="callout callout-warn warnings">
         {#each generationWarnings as warning}
           <li>{warning}</li>
         {/each}
@@ -353,9 +353,9 @@
       {#if sampler.values}
         {@const distribution = samplerDistribution(sampler)}
         <WeightBar {distribution} order={(sampler.values as string[]) ?? []} />
-        <div class="weight-inputs">
+        <div class="field-grid weight-inputs">
           {#each (sampler.values as string[]) ?? [] as value}
-            <label>
+            <label class="field">
               <span>{value}</span>
               <input
                 type="number"
@@ -379,7 +379,7 @@
   {/if}
 
   {#if prior || joint}
-    <div class="row">
+    <div class="actions">
       {#if showPreview}
         <button type="button" class="btn btn-secondary" onclick={runSample} disabled={sampling}>
           {sampling ? 'Drawing…' : 'Preview 2,000 draws'}
@@ -417,18 +417,12 @@
   h4 {
     margin: 0;
     font-size: var(--text-md);
+    font-weight: 600;
   }
 
   .globi {
-    font-weight: 400;
+    font-weight: 300;
     color: var(--text-muted);
-  }
-
-  .hint {
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-muted);
-    line-height: 1.5;
   }
 
   .method {
@@ -443,20 +437,20 @@
     margin: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   legend {
-    font-size: 12px;
+    font-size: var(--text-xs);
     font-weight: 600;
     color: var(--text-muted);
-    padding: 0 0 8px;
+    padding: 0 0 var(--space-2);
   }
 
   .radio {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--space-2);
     max-width: 320px;
     cursor: pointer;
   }
@@ -468,52 +462,28 @@
   }
 
   .radio strong {
-    font-size: 13px;
+    font-size: var(--text-sm);
+    font-weight: 600;
     color: var(--text);
   }
 
   .radio small {
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
     line-height: 1.4;
   }
 
   .empirical-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .empirical-options label,
-  .weight-inputs label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    color: var(--text-2);
-  }
-
-  .empirical-options small {
-    font-size: 11px;
-    color: var(--text-faint);
+    --field-min: 220px;
+    align-self: stretch;
   }
 
   .weight-inputs {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
+    --field-min: 160px;
+    gap: var(--space-3);
   }
 
   .warnings {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 13px;
-    color: var(--warn-text);
-  }
-
-  .row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    padding-left: var(--space-6);
   }
 </style>

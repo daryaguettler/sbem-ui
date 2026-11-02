@@ -15,7 +15,7 @@ from services.component_map import (
     validate_component_map,
 )
 from dependencies import get_workspace
-from services.globi_component_map import check_against_library
+from services.globi_component_map import building_contexts, check_against_library
 from services.template_loader import list_yaml_templates, load_yaml_template
 from services.workspace import ProjectWorkspace
 
@@ -115,16 +115,9 @@ async def export_component_map(payload: ComponentMapValidationRequest) -> Respon
 
 
 @router.post("/check")
-async def check_component_map(
-    n_tests: int = 200, workspace: ProjectWorkspace = Depends(get_workspace)
-):
-    """Resolve sampled semantic-field combinations of the saved map against the project db."""
+async def check_component_map(workspace: ProjectWorkspace = Depends(get_workspace)):
+    """Resolve the combinations the project's buildings need against the saved map and project db."""
     component_map = workspace.read_generated_component_map()
     if not component_map:
-        raise HTTPException(status_code=400, detail="Save the component map first.")
-    return check_against_library(
-        component_map,
-        workspace.read_semantic_fields(),
-        workspace.components_db_path,
-        n_tests=min(max(n_tests, 1), 2000),
-    )
+        raise HTTPException(status_code=400, detail="Save the model parts first.")
+    return check_against_library(component_map, workspace.components_db_path, building_contexts(workspace))

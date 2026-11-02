@@ -70,3 +70,6 @@ products/
 .env
 .env.local
 .env.*.local
+
+# projects created in the app's default folder
+data/

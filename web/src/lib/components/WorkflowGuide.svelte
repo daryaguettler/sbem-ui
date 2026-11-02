@@ -9,35 +9,29 @@
   export let actionWorkflow: WorkflowId | null = null;
 </script>
 
-<div class="guide">
+<div class="panel guide">
   <h2>{title}</h2>
   <p>{message}</p>
   {#if actionLabel && actionWorkflow}
     {@const target = actionWorkflow}
-    <button type="button" class="btn" onclick={() => navigateTo(target)}>
-      {actionLabel}
-    </button>
+    <div class="actions">
+      <button type="button" class="btn" onclick={() => navigateTo(target)}>
+        {actionLabel}
+      </button>
+    </div>
   {/if}
 </div>
 
 <style>
   .guide {
-    padding: var(--space-5);
-    border: 1px solid var(--accent-border);
-    border-radius: var(--radius);
-    background: var(--accent-soft);
-  }
-
-  .guide h2 {
-    margin: 0 0 var(--space-1);
-    font-size: var(--text-lg);
-    color: var(--text);
+    gap: var(--space-2);
+    background: var(--surface-2);
   }
 
   .guide p {
-    margin: 0 0 var(--space-3);
+    margin: 0;
+    max-width: 72ch;
     font-size: var(--text-sm);
-    color: var(--accent-hover);
-    line-height: 1.5;
+    color: var(--text-2);
   }
 </style>

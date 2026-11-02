@@ -10,6 +10,7 @@
   import { componentTreeStore } from '../../stores/componentTreeStore';
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
   import { navigateTo } from '../../stores/projectStore';
+  import Icon from '../Icon.svelte';
   import { checkComponentExistence } from '../../api/componentLibrary';
   import { MODEL_PARTS, defaultSuffix, otherPaths, type ModelPart } from '../../utils/modelParts';
   import {
@@ -170,18 +171,18 @@
             {name}
           </button>
         {:else}
-          <span class="muted">Add characteristics first.</span>
+          <span class="hint">Add characteristics first.</span>
         {/each}
       </div>
       <p class="sentence">
         {#if d.own}
           {part.label} depends on <strong>{andList(d.own.source_fields)}</strong>
-          → {cov.total} record{cov.total === 1 ? '' : 's'} named <code>{pattern(d.paths[0])}</code>
-          · <span class:ok={cov.exist === cov.total} class:missing={cov.exist < cov.total}>{cov.exist} of {cov.total} exist</span>
+          <Icon name="arrow-right" size={12} /> {cov.total} record{cov.total === 1 ? '' : 's'} named <code>{pattern(d.paths[0])}</code>
+          · <span class:status-ok={cov.exist === cov.total} class:status-err={cov.exist < cov.total}>{cov.exist} of {cov.total} exist</span>
         {:else if d.inheritedFrom}
           Chosen as part of {allLabels[d.inheritedFrom] ?? d.inheritedFrom}.
         {:else}
-          <span class="muted">Not decided by any characteristic.</span>
+          <span class="hint">Not decided by any characteristic.</span>
         {/if}
       </p>
     </li>
@@ -202,26 +203,106 @@
     </ul>
   {/each}
   <h3>Schedules and whole groups</h3>
-  <p class="muted">A whole group uses one record for everything under it (e.g. one SpaceUse with all its loads).</p>
+  <p class="hint">A whole group uses one record for everything under it (e.g. one SpaceUse with all its loads).</p>
   <ul>
     {#each groupParts as part (part.id)}{@render row(part)}{/each}
   </ul>
 </div>
 
 <style>
-  .decisions { display: flex; flex-direction: column; gap: 6px; }
-  .intro { margin: 0 0 8px; font-size: 14px; color: var(--text-2); }
-  h3 { margin: 14px 0 4px; font-size: 14px; }
-  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-  .row { display: grid; grid-template-columns: minmax(170px, 0.8fr) minmax(0, 2fr); gap: 4px 14px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .what { display: flex; flex-direction: column; }
-  .type { font-size: 11px; color: var(--text-muted); }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-2); border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
-  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-  .chip.inherited { background: var(--surface-3); color: var(--text-muted); cursor: not-allowed; }
-  .sentence { grid-column: 2; margin: 0; font-size: 12px; color: var(--text-2); }
-  .ok { color: var(--ok-text); }
-  .missing { color: var(--err-text); }
-  .muted { color: var(--text-muted); font-size: 12px; margin: 0; }
+  .decisions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .intro {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-md);
+    color: var(--text-2);
+  }
+
+  h3 {
+    margin: var(--space-4) 0 var(--space-1);
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: minmax(170px, 0.8fr) minmax(0, 2fr);
+    gap: var(--space-1) var(--space-4);
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .what {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .what strong {
+    font-weight: 600;
+  }
+
+  .type {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  /* Toggle per characteristic: filled when it decides this part. */
+  .chip {
+    min-height: 24px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-2);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .chip:hover:not(:disabled) {
+    border-color: var(--text-muted);
+  }
+
+  .chip.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .chip.inherited {
+    background: var(--surface-3);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  .sentence {
+    grid-column: 2;
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text-2);
+  }
+
+  .sentence .hint,
+  .chips .hint {
+    font-size: var(--text-xs);
+  }
 </style>

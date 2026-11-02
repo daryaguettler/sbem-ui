@@ -14,6 +14,7 @@
    */
   import type { Distribution, GeneratedKey, JointSpec } from '../../types/priorTrees';
   import { distributionTotal, weightColor, weightInk } from '../../utils/priorViz';
+  import Icon from '../Icon.svelte';
   import WeightBar from './WeightBar.svelte';
 
   export let joint: JointSpec;
@@ -77,14 +78,14 @@
 <div class="table-editor">
   <div class="toolbar">
     <label class="filter">
-      <span class="sr-only">Filter combinations</span>
-      <input type="text" placeholder="Filter combinations…" bind:value={filter} />
+      <span class="visually-hidden">Filter combinations</span>
+      <input type="text" class="input-sm" placeholder="Filter combinations…" bind:value={filter} />
     </label>
     <label class="mode">
       <input type="checkbox" bind:checked={asCounts} />
       Show as buildings out of 100
     </label>
-    <span class="count">
+    <span class="hint">
       {keys.length} of {Object.keys(joint.table).length}
       {Object.keys(joint.table).length === 1 ? 'combination' : 'combinations'}
     </span>
@@ -93,17 +94,17 @@
   {#if keys.length === 0}
     <p class="empty">No combinations match this filter.</p>
   {:else}
-    <div class="grid-scroll">
-      <table>
+    <div class="data-table-wrap">
+      <table class="data-table">
         <thead>
           <tr>
             <th class="key-col" scope="col">{joint.condition_on.join(' · ')}</th>
-            <th class="count-col" scope="col" title="Buildings in this combination">n</th>
+            <th class="num" scope="col" title="Buildings in this combination">n</th>
             {#each values as value}
               <th scope="col" class="value-col">{value}</th>
             {/each}
-            <th class="total-col" scope="col">Sum</th>
-            <th class="actions-col" scope="col"><span class="sr-only">Row actions</span></th>
+            <th class="num" scope="col">Sum</th>
+            <th scope="col"><span class="visually-hidden">Row actions</span></th>
           </tr>
         </thead>
         <tbody>
@@ -120,7 +121,7 @@
                   </span>
                 {/if}
               </th>
-              <td class="count-col">{info ? info.count.toLocaleString() : '—'}</td>
+              <td class="num muted">{info ? info.count.toLocaleString() : '—'}</td>
               {#each values as value}
                 {@const weight = cellValue(key, value)}
                 <td class="cell" style="background: {weightColor(weight)};">
@@ -136,11 +137,11 @@
                   />
                 </td>
               {/each}
-              <td class="total-col" class:off={Math.abs(total - 1) > 0.005}>{asCounts ? shown(total) : total.toFixed(2)}</td>
-              <td class="actions-col">
-                <button type="button" title="Rescale this row to sum to 1" aria-label="Rescale row to sum to 1" onclick={() => normalizeRow(key)}>Σ1</button>
-                <button type="button" title="Spread evenly across all values" aria-label="Spread row evenly" onclick={() => levelRow(key)}>Even</button>
-                <button type="button" class="remove" title="Remove this combination" onclick={() => onRemoveRow(key)}>×</button>
+              <td class="num muted" class:off={Math.abs(total - 1) > 0.005}>{asCounts ? shown(total) : total.toFixed(2)}</td>
+              <td class="row-actions">
+                <button type="button" class="btn btn-ghost btn-sm" title="Rescale this row to sum to 1" aria-label="Rescale row to sum to 1" onclick={() => normalizeRow(key)}>Σ1</button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Spread evenly across all values" aria-label="Spread row evenly" onclick={() => levelRow(key)}>Even</button>
+                <button type="button" class="btn btn-ghost btn-sm" title="Remove this combination" aria-label="Remove this combination" onclick={() => onRemoveRow(key)}><Icon name="x" size={14} /></button>
               </td>
             </tr>
           {/each}
@@ -150,16 +151,16 @@
   {/if}
 
   <div class="fallback">
-    <div class="fallback-header">
-      <h4>Everything else <span class="globi">(fallback)</span></h4>
-      <p>
+    <div>
+      <h4>Everything else <span class="hint">(fallback)</span></h4>
+      <p class="hint">
         For buildings whose combination isn't listed above. Without it, those buildings can't be sampled.
       </p>
     </div>
     <WeightBar distribution={fallback} order={values} />
-    <div class="fallback-inputs">
+    <div class="field-grid" style="--field-min: 150px">
       {#each values as value}
-        <label>
+        <label class="field">
           <span>{value}</span>
           <input
             type="number"
@@ -176,96 +177,60 @@
 </div>
 
 <style>
-  .mode {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--text-2);
-  }
-
-  .globi {
-    font-weight: 400;
-    color: var(--text-muted);
-  }
-
   .table-editor {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: var(--space-3);
   }
 
   .filter input {
-    padding: 6px 10px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    font-size: 13px;
     width: 240px;
   }
 
-  .count {
-    font-size: 12px;
-    color: var(--text-muted);
+  .mode {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--text-2);
   }
 
-  .grid-scroll {
-    overflow: auto;
+  .data-table-wrap {
     max-height: 460px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-  }
-
-  table {
-    border-collapse: separate;
-    border-spacing: 0;
-    width: 100%;
-    font-size: 12px;
   }
 
   thead th {
-    position: sticky;
-    top: 0;
     z-index: 2;
-    background: var(--surface-2);
-    border-bottom: 1px solid var(--border);
-    padding: 8px;
-    text-align: left;
-    font-weight: 600;
-    color: var(--text-2);
-    white-space: nowrap;
   }
 
   .value-col {
     text-align: center;
   }
 
-  tbody th,
-  tbody td {
-    border-bottom: 1px solid var(--surface-3);
-    padding: 0;
-  }
-
+  /* Row headers stick to the left edge, not the top like the column headers. */
   .key-col {
     position: sticky;
     left: 0;
     z-index: 1;
-    background: var(--surface);
     min-width: 190px;
-    padding: 6px 10px !important;
-    text-align: left;
-    vertical-align: middle;
+    background: var(--surface);
   }
 
   thead .key-col {
     z-index: 3;
-    background: var(--surface-2);
+  }
+
+  tbody th.key-col {
+    border-bottom-color: var(--border);
+    white-space: normal;
   }
 
   .key-name {
@@ -276,7 +241,8 @@
 
   .key-source {
     display: block;
-    font-size: 10px;
+    font-size: var(--text-xs);
+    font-weight: 300;
     color: var(--text-faint);
   }
 
@@ -284,28 +250,31 @@
     color: var(--ok-text);
   }
 
-  .count-col {
-    padding: 6px 8px !important;
-    text-align: right;
+  .muted {
     color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+
+  .off {
+    color: var(--warn-text);
+    font-weight: 600;
   }
 
   /* A 2px surface gap keeps neighbouring heatmap fills from reading as one block. */
   .cell {
+    min-width: 76px;
+    padding: 0;
     border-left: 2px solid var(--surface);
     border-right: 2px solid var(--surface);
-    min-width: 76px;
   }
 
   .cell input {
     width: 100%;
     border: none;
     background: transparent;
-    padding: 8px 6px;
+    padding: var(--space-2);
     text-align: center;
-    font-size: 12px;
+    font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
     font-weight: 600;
   }
@@ -314,104 +283,27 @@
     outline: 2px solid var(--accent);
     outline-offset: -2px;
     background: var(--surface);
+    /* beats the inline heatmap ink while editing */
     color: var(--text) !important;
   }
 
-  .total-col {
-    padding: 6px 10px !important;
-    text-align: right;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .total-col.off {
-    color: var(--warn-text);
-    font-weight: 600;
-  }
-
-  .actions-col {
-    padding: 4px 6px !important;
+  .row-actions {
+    padding: var(--space-1);
     white-space: nowrap;
-  }
-
-  .actions-col button {
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-2);
-    border-radius: var(--radius-sm);
-    padding: 2px 6px;
-    font-size: 12px;
-    cursor: pointer;
-    font-weight: 400;
-  }
-
-  .actions-col button:hover {
-    background: var(--surface-3);
-  }
-
-  .actions-col .remove {
-    color: var(--err-text);
-  }
-
-  .empty {
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-muted);
   }
 
   .fallback {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 14px;
-    border: 1px solid var(--border);
+    gap: var(--space-3);
+    padding: var(--space-4);
     border-radius: var(--radius);
     background: var(--surface-2);
   }
 
-  .fallback-header h4 {
-    margin: 0 0 4px;
-    font-size: 13px;
-  }
-
-  .fallback-header p {
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-muted);
-    line-height: 1.5;
-  }
-
-  .fallback-inputs {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-  }
-
-  .fallback-inputs label {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 11px;
-    color: var(--text-2);
-  }
-
-  .fallback-inputs input {
-    padding: 5px 8px;
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+  .fallback h4 {
+    margin: 0 0 var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: 600;
   }
 </style>

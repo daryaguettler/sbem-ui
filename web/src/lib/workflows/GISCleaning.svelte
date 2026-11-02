@@ -9,6 +9,7 @@
   import { downloadFromResponse } from '../utils/download';
   import Explain from '../components/Explain.svelte';
   import Select from '../components/Select.svelte';
+  import Icon from '../components/Icon.svelte';
   import { HELP } from '../help';
   const help = HELP.gis;
 
@@ -257,10 +258,10 @@
   </div>
 
   <div class="workflow-content">
-    <div class="panel">
-      <h2>1. Upload GIS data <Explain text={help.upload} tip /></h2>
+    <div class="panel" data-tour="gis-upload">
+      <h2>Upload GIS data <Explain text={help.upload} tip /></h2>
       <Explain text={help.upload} />
-      <div class="upload-row">
+      <div class="actions">
         <input
           type="file"
           accept=".csv,.geojson,.json"
@@ -272,7 +273,7 @@
         <button type="button" class="btn" onclick={uploadFile} disabled={uploading || !selectedFile}>
           {uploading ? 'Uploading…' : 'Upload'}
         </button>
-        <span class="or">or</span>
+        <span class="hint">or</span>
         <button type="button" class="btn btn-secondary" onclick={useSample} disabled={uploading}>
           Use sample buildings (100)
         </button>
@@ -282,31 +283,32 @@
           <strong>{$gisDataset.filename}</strong>
           <span>{$gisDataset.rowCount} rows</span>
           <span>{$gisDataset.columnCount} columns</span>
-          <span class:validated={$gisDataset.validated} class:pending={!$gisDataset.validated}>
-            <span aria-hidden="true">{$gisDataset.validated ? '✓' : '!'}</span>
-            {$gisDataset.validated ? 'Validated' : 'Not validated yet'}
-          </span>
+          {#if $gisDataset.validated}
+            <span class="status-ok"><Icon name="check" size={14} />Validated</span>
+          {:else}
+            <span class="status-warn"><Icon name="alert" size={14} />Not validated yet</span>
+          {/if}
         </div>
       {/if}
     </div>
 
     {#if columns.length > 0}
-      <div class="panel">
-        <h2>2. Match columns <Explain text={help.match} tip /></h2>
+      <div class="panel" data-tour="gis-match">
+        <h2>Match columns <Explain text={help.match} tip /></h2>
         <Explain text={help.match} />
-        <div class="mapping-grid">
+        <div class="field-grid">
           {#each roles as role}
-            <label>
+            <label class="field">
               <span class="role-label">
                 {role.label}
                 {#if role.required}
-                  <span class="tag required">required</span>
+                  <span class="tag tag-err">required</span>
                 {:else if role.recommended}
-                  <span class="tag recommended">recommended</span>
+                  <span class="tag tag-warn">recommended</span>
                 {/if}
               </span>
               {#if role.description}
-                <span class="role-description">{role.description}</span>
+                <span class="field-hint">{role.description}</span>
               {/if}
               <Select
                 value={columnMappings[role.key] || ''}
@@ -321,8 +323,8 @@
         </div>
       </div>
 
-      <div class="panel">
-        <h2>3. Check for missing values <Explain text={help.missing} tip /></h2>
+      <div class="panel" data-tour="gis-missing">
+        <h2>Check for missing values <Explain text={help.missing} tip /></h2>
         <Explain text={help.missing} />
         <details open={columns.length <= 12}>
           <summary>Columns to check ({validateColumns.size} of {columns.length} selected)</summary>
@@ -344,17 +346,17 @@
       </div>
 
       <div class="panel">
-        <h2>4. Validate <Explain text={help.validate} tip /></h2>
+        <h2>Validate <Explain text={help.validate} tip /></h2>
         <Explain text={help.validate} />
-        <label class="checkbox-row drop-option">
+        <label class="checkbox-row">
           <input type="checkbox" bind:checked={dropIncompleteRows} />
           <span>Drop rows with missing values in the checked columns</span>
         </label>
         {#if incompleteRowCount > 0 && !dropIncompleteRows}
-          <p class="help">{incompleteRowCount} rows have missing values. Tick the box above to drop them.</p>
+          <p class="hint">{incompleteRowCount} rows have missing values. Tick the box above to drop them.</p>
         {/if}
-        <div class="action-row">
-          <button type="button" class="btn" onclick={validateDataset} disabled={cleaning}>
+        <div class="actions">
+          <button type="button" class="btn" onclick={validateDataset} disabled={cleaning} data-tour="gis-validate">
             {cleaning ? 'Validating…' : dropIncompleteRows ? 'Validate & drop rows' : 'Validate'}
           </button>
           {#if $gisDataset?.validated}
@@ -364,10 +366,10 @@
           {/if}
         </div>
         {#if droppedRowCount > 0}
-          <p class="success">Dropped {droppedRowCount} incomplete rows. {$gisDataset?.rowCount ?? 0} rows remain.</p>
+          <p class="status-ok"><Icon name="check" size={14} />Dropped {droppedRowCount} incomplete rows. {$gisDataset?.rowCount ?? 0} rows remain.</p>
         {/if}
         {#if outputColumns.length > 0 && $gisDataset?.validated}
-          <p class="help">Export includes: {outputColumns.join(', ')}</p>
+          <p class="hint">Export includes: {outputColumns.join(', ')}</p>
         {/if}
         {#if validationIssues.length > 0}
           <ul class="issues">
@@ -400,132 +402,55 @@
 </section>
 
 <style>
-  .help {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-
-  .upload-row {
-    display: flex;
-    gap: var(--space-3);
-    align-items: center;
-  }
-
-  .or {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-
   .summary {
     display: flex;
-    gap: var(--space-4);
     flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
     color: var(--text-2);
-    font-size: 14px;
-  }
-
-  .validated {
-    color: var(--ok-text);
-    font-weight: 600;
-  }
-
-  .pending {
-    color: var(--warn-text);
-    font-weight: 600;
-  }
-
-  .mapping-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 16px;
-  }
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 13px;
-    color: var(--text-2);
+    font-size: var(--text-sm);
   }
 
   .role-label {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    font-weight: 600;
-    color: var(--text);
-  }
-
-  .role-description {
-    color: var(--text-muted);
-    font-size: 12px;
-  }
-
-  .tag {
-    font-size: 11px;
-    padding: 2px 6px;
-    border-radius: var(--radius-sm);
-    font-weight: 700;
-  }
-
-  .tag.required {
-    background: var(--err-bg);
-    color: var(--err-text);
-  }
-
-  .tag.recommended {
-    background: var(--warn-bg);
-    color: var(--warn-text);
-  }
-
-  input[type='file'] {
-    font: inherit;
-    font-size: var(--text-sm);
+    gap: var(--space-2);
   }
 
   details summary {
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
+    margin-bottom: var(--space-3);
     color: var(--text-2);
-    margin-bottom: 10px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
   }
 
   .validation-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-1) var(--space-4);
   }
 
   .checkbox-row {
-    flex-direction: row;
+    display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    gap: var(--space-2);
+    min-height: var(--control-h-sm);
+    color: var(--text-2);
+    font-size: var(--text-sm);
   }
 
   .null-count {
     margin-left: auto;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
   }
 
   .issues {
-    padding-left: 18px;
+    padding-left: var(--space-4);
     color: var(--warn-text);
-  }
-
-  .action-row {
-    display: flex;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-  }
-
-  .success {
-    color: var(--ok-text);
     font-size: var(--text-sm);
   }
 </style>

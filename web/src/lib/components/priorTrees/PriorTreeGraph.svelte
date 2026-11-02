@@ -107,7 +107,7 @@
             {displayName(node.name)}
             <title>{node.name}</title>
           </text>
-          <text x={node.x + 10} y={node.y + 29} font-size="10" style="fill: var(--text-muted)">
+          <text x={node.x + 10} y={node.y + 29} font-size="11" style="fill: var(--text-muted)">
             {style.label}
           </text>
         </g>
@@ -132,25 +132,25 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
-    padding: 4px;
+    padding: var(--space-1);
   }
 
   .legend {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px 16px;
-    margin: 10px 0 0;
+    gap: var(--space-2) var(--space-4);
+    margin: var(--space-3) 0 0;
     padding: 0;
     list-style: none;
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-2);
   }
 
   .legend li {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
   }
 
   .swatch {
@@ -162,11 +162,5 @@
 
   .note {
     color: var(--text-faint);
-  }
-
-  .empty {
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-muted);
   }
 </style>

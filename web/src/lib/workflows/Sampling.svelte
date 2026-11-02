@@ -7,8 +7,10 @@
   import { onMount } from 'svelte';
   import WorkflowGuide from '../components/WorkflowGuide.svelte';
   import Explain from '../components/Explain.svelte';
+  import Icon from '../components/Icon.svelte';
   import { fetchSamplingSettings, previewSampling, writeSampling, type SamplingSettings, type SamplingSummary } from '../api/sampling';
   import { gisDataset, navigateTo } from '../stores/projectStore';
+  import { tutorialMarks } from '../stores/tutorial';
   import { dirtyKinds } from '../stores/projectArtifacts';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import { priorTreesStore } from '../stores/priorTreesStore';
@@ -60,6 +62,7 @@
     error = null;
     try {
       written = await writeSampling($semanticFieldsStore.fields, $priorTreesStore.config, settings);
+      tutorialMarks.update((marks) => ({ ...marks, sampling: true }));
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to write the sample.';
     } finally {
@@ -85,19 +88,19 @@
         actionWorkflow="characteristics"
       />
     {:else if settings}
-      <div class="panel">
+      <div class="panel" data-tour="sampling-buildings">
         <h2>Buildings <Explain text={help.buildings} tip /></h2>
         <Explain text={help.buildings} />
         <div class="modes" role="radiogroup" aria-label="Which buildings">
-          <label><input type="radio" bind:group={settings.buildings.mode} value="all" /> All buildings ({$gisDataset.rowCount})</label>
+          <label><input type="radio" bind:group={settings.buildings.mode} value="all" /><span class="wide">All buildings ({$gisDataset.rowCount})</span></label>
           <label>
-            <input type="radio" bind:group={settings.buildings.mode} value="random" /> A random
+            <input type="radio" bind:group={settings.buildings.mode} value="random" /><span>A random</span>
             <input type="number" min="1" bind:value={settings.buildings.n} disabled={settings.buildings.mode !== 'random'} aria-label="Number of buildings" />
           </label>
           <label>
-            <input type="radio" bind:group={settings.buildings.mode} value="stratified" />
+            <input type="radio" bind:group={settings.buildings.mode} value="stratified" /><span>Stratified:</span>
             <input type="number" min="1" bind:value={settings.buildings.per_stratum} disabled={settings.buildings.mode !== 'stratified'} aria-label="Buildings per combination" />
-            per combination of
+            <span>per combination of</span>
           </label>
         </div>
         {#if settings.buildings.mode === 'stratified'}
@@ -105,21 +108,21 @@
             {#each fromData as name}
               <label class="chip"><input type="checkbox" checked={settings.buildings.strata.includes(name)} onchange={() => toggleStratum(name)} /> {name}</label>
             {:else}
-              <span class="muted">Add a From my data characteristic to stratify by.</span>
+              <span class="hint">Add a From my data characteristic to stratify by.</span>
             {/each}
           </div>
         {/if}
         <label class="inline">Seed <input type="number" min="0" step="1" bind:value={settings.seed} /></label>
       </div>
 
-      <div class="panel">
+      <div class="panel" data-tour="sampling-draws">
         <h2>Estimates <Explain text={help.draws} tip /></h2>
         <Explain text={help.draws} />
         {#if summary && summary.estimated.length > 0}
           <label class="inline">Draws per building <input type="number" min="1" max="1000" bind:value={settings.draws} /></label>
-          <p class="muted">Drawn each time: {summary.estimated.join(', ')}.</p>
+          <p class="hint">Drawn each time: {summary.estimated.join(', ')}.</p>
         {:else}
-          <p class="muted">No estimated characteristics, so each building is simulated once with its data values.</p>
+          <p class="hint">No estimated characteristics, so each building is simulated once with its data values.</p>
         {/if}
       </div>
 
@@ -129,18 +132,21 @@
             <strong>{summary.buildings}</strong> buildings{#if summary.strata !== null} in {summary.strata} combinations{/if}
             × <strong>{summary.draws}</strong> draw{summary.draws === 1 ? '' : 's'} = <strong>{summary.simulations.toLocaleString()}</strong> simulations
           </p>
-          {#if summary.skipped}<p class="muted">{summary.skipped} buildings left out: they lack a value an estimate depends on.</p>{/if}
+          {#if summary.skipped}<p class="hint">{summary.skipped} buildings left out: they lack a value an estimate depends on.</p>{/if}
         {/if}
-        <div>
-          <button type="button" class="btn" onclick={write} disabled={writing || !summary}>
+        <div class="actions">
+          <button type="button" class="btn" onclick={write} disabled={writing || !summary} data-tour="sampling-write">
             {writing ? 'Writing…' : 'Write sampled buildings'}
           </button>
         </div>
         {#if written}
-          <p class="done">
-            <span aria-hidden="true">✓</span> Wrote {written.rows} rows to <code>{written.path}</code>. Model Execution's batch files will run over it.
+          <div class="actions">
+            <p class="status-ok">
+              <Icon name="check" size={14} />
+              <span>Wrote {written.rows} rows to <code>{written.path}</code>. Model Execution's batch files will run over it.</span>
+            </p>
             <button type="button" class="btn btn-link" onclick={() => navigateTo('model-execution')}>Go to Model Execution</button>
-          </p>
+          </div>
         {/if}
       </div>
     {/if}
@@ -150,12 +156,14 @@
 
 <style>
   .workflow-content { max-width: 860px; }
-  .modes { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
-  .modes label, .inline { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; }
+  /* One subgrid row per option (radio | words | number | words), so the number inputs share a column. */
+  .modes { display: grid; grid-template-columns: auto auto auto 1fr; column-gap: var(--space-2); row-gap: var(--space-2); }
+  .modes label { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
+  .modes .wide { grid-column: 2 / -1; }
+  .inline { display: inline-flex; align-items: center; gap: var(--space-2); }
   input[type='number'] { width: 80px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
-  .readout { margin: 0; font-size: 15px; }
-  .muted { color: var(--text-muted); font-size: 13px; margin: 0; }
-  .done { color: var(--ok-text); font-size: 13px; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chip { display: inline-flex; align-items: center; gap: var(--space-2); padding: 2px var(--space-3); border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--text-sm); }
+  .readout { font-size: var(--text-lg); }
+  .status-ok { font-size: var(--text-sm); }
 </style>

@@ -1,3 +1,4 @@
+import { GENERATED_SCENARIO_NOTE } from '../utils/partRules';
 import { writable } from 'svelte/store';
 import type { SemanticField, GISColumn, SemanticFieldsState } from '../types/semanticFields';
 import { ensureTransformationRule } from '../utils/semanticFieldRules';
@@ -98,7 +99,10 @@ export const semanticFieldsStore = {
     }));
   },
   loadFromTemplate: (templateData: Record<string, unknown>) => {
-    const fields = ((templateData.Fields as Record<string, unknown>[]) || []).map(mapTemplateField);
+    // the Scenario field the server makes from retrofit packages is not the user's to edit
+    const fields = ((templateData.Fields as Record<string, unknown>[]) || [])
+      .filter((field) => field.Description !== GENERATED_SCENARIO_NOTE)
+      .map(mapTemplateField);
 
     update((state) => ({
       ...state,

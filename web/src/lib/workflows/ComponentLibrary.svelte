@@ -2,6 +2,7 @@
   import SchemaForm from '../components/componentLibrary/SchemaForm.svelte';
   import ScheduleVariability from '../components/componentLibrary/ScheduleVariability.svelte';
   import SidePanel from '../components/SidePanel.svelte';
+  import Icon from '../components/Icon.svelte';
   import {
     fetchComponentTypes,
     fetchComponentRecords,
@@ -13,6 +14,8 @@
   import { componentTreeStore } from '../stores/componentTreeStore';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import { dirtyKinds } from '../stores/projectArtifacts';
+  import { partRulesStore } from '../stores/partRulesStore';
+  import { GENERATED_PREFIX, optionsInUse } from '../utils/partRules';
   import { buildSelectorCombinations, collectSelectors } from '../utils/componentMapTree';
   import Explain from '../components/Explain.svelte';
   import { HELP } from '../help';
@@ -37,6 +40,11 @@
   type Needed = { type: string; records: Array<{ name: string; exists: boolean }> };
   let needed = $state<Needed[]>([]);
   let loadingNeeded = $state(false);
+  /** Records part rules build on every save; hidden unless asked for, and not for editing. */
+  let showGenerated = $state(false);
+  const rules = $derived($partRulesStore.rules);
+  const generatedCount = $derived(records.filter((r) => r.Name.startsWith(GENERATED_PREFIX)).length);
+  const shownRecords = $derived(showGenerated ? records : records.filter((r) => !r.Name.startsWith(GENERATED_PREFIX)));
 
   async function loadTypes() {
     loadingTypes = true;
@@ -105,7 +113,7 @@
 
   async function loadNeeded() {
     const map = $componentMapStore.map;
-    if (!map) {
+    if (!map && !rules) {
       needed = [];
       return;
     }
@@ -114,7 +122,13 @@
     try {
       const fields = $semanticFieldsStore.fields.map((field) => ({ name: field.name, options: field.options }));
       const namesByType = new Map<string, Set<string>>();
-      for (const selector of collectSelectors(map)) {
+      // with part rules, the options they use; otherwise every name the map's selectors build
+      for (const [path, options] of Object.entries(rules ? optionsInUse(rules) : {})) {
+        const type = $componentTreeStore.nodesByPath[path]?.componentType;
+        if (!type) continue;
+        namesByType.set(type, new Set([...(namesByType.get(type) ?? []), ...options]));
+      }
+      for (const selector of rules || !map ? [] : collectSelectors(map)) {
         const type = $componentTreeStore.nodesByPath[selector.path]?.componentType;
         if (!type) continue;
         const names = namesByType.get(type) ?? new Set<string>();
@@ -167,7 +181,7 @@
         Records
       </button>
       <button type="button" role="tab" aria-selected={view === 'needed'} class:active={view === 'needed'} onclick={showNeeded}>
-        Needed by the model
+        {rules ? 'Options in use' : 'Needed by the model'}
       </button>
       <button type="button" role="tab" aria-selected={view === 'variability'} class:active={view === 'variability'} onclick={() => (view = 'variability')}>
         Schedule variability
@@ -205,7 +219,7 @@
     <div class="body needed-body" class:panel-open={panel.mode !== 'closed'}>
       <section class="records">
         <div class="records-header">
-          <h2>Needed by the model <Explain text={help.needed} tip /></h2>
+          <h2>{rules ? 'Options your part rules use' : 'Needed by the model'} <Explain text={help.needed} tip /></h2>
           <button type="button" class="btn btn-secondary" onclick={loadNeeded} disabled={loadingNeeded}>Refresh</button>
         </div>
         <Explain text={help.needed} />
@@ -215,29 +229,39 @@
         {#if error}<p class="error" role="alert">{error}</p>{/if}
         {#if loadingNeeded}
           <p class="hint">Checking the library…</p>
-        {:else if !$componentMapStore.map || needed.length === 0}
-          <div class="empty">
-            <p>No model parts are connected yet. On Building Characteristics, tick what each characteristic changes in the model.</p>
-          </div>
+        {:else if needed.length === 0}
+          <p class="empty empty-box">Nothing is chosen yet. On Component Map, choose an option for each part.</p>
         {:else}
           <p class="summary-line">
-            {missingCount === 0 ? '✓ Every record the model needs exists.' : `${missingCount} record${missingCount === 1 ? '' : 's'} still missing.`}
-            Records these point to (assemblies, constructions, schedules) are picked inside each form; create them there with + New or under their own type.
+            {#if missingCount === 0}
+              <span class="status-ok"><Icon name="check" size={14} />Every record the model needs exists.</span>
+            {:else}
+              <span class="status-warn"><Icon name="alert" size={14} />{missingCount} record{missingCount === 1 ? '' : 's'} still missing.</span>
+            {/if}
+            {rules
+              ? `Edit an option here to change every building that uses it. Records named ${GENERATED_PREFIX}… are rebuilt from your part rules on every save.`
+              : 'Records these point to (assemblies, constructions, schedules) are picked inside each form; create them there with + New or under their own type.'}
           </p>
           {#each needed as group (group.type)}
             <h3 class="group-title">{group.type} <span class="hint">{group.records.filter((r) => r.exists).length} of {group.records.length} exist</span></h3>
-            <table>
+            <table class="data-table">
               <tbody>
                 {#each group.records as record (record.name)}
                   <tr>
                     <td><code>{record.name}</code></td>
-                    <td class="status" class:ok={record.exists} class:missing={!record.exists}>
-                      <span aria-hidden="true">{record.exists ? '✓' : '✕'}</span> {record.exists ? 'Exists' : 'Missing'}
+                    <td>
+                      {#if record.exists}
+                        <span class="status-ok"><Icon name="check" size={14} />Exists</span>
+                      {:else}
+                        <span class="status-err"><Icon name="x" size={14} />Missing</span>
+                      {/if}
                     </td>
-                    <td class="row-actions">
-                      <button type="button" class="btn btn-secondary btn-sm" onclick={() => openNeeded(group.type, record.name, record.exists)}>
-                        {record.exists ? 'Edit' : '+ Create'}
-                      </button>
+                    <td>
+                      <div class="actions row-actions">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick={() => openNeeded(group.type, record.name, record.exists)}>
+                          {#if record.exists}Edit{:else}<Icon name="plus" size={14} />Create{/if}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 {/each}
@@ -272,9 +296,15 @@
       {#if selectedType}
         <div class="records-header">
           <h2>{selectedType} <Explain text={help.records} tip /></h2>
-          <button type="button" class="btn" onclick={openCreate}>+ Add {selectedType}</button>
+          <button type="button" class="btn" onclick={openCreate}><Icon name="plus" size={14} />Add {selectedType}</button>
         </div>
         <Explain text={help.records} />
+        {#if generatedCount > 0}
+          <label class="hint generated-toggle">
+            <input type="checkbox" bind:checked={showGenerated} />
+            Show the {generatedCount} record{generatedCount === 1 ? '' : 's'} built from part rules ({GENERATED_PREFIX}…); they are rebuilt on every save
+          </label>
+        {/if}
 
         {#if error}
           <p class="error" role="alert">{error}</p>
@@ -282,24 +312,26 @@
 
         {#if loadingRecords}
           <p class="hint">Loading records…</p>
-        {:else if records.length === 0}
-          <div class="empty">
+        {:else if shownRecords.length === 0}
+          <div class="empty empty-box empty-state">
             <p>No {selectedType} records yet.</p>
-            <button type="button" class="btn btn-secondary" onclick={openCreate}>+ Add the first one</button>
+            <button type="button" class="btn btn-secondary" onclick={openCreate}><Icon name="plus" size={14} />Add the first one</button>
           </div>
         {:else}
-          <table>
+          <table class="data-table">
             <thead>
               <tr><th>Name</th><th><span class="visually-hidden">Actions</span></th></tr>
             </thead>
             <tbody>
-              {#each records as record}
+              {#each shownRecords as record}
                 <tr class:editing={panel.mode === 'edit' && panel.name === record.Name}>
                   <td>{record.Name}</td>
-                  <td class="row-actions">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick={() => openEdit(record.Name)}>Edit</button>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick={() => openDuplicate(record.Name)}>Duplicate</button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick={() => removeRecord(record.Name)}>Delete</button>
+                  <td>
+                    <div class="actions row-actions">
+                      <button type="button" class="btn btn-secondary btn-sm" onclick={() => openEdit(record.Name)}>Edit</button>
+                      <button type="button" class="btn btn-secondary btn-sm" onclick={() => openDuplicate(record.Name)}>Duplicate</button>
+                      <button type="button" class="btn btn-danger btn-sm" onclick={() => removeRecord(record.Name)}>Delete</button>
+                    </div>
                   </td>
                 </tr>
               {/each}
@@ -317,25 +349,10 @@
 </div>
 
 <style>
+  /* Tab underlines sit on the header's own bottom rule. */
   .tabs {
-    display: flex;
-    gap: var(--space-2);
-    margin-top: var(--space-3);
-  }
-
-  .tabs button {
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: var(--space-2) var(--space-3);
-    color: var(--text-2);
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .tabs button.active {
-    border-bottom-color: var(--accent);
-    color: var(--text);
+    margin: var(--space-3) 0 calc(-1 * var(--space-5));
+    border-bottom: none;
   }
 
   .body.needed-body {
@@ -347,22 +364,18 @@
   }
 
   .summary-line {
-    font-size: 13px;
+    margin-bottom: var(--space-2);
     color: var(--text-2);
-    margin: 0 0 8px;
+    font-size: var(--text-sm);
   }
 
   .group-title {
-    margin: 16px 0 6px;
-    font-size: 14px;
-  }
-
-  .status.ok {
-    color: var(--ok-text);
-  }
-
-  .status.missing {
-    color: var(--err-text);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: var(--text-md);
+    font-weight: 600;
   }
 
   .variability-view {
@@ -410,43 +423,44 @@
 
   .types {
     border-right: 1px solid var(--border);
-    background: var(--surface-2);
-    padding: 12px;
+    padding: var(--space-3);
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-1);
     overflow: auto;
   }
 
   .type-item {
     text-align: left;
-    padding: 8px 12px;
+    padding: var(--space-2) var(--space-3);
     border: none;
     border-radius: var(--radius);
     background: transparent;
     color: var(--text-2);
-    font-size: 14px;
+    font-size: var(--text-md);
     cursor: pointer;
   }
 
   .type-item:hover {
     background: var(--surface-3);
+    color: var(--text);
   }
 
   .type-item.active {
-    background: var(--accent-soft);
-    color: var(--accent);
+    background: var(--surface-3);
+    color: var(--text);
     font-weight: 600;
   }
 
   .records {
-    padding: 24px 32px;
+    padding: var(--space-6) var(--space-8);
     overflow: auto;
     min-width: 0;
   }
 
   .records-header,
-  table {
+  .data-table,
+  .empty-box {
     max-width: 960px;
   }
 
@@ -454,46 +468,28 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
   }
 
   .records-header h2 {
-    font-size: 18px;
+    font-size: var(--text-lg);
+    font-weight: 600;
     color: var(--text);
   }
 
-  .empty {
+  .generated-toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .empty-state {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
-    padding: 24px;
-    max-width: 960px;
-    border: 1px dashed var(--border-strong);
-    border-radius: var(--radius);
-    color: var(--text-muted);
-    font-size: 14px;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-  }
-
-  th {
-    text-align: left;
-    padding: 8px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-muted);
-    font-weight: 600;
-  }
-
-  td {
-    padding: 8px;
-    border-bottom: 1px solid var(--surface-3);
-    color: var(--text);
+    gap: var(--space-3);
   }
 
   tr.editing td {
@@ -501,14 +497,7 @@
   }
 
   .row-actions {
-    display: flex;
-    gap: 6px;
     justify-content: flex-end;
-  }
-
-  .hint {
-    font-size: var(--text-sm);
-    color: var(--text-muted);
   }
 
   .error {

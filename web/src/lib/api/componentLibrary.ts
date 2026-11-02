@@ -99,3 +99,16 @@ export async function checkComponentExistence(
   );
   return existence;
 }
+
+/** A construction of `type` (Facade, FlatRoof, ...) sized to reach `uValue`; returns the U-value reached. */
+export function constructionForU(
+  name: string,
+  type: string,
+  uValue: number
+): Promise<{ record: ComponentRecord; u_value: number }> {
+  return requestJson('/api/component-library/construction-for-u', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, type, u_value: uValue }),
+  });
+}

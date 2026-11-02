@@ -86,6 +86,26 @@ async def create_record(
         client.disconnect()
 
 
+class ConstructionForURequest(BaseModel):
+    name: str
+    type: str
+    u_value: float
+
+
+@router.post("/construction-for-u")
+async def construction_for_u(body: ConstructionForURequest, workspace: ProjectWorkspace = Depends(get_workspace)):
+    """A construction of the given type that reaches the U-value, from a typical stack plus insulation."""
+    client = _client(workspace)
+    try:
+        return lib.construction_for_u(client, body.name, body.type, body.u_value)
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except prisma_errors.PrismaError as exc:
+        raise _db_error("ConstructionAssembly", exc) from exc
+    finally:
+        client.disconnect()
+
+
 @router.put("/{component_type}/records/{name}")
 async def update_record(
     component_type: str,

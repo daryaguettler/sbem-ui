@@ -4,9 +4,12 @@
  * POST -- saving writes that document into the project instead of downloading it.
  */
 
+import type { CompileResult } from './partRules';
+
 export type ArtifactKind =
   | 'semantic-fields'
   | 'component-map'
+  | 'part-rules'
   | 'priors'
   | 'retrofits'
   | 'schedule-variability';
@@ -68,7 +71,8 @@ export function fetchSavedArtifact(kind: ArtifactKind): Promise<SavedArtifact> {
 }
 
 /** `payload` is whatever working state that editor already POSTs to its /export route. */
-export function saveArtifact(kind: ArtifactKind, payload: object): Promise<WorkspaceFile> {
+/** Saving characteristics, part rules or retrofits also recompiles the rules (`compile`). */
+export function saveArtifact(kind: ArtifactKind, payload: object): Promise<WorkspaceFile & { compile?: CompileResult }> {
   return requestJson(`/api/artifacts/${kind}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

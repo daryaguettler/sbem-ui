@@ -1,4 +1,5 @@
 export type WorkflowId =
+  | 'model-parts'
   | 'gis-cleaning'
   | 'characteristics'
   | 'component-library'

@@ -80,6 +80,13 @@ ARTIFACTS: dict[str, ArtifactSpec] = {
         description="Per-node selector declarations over the component tree.",
         to_document=_as_is,
     ),
+    "part-rules": ArtifactSpec(
+        kind="part-rules",
+        label="Model parts",
+        file_key="part_rules",
+        description="What each model part depends on, and which library record each combination uses.",
+        to_document=_as_is,
+    ),
     "priors": ArtifactSpec(
         kind="priors",
         label="Prior trees",
@@ -104,6 +111,10 @@ ARTIFACTS: dict[str, ArtifactSpec] = {
 }
 
 
+#: Saving one of these recompiles the part rules (the map, generated records, Scenario).
+COMPILES_RULES = ("part-rules", "semantic-fields", "retrofits")
+
+
 def get_spec(kind: str) -> ArtifactSpec:
     spec = ARTIFACTS.get(kind)
     if spec is None:
@@ -120,6 +131,8 @@ def save_artifact(
 ) -> dict[str, Any]:
     """Write one editor's working state into the project, returning its file entry."""
     spec = get_spec(kind)
+    if kind == "component-map" and workspace.path("part_rules").exists():
+        raise ArtifactError("Model parts are compiled from part-rules.yaml; change them on the Model parts page.")
     document = spec.to_document(payload)
     if kind == "semantic-fields":
         # column roles (Building_ID_col, Height_col, WWR_col, ...) are set in GIS Cleaning
@@ -131,6 +144,10 @@ def save_artifact(
     if kind == "component-map":
         # globi reads the pruned map; when both keys point at one file, this wins
         workspace.write_generated_component_map(to_globi(document))
+    if kind in COMPILES_RULES:
+        from services.part_rules import compile_project
+
+        return {**_file_entry(workspace, path), "compile": compile_project(workspace)}
 
     return _file_entry(workspace, path)
 

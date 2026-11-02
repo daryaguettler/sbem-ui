@@ -79,6 +79,8 @@ export interface ValidationResult {
 }
 
 export interface FieldPreviewStats {
+  /** Buildings per value, every option included (0 when none get it). */
+  counts: Record<string, number>;
   mapped_count: number;
   unmapped_count: number;
   total_count: number;

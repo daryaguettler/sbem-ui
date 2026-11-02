@@ -10,6 +10,7 @@
    */
   import type { ConditioningCandidate, ConditionPreview } from '../../types/priorTrees';
   import { formatPercent } from '../../utils/priorViz';
+  import Icon from '../Icon.svelte';
 
   export let candidates: ConditioningCandidate[] = [];
   export let selected: string[] = [];
@@ -57,14 +58,29 @@
           <li>
             <span class="chip-name">{name}</span>
             <span class="chip-actions">
-              <button type="button" title="Move earlier" disabled={index === 0} onclick={() => move(index, -1)}>↑</button>
               <button
                 type="button"
+                class="btn btn-ghost btn-sm"
+                title="Move earlier"
+                aria-label="Move {name} earlier"
+                disabled={index === 0}
+                onclick={() => move(index, -1)}
+              ><Icon name="arrow-up" size={14} /></button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
                 title="Move later"
+                aria-label="Move {name} later"
                 disabled={index === selected.length - 1}
                 onclick={() => move(index, 1)}
-              >↓</button>
-              <button type="button" title="Remove" class="remove" onclick={() => onToggle(name)}>×</button>
+              ><Icon name="arrow-down" size={14} /></button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                title="Remove"
+                aria-label="Remove {name}"
+                onclick={() => onToggle(name)}
+              ><Icon name="x" size={14} /></button>
             </span>
           </li>
         {/each}
@@ -104,7 +120,9 @@
             <span class="option-name">
               {candidate.name}
               {#if candidate.highCardinality}
-                <span class="warn-dot" title="Very high cardinality — this makes a huge table">!</span>
+                <span class="warn-mark" title="Very high cardinality — this makes a huge table">
+                  <Icon name="alert" size={14} label="Very high cardinality" />
+                </span>
               {/if}
             </span>
             <span class="option-meta">{describe(candidate)}</span>
@@ -115,7 +133,7 @@
   {/each}
 
   {#if rowCount === 0}
-    <p class="hint">
+    <p class="callout callout-warn">
       No GIS rows are loaded, so combinations can't be counted. Upload and validate GIS data to
       generate a table that matches your actual stock.
     </p>
@@ -126,18 +144,18 @@
   .picker {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--space-4);
   }
 
   .selection {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-3);
     flex-wrap: wrap;
   }
 
   .selection-label {
-    font-size: 13px;
+    font-size: var(--text-sm);
     font-weight: 600;
     color: var(--text-2);
   }
@@ -145,7 +163,7 @@
   .chosen {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -154,12 +172,12 @@
   .chosen li {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 6px 4px 10px;
+    gap: var(--space-1);
+    padding: 0 var(--space-1) 0 var(--space-3);
     border: 1px solid var(--accent-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     background: var(--accent-soft);
-    font-size: 13px;
+    font-size: var(--text-sm);
   }
 
   .chip-name {
@@ -169,38 +187,16 @@
 
   .chip-actions {
     display: flex;
-    gap: 2px;
   }
 
-  .chip-actions button {
-    border: none;
-    background: transparent;
-    color: var(--accent-hover);
-    font-size: 12px;
-    line-height: 1;
-    padding: 2px 3px;
-    cursor: pointer;
-    border-radius: var(--radius-sm);
-  }
-
-  .chip-actions button:disabled {
-    color: var(--accent-border);
-    cursor: default;
-  }
-
-  .chip-actions button:not(:disabled):hover {
-    background: var(--accent-soft);
-  }
-
-  .chip-actions .remove {
-    color: var(--err-text);
+  .chip-actions .btn {
+    padding: 0 var(--space-1);
   }
 
   .preview {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--text-sm);
     color: var(--text-2);
-    line-height: 1.5;
   }
 
   .preview.thin {
@@ -208,8 +204,8 @@
   }
 
   .group h4 {
-    margin: 0 0 8px;
-    font-size: 12px;
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xs);
     font-weight: 600;
     color: var(--text-muted);
   }
@@ -217,20 +213,19 @@
   .options {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
+    gap: var(--space-2);
   }
 
   .option {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 8px 10px;
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
     text-align: left;
     cursor: pointer;
-    font-weight: 400;
   }
 
   .option:hover:not(.disabled) {
@@ -249,39 +244,21 @@
   }
 
   .option-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text);
   }
 
-  .warn-dot {
+  .warn-mark {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--warn-bg);
     color: var(--warn-text);
-    font-size: 10px;
-    font-weight: 700;
   }
 
   .option-meta {
-    font-size: 11px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
-  }
-
-  .hint {
-    margin: 0;
-    font-size: 13px;
-    color: var(--warn-text);
-    background: var(--warn-bg);
-    border: 1px solid var(--warn-border);
-    border-radius: var(--radius);
-    padding: 10px 12px;
   }
 </style>

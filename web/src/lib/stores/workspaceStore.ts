@@ -155,3 +155,28 @@ function createWorkspaceStore() {
 }
 
 export const workspaceStore = createWorkspaceStore();
+
+/**
+ * The backend keeps the open project in memory, so a restart (uvicorn --reload while server
+ * code changes) forgets it while the page still shows it, and every request fails with 409
+ * (pickers then look empty). While the page has a project open, reopen it once and retry.
+ */
+export function reopenAfterBackendRestart(): void {
+  const fetchOnce = window.fetch.bind(window);
+  let reopening: Promise<boolean> | null = null;
+  window.fetch = async (input, init) => {
+    const response = await fetchOnce(input, init);
+    const path = get(workspaceStore).workspace?.path ?? recallPath();
+    if (response.status !== 409 || !get(workspaceStore).open || !path) return response;
+    reopening ??= fetchOnce('/api/workspace/open', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    })
+      .then((reopened) => reopened.ok)
+      .finally(() => {
+        reopening = null;
+      });
+    return (await reopening) ? fetchOnce(input, init) : response;
+  };
+}

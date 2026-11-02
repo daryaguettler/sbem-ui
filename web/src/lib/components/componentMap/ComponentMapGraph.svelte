@@ -13,6 +13,7 @@
   } from '@xyflow/svelte';
   import SemanticFieldGraphNode from './SemanticFieldGraphNode.svelte';
   import ComponentGraphNode from './ComponentGraphNode.svelte';
+  import Icon from '../Icon.svelte';
   import { componentMapStore } from '../../stores/componentMapStore';
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
   import { resolvedTheme } from '../../stores/theme';
@@ -234,31 +235,32 @@
   </SvelteFlow>
 </div>
 <ul class="legend" aria-label="Component status">
-  <li><span class="swatch mapped"></span>✓ Mapped: has its own selector</li>
-  <li><span class="swatch inherited"></span>↳ Inherited: uses a parent's selector</li>
-  <li><span class="swatch unmapped"></span>✕ Unmapped: no selector yet</li>
+  <li><span class="swatch mapped"></span><Icon name="check" size={12} />Mapped: has its own selector</li>
+  <li><span class="swatch inherited"></span><Icon name="corner-down-right" size={12} />Inherited: uses a parent's selector</li>
+  <li><span class="swatch unmapped"></span><Icon name="x" size={12} />Unmapped: no selector yet</li>
 </ul>
 
 <style>
   .legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 18px;
-    margin-top: 8px;
+    gap: var(--space-2) var(--space-4);
+    margin-top: var(--space-2);
     list-style: none;
-    font-size: 12px;
+    font-size: var(--text-xs);
     color: var(--text-muted);
   }
 
   .legend li {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-1);
   }
 
   .swatch {
     width: 18px;
     height: 12px;
+    margin-right: var(--space-1);
     border-radius: var(--radius-sm);
     border: 2px solid;
   }
