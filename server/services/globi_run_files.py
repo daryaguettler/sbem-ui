@@ -66,7 +66,6 @@ def run_file_status(workspace: ProjectWorkspace) -> dict[str, Any]:
         "weather": weather,
         "gisFile": workspace.relative("gis_dir") + "/buildings.geojson" if gis.exists() else None,
         "componentMapSaved": workspace.path("component_map").exists(),
-        "globiRoot": str(globi_root()),
     }
 
 

@@ -48,7 +48,6 @@ def test_project_json_files_map_relocates_artifacts():
         json.dumps({
             "name": "Repo",
             "schema_version": 1,
-            "runner": "..",
             "files": {"semantic_fields": "globi/semantic-fields.yaml", "priors": "priors.yaml"},
         })
     )
@@ -58,7 +57,6 @@ def test_project_json_files_map_relocates_artifacts():
     assert (root / "globi" / "semantic-fields.yaml").exists()
     assert (root / "priors.yaml").exists()
     assert workspace.relative("component_map_selectors") == "component-map.selectors.yaml"
-    assert workspace.runner == root.parent.resolve()
 
 
 def test_open_round_trips_a_created_workspace():

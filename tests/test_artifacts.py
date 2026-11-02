@@ -108,7 +108,13 @@ def test_artifact_status_listing_tracks_what_has_been_saved():
     client.post("/api/artifacts/priors", json={"payload": {"Priors": {}}})
 
     artifacts = {entry["kind"]: entry for entry in client.get("/api/artifacts/").json()["artifacts"]}
-    assert set(artifacts) == {"semantic-fields", "component-map", "priors", "retrofits"}
+    assert set(artifacts) == {
+        "semantic-fields",
+        "component-map",
+        "priors",
+        "retrofits",
+        "schedule-variability",
+    }
     assert artifacts["priors"]["exists"] is True
     # Scaffolded at project creation, so it exists from the start.
     assert artifacts["semantic-fields"]["exists"] is True
@@ -174,3 +180,12 @@ def test_artifact_routes_require_an_open_workspace():
         assert client.post("/api/artifacts/priors", json={"payload": {}}).status_code == 409
     finally:
         open_temp_workspace()
+
+
+def test_saving_semantic_fields_keeps_keys_the_editor_does_not_manage():
+    workspace = open_temp_workspace()
+    payload = {**SEMANTIC_FIELDS_PAYLOAD, "extra_top_level": {"Height_col": "height", "WWR_col": "wwr"}}
+    assert client.post("/api/artifacts/semantic-fields", json={"payload": payload}).status_code == 200
+    saved = yaml.safe_load((workspace.root / "semantic-fields.yaml").read_text())
+    assert saved["Height_col"] == "height" and saved["WWR_col"] == "wwr"
+    assert saved["Building_ID_col"] == "building_id"
