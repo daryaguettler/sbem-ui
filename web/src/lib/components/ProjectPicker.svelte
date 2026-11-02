@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { workspaceStore } from '../stores/workspaceStore';
+  import Select from './Select.svelte';
 
   let mode: 'create' | 'open' = 'create';
   let path = '';
@@ -30,8 +31,8 @@
   <div class="card">
     <h1>Open a project</h1>
     <p class="subtitle">
-      A project is a folder on disk holding your semantic fields, component library, component
-      map, and priors -- so your work survives closing the browser.
+      A project is a folder on disk holding your building characteristics, their estimates and
+      model parts, and the component library -- so your work survives closing the browser.
     </p>
 
     <div class="mode-toggle">
@@ -50,16 +51,18 @@
           <input type="text" bind:value={name} placeholder="My Project" />
         </label>
         {#if templates.length > 0}
-          <label>
-            Component library
-            <select bind:value={template}>
-              <option value="">Empty</option>
-              {#each templates as t}<option value={t.filename}>{t.name}</option>{/each}
-            </select>
+          <div class="field">
+            <span>Component library</span>
+            <Select
+              value={template}
+              options={[{ value: '', label: 'Empty' }, ...templates.map((t) => ({ value: t.filename, label: t.name }))]}
+              onChange={(value) => (template = value)}
+              ariaLabel="Component library"
+            />
             {#if template}
               <span class="hint">{templates.find((t) => t.filename === template)?.description}</span>
             {/if}
-          </label>
+          </div>
         {/if}
       {/if}
       <label>
@@ -68,11 +71,11 @@
       </label>
 
       {#if $workspaceStore.error}
-        <p class="error">{$workspaceStore.error}</p>
+        <p class="error" role="alert">{$workspaceStore.error}</p>
       {/if}
 
-      <button type="submit" class="submit" disabled={$workspaceStore.loading || !path.trim()}>
-        {$workspaceStore.loading ? 'Working...' : mode === 'create' ? 'Create project' : 'Open project'}
+      <button type="submit" class="btn" disabled={$workspaceStore.loading || !path.trim()}>
+        {$workspaceStore.loading ? (mode === 'create' ? 'Creating…' : 'Opening…') : mode === 'create' ? 'Create project' : 'Open project'}
       </button>
     </form>
   </div>
@@ -86,14 +89,13 @@
     align-items: center;
     justify-content: center;
     background: var(--surface-2);
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
   .card {
     width: 420px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     padding: 32px;
   }
 
@@ -115,7 +117,7 @@
     display: flex;
     gap: 4px;
     background: var(--surface-3);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 4px;
     margin-bottom: 20px;
   }
@@ -125,7 +127,7 @@
     padding: 8px 12px;
     border: none;
     background: transparent;
-    border-radius: 6px;
+    border-radius: var(--radius);
     cursor: pointer;
     font-size: 13px;
     color: var(--text-muted);
@@ -135,7 +137,6 @@
     background: var(--surface);
     color: var(--text);
     font-weight: 600;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
   form {
@@ -144,7 +145,8 @@
     gap: 16px;
   }
 
-  label {
+  label,
+  .field {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -153,12 +155,11 @@
     color: var(--text-2);
   }
 
-  input,
-  select {
+  input {
     font-weight: 400;
     padding: 8px 12px;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     font-size: 14px;
   }
 
@@ -173,19 +174,4 @@
     color: var(--err-text);
   }
 
-  .submit {
-    padding: 10px 16px;
-    border: none;
-    border-radius: 8px;
-    background: var(--accent);
-    color: var(--on-accent);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .submit:disabled {
-    background: var(--accent-border);
-    cursor: not-allowed;
-  }
 </style>

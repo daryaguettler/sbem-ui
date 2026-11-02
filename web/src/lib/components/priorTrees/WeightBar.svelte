@@ -58,7 +58,7 @@
   .track {
     display: flex;
     height: 20px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
     background: var(--surface-3);
   }
@@ -111,7 +111,7 @@
   .swatch {
     width: 10px;
     height: 10px;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
     flex-shrink: 0;
   }
 

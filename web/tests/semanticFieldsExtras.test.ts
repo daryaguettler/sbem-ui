@@ -1,4 +1,4 @@
-// Run with `npm test` (Node 23.6+ imports the .ts helper directly).
+// Run with `make test-web`.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 

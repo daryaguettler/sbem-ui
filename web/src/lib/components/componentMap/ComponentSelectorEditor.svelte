@@ -88,7 +88,7 @@
     </div>
 
     <p class="help">
-      Which semantic fields decide the record used here?
+      Which characteristics choose the record used here?
       <HelpTip
         text="Each combination of the ticked fields' options picks one library record, named by joining the option values with '_'. With nothing ticked, this component uses the nearest parent's selector, if any."
       />
@@ -181,7 +181,7 @@
   .path {
     font-size: 11px;
     color: var(--text-faint);
-    font-family: ui-monospace, monospace;
+    font-family: var(--font-mono);
     overflow-wrap: anywhere;
   }
 
@@ -206,7 +206,7 @@
     align-items: center;
     padding: 8px 10px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     font-size: 13px;
     color: var(--text);
   }
@@ -226,14 +226,14 @@
 
   .suffix-row input {
     border: 1px solid var(--border-strong);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 8px 10px;
     font: inherit;
   }
 
   .preview {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 12px;
     background: var(--surface-2);
     font-size: 13px;

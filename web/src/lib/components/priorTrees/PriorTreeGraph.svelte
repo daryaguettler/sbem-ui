@@ -8,6 +8,7 @@
    * nodes are the generated join keys, and the rest are sampled features.
    */
   import type { DependencyGraph } from '../../types/priorTrees';
+  import { helpMode } from '../../stores/helpMode';
 
   export let graph: DependencyGraph;
 
@@ -74,7 +75,7 @@
 </script>
 
 {#if graph.nodes.length === 0}
-  <p class="empty">Validate the prior tree to see how its features depend on each other.</p>
+  <p class="empty">Press Check to see how the estimates depend on each other.</p>
 {:else}
   <div class="graph">
     <svg viewBox="0 0 {width} {height}" width={width} height={height} role="img" aria-label="Prior sampling dependency graph">
@@ -99,7 +100,6 @@
             y={node.y}
             width={NODE_WIDTH}
             height={NODE_HEIGHT}
-            rx={node.kind === 'compound' ? 16 : 6}
             style="fill: {style.fill}; stroke: {style.stroke}; stroke-dasharray: {style.dash};"
             stroke-width="1.5"
           />
@@ -122,7 +122,7 @@
         {style.label}
       </li>
     {/each}
-    <li class="note">Arrows point from a feature to whatever is sampled from it.</li>
+    {#if $helpMode === 'explain'}<li class="note">Arrows point from a feature to whatever is sampled from it.</li>{/if}
   </ul>
 {/if}
 
@@ -130,7 +130,7 @@
   .graph {
     overflow: auto;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
     padding: 4px;
   }
@@ -156,7 +156,7 @@
   .swatch {
     width: 12px;
     height: 12px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     border: 1.5px solid;
   }
 

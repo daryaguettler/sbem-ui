@@ -1,5 +1,6 @@
 <script lang="ts">
   import SchemaForm from '../components/componentLibrary/SchemaForm.svelte';
+  import ScheduleVariability from '../components/componentLibrary/ScheduleVariability.svelte';
   import SidePanel from '../components/SidePanel.svelte';
   import {
     fetchComponentTypes,
@@ -7,6 +8,9 @@
     deleteComponentRecord,
     type ComponentRecord,
   } from '../api/componentLibrary';
+  import Explain from '../components/Explain.svelte';
+  import { HELP } from '../help';
+  const help = HELP.componentLibrary;
 
   let types = $state<string[]>([]);
   let selectedType = $state<string | null>(null);
@@ -14,6 +18,8 @@
   let loadingTypes = $state(true);
   let loadingRecords = $state(false);
   let error = $state<string | null>(null);
+  /** Records of each component type, or the per-building schedule noise applied on top of them. */
+  let view = $state<'records' | 'variability'>('records');
 
   type PanelState = { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; name: string };
   let panel = $state<PanelState>({ mode: 'closed' });
@@ -85,13 +91,21 @@
 
 <div class="workflow">
   <header class="workflow-header">
-    <h1>Component Library</h1>
-    <p class="subtitle">
-      The engineering records (lighting power, infiltration, HVAC efficiency, schedules…) that the
-      Component Map points to.
-    </p>
+    <h1>Component Library <Explain text={help.page} tip /></h1>
+    <Explain text={help.page} />
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" aria-selected={view === 'records'} class:active={view === 'records'} onclick={() => (view = 'records')}>
+        Records
+      </button>
+      <button type="button" role="tab" aria-selected={view === 'variability'} class:active={view === 'variability'} onclick={() => (view = 'variability')}>
+        Schedule variability
+      </button>
+    </div>
   </header>
 
+  {#if view === 'variability'}
+    <div class="variability-view"><ScheduleVariability /></div>
+  {:else}
   <div class="body" class:panel-open={panel.mode !== 'closed'}>
     <nav class="types" aria-label="Component types">
       {#if loadingTypes}
@@ -114,9 +128,10 @@
     <section class="records">
       {#if selectedType}
         <div class="records-header">
-          <h2>{selectedType}</h2>
+          <h2>{selectedType} <Explain text={help.records} tip /></h2>
           <button type="button" class="btn" onclick={openCreate}>+ Add {selectedType}</button>
         </div>
+        <Explain text={help.records} />
 
         {#if error}
           <p class="error" role="alert">{error}</p>
@@ -172,31 +187,35 @@
       </div>
     {/if}
   </div>
+  {/if}
 </div>
 
 <style>
-  .workflow {
+  .tabs {
     display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
   }
 
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
+  .tabs button {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: var(--space-2) var(--space-3);
+    color: var(--text-2);
+    font-weight: 600;
+    cursor: pointer;
   }
 
-  .workflow-header h1 {
-    margin: 0 0 4px;
-    font-size: 24px;
+  .tabs button.active {
+    border-bottom-color: var(--accent);
     color: var(--text);
   }
 
-  .subtitle {
-    font-size: 14px;
-    color: var(--text-muted);
-    max-width: 720px;
+  .variability-view {
+    flex: 1;
+    overflow: auto;
+    padding: var(--space-6) var(--space-8);
   }
 
   .body {
@@ -250,7 +269,7 @@
     text-align: left;
     padding: 8px 12px;
     border: none;
-    border-radius: 6px;
+    border-radius: var(--radius);
     background: transparent;
     color: var(--text-2);
     font-size: 14px;
@@ -299,7 +318,7 @@
     padding: 24px;
     max-width: 960px;
     border: 1px dashed var(--border-strong);
-    border-radius: 8px;
+    border-radius: var(--radius);
     color: var(--text-muted);
     font-size: 14px;
   }
@@ -335,14 +354,15 @@
   }
 
   .hint {
-    font-size: 14px;
+    font-size: var(--text-sm);
     color: var(--text-muted);
   }
 
   .error {
-    font-size: 13px;
-    color: var(--err-text);
-    margin-bottom: 12px;
+    margin-bottom: var(--space-3);
   }
 
+  .records :global(.explain) {
+    margin-bottom: var(--space-4);
+  }
 </style>

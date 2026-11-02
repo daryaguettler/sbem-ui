@@ -14,6 +14,9 @@
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import { workspaceStore } from '../stores/workspaceStore';
   import { downloadText } from '../utils/download';
+  import Explain from '../components/Explain.svelte';
+  import { HELP } from '../help';
+  const help = HELP.modelExecution;
 
   let status: GlobiFilesStatus | null = null;
   let context: Record<string, string> = {};
@@ -69,13 +72,14 @@
 
 <section class="workflow">
   <div class="workflow-header">
-    <h1>Model Execution</h1>
-    <p class="subtitle">Check readiness, generate globi's run files and export a snapshot.</p>
+    <h1>Model Execution <Explain text={help.page} tip /></h1>
+    <Explain text={help.page} />
   </div>
 
   <div class="workflow-content">
     <div class="panel">
-      <h2>Readiness</h2>
+      <h2>Readiness <Explain text={help.readiness} tip /></h2>
+      <Explain text={help.readiness} />
       <ul class="checks">
         {#each $readinessChecks as check}
           <li>
@@ -86,24 +90,20 @@
               <strong>{check.label}</strong>
               <span class="muted">{check.detail}</span>
             </span>
-            {#if !check.ready}<button type="button" class="link" onclick={() => navigateTo(check.workflow)}>Go to step</button>{/if}
+            {#if !check.ready}<button type="button" class="btn btn-link" onclick={() => navigateTo(check.workflow)}>Go to step</button>{/if}
           </li>
         {/each}
       </ul>
     </div>
 
     <div class="panel">
-      <h2>globi files</h2>
-      <p class="muted">
-        Written into the project from the <em>saved</em> semantic fields, component map, library and GIS:
-        <code>building.yml</code> for one building (<code>globi simulate</code>), plus <code>manifest.yml</code>,
-        <code>artifacts.yml</code> and <code>gis-preprocessor.yml</code> for a batch run over the saved GIS.
-      </p>
+      <h2>GloBI run files <Explain text={help.globiFiles} tip /></h2>
+      <Explain text={help.globiFiles} />
       {#if status && status.fields.length === 0}
-        <p class="muted">Save semantic fields first.</p>
-        <div><button type="button" class="link" onclick={() => navigateTo('semantic-fields')}>Go to Semantic Fields</button></div>
+        <p class="muted">Save your building characteristics first.</p>
+        <div><button type="button" class="btn btn-link" onclick={() => navigateTo('characteristics')}>Go to Building Characteristics</button></div>
       {:else if status}
-        <h3>One building</h3>
+        <h3>Building for <code>globi simulate</code></h3>
         <div class="form-grid">
           {#each status.fields as field}
             <label>
@@ -127,16 +127,16 @@
         <p class="muted">
           {status.gisFile
             ? `Batch files will run over ${status.gisFile}.`
-            : 'No GIS saved yet (Semantic Fields → Save GIS to project), so only building.yml will be written.'}
+            : 'No buildings saved yet (Sampling, or Building Characteristics → GloBI files → Save to project), so only building.yml will be written.'}
         </p>
         <div>
-          <button type="button" onclick={generate} disabled={generating || !status.componentMapSaved}>
+          <button type="button" class="btn" onclick={generate} disabled={generating || !status.componentMapSaved}>
             {generating ? 'Generating…' : 'Generate globi files'}
           </button>
         </div>
-        {#if !status.componentMapSaved}<p class="muted">Save the component map first.</p>{/if}
+        {#if !status.componentMapSaved}<p class="muted">Save the model parts first (Building Characteristics → Save).</p>{/if}
       {/if}
-      {#if error}<p class="error">{error}</p>{/if}
+      {#if error}<p class="error" role="alert">{error}</p>{/if}
       {#if result}
         <p class="done"><span aria-hidden="true">✓</span> Wrote {result.written.join(', ')}</p>
         {#each result.warnings as warning}<p class="warning"><span aria-hidden="true">!</span> {warning}</p>{/each}
@@ -150,41 +150,26 @@
     </div>
 
     <div class="panel">
-      <h2>Export</h2>
-      <div><button type="button" onclick={exportManifest} disabled={!$allArtifactsReady}>Download editor snapshot</button></div>
-      <p class="muted">
-        A JSON snapshot of this project's editors, for sharing or archiving. It is not a globi
-        <code>manifest.yml</code> and can't be passed to <code>globi submit</code>.
-      </p>
+      <h2>Export <Explain text={help.export} tip /></h2>
+      <Explain text={help.export} />
+      <div><button type="button" class="btn btn-secondary" onclick={exportManifest} disabled={!$allArtifactsReady}>Download editor snapshot</button></div>
     </div>
   </div>
 </section>
 
 <style>
-  .workflow { display: flex; flex-direction: column; height: 100%; }
-  .workflow-header { padding: 24px 32px; border-bottom: 1px solid var(--border); }
-  .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
-  .subtitle { margin: 0; color: var(--text-muted); font-size: 13px; }
-  .workflow-content { padding: 32px; max-width: 860px; display: flex; flex-direction: column; gap: 20px; }
-  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .panel h2 { margin: 0; font-size: 15px; }
-  .panel h3 { margin: 0; font-size: 13px; }
+  .workflow-content { max-width: 860px; }
   .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
   .checks li { display: flex; align-items: flex-start; gap: 10px; }
   .checks strong { min-width: 120px; font-weight: 600; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 76px; padding: 1px 8px; border-radius: 999px; border: 1px solid; font-size: 11px; font-weight: 700; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; min-width: 76px; padding: 1px 8px; border-radius: var(--radius-sm); border: 1px solid; font-size: 11px; font-weight: 700; }
   .badge.ok { color: var(--ok-text); background: var(--ok-bg); border-color: var(--ok-border); }
   .badge.warn { color: var(--warn-text); background: var(--warn-bg); border-color: var(--warn-border); }
   .check-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
   .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
-  input, select { font: inherit; font-weight: 400; font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
-  pre { margin: 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; font-size: 12px; white-space: pre-wrap; word-break: break-all; }
-  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .link { background: transparent; color: var(--accent); padding: 0; font-weight: 500; white-space: nowrap; }
+  pre { margin: 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
   .muted { color: var(--text-muted); font-size: 13px; margin: 0; }
-  .error { color: var(--err-text); font-size: 13px; margin: 0; }
   .done { color: var(--ok-text); font-size: 13px; margin: 0; font-weight: 600; }
   .warning { color: var(--warn-text); font-size: 13px; margin: 0; }
 </style>

@@ -25,10 +25,9 @@
   .node {
     min-width: 170px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
     padding: 10px 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     position: relative;
     overflow: hidden;
     color: var(--text);
@@ -59,7 +58,7 @@
   .dot {
     width: 8px;
     height: 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
   }
 
   .meta {

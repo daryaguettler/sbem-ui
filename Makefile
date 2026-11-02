@@ -1,4 +1,4 @@
-.PHONY: setup prisma-generate dev backend frontend test check
+.PHONY: setup prisma-generate dev backend frontend test test-web check
 
 # One-time environment setup: Python deps (incl. epinterface; semantic_priors is vendored in lib/),
 # the generated Prisma client, and frontend deps. See README "Backend Setup".
@@ -26,6 +26,10 @@ frontend:
 
 test:
 	uv run pytest
+
+# Frontend logic tests (pure TS + stores) with Node's built-in runner; no extra deps.
+test-web:
+	cd web && node --import ./tests/register.mjs --test 'tests/**/*.test.ts'
 
 check:
 	cd web && npm run check

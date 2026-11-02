@@ -1,22 +1,21 @@
 import { derived, get, writable } from 'svelte/store';
 import type { GisDatasetSummary, ReadinessCheck, WorkflowId } from '../types/workflow';
-import { semanticFieldsStore } from './semanticFieldsStore';
 import { componentMapStore } from './componentMapStore';
 import { priorTargets, priorTreesStore } from './priorTreesStore';
 import { workspaceStore } from './workspaceStore';
+import { characteristics } from './characteristics';
 
 export const currentWorkflow = writable<WorkflowId>('gis-cleaning');
 export const gisDataset = writable<GisDatasetSummary | null>(null);
 
 const WORKFLOW_IDS: WorkflowId[] = [
   'gis-cleaning',
-  'semantic-fields',
+  'characteristics',
   'component-library',
-  'component-map',
-  'prior-trees',
   'retrofits',
-  'schedule-variability',
+  'sampling',
   'model-execution',
+  'single-building',
   'project-files',
 ];
 
@@ -41,20 +40,28 @@ export function restoreLastWorkflow(projectPath: string) {
   } catch {
     saved = null;
   }
+  if (saved && saved in RETIRED_WORKFLOWS) saved = RETIRED_WORKFLOWS[saved];
   currentWorkflow.set(WORKFLOW_IDS.includes(saved as WorkflowId) ? (saved as WorkflowId) : 'gis-cleaning');
 }
 
+// Old step ids remembered from before their pages moved: Building Characteristics replaced the
+// first three, and schedule variability is part of the Component Library.
+const RETIRED_WORKFLOWS: Record<string, WorkflowId> = {
+  'semantic-fields': 'characteristics',
+  'component-map': 'characteristics',
+  'prior-trees': 'characteristics',
+  'schedule-variability': 'component-library',
+};
+
 export const readinessChecks = derived(
-  [gisDataset, semanticFieldsStore, componentMapStore, priorTreesStore],
-  ([$gis, $semantic, $componentMap, $priors]): ReadinessCheck[] => {
-    const stochasticFields = $semantic.fields.filter(
-      (field) => field.type === 'stochastic' && field.requiresPrior
-    );
+  [gisDataset, characteristics, componentMapStore, priorTreesStore],
+  ([$gis, $characteristics, $componentMap, $priors]): ReadinessCheck[] => {
+    const toFinish = $characteristics.filter((view) => view.issues.length > 0);
+    const estimated = $characteristics.filter((view) => view.howKnown === 'estimate');
     // A field's prior lives in `priors` when unconditioned and in `joints` when not.
     const coveredTargets = new Set(priorTargets($priors.config));
-    // No fields at all means nothing has been decided yet, not "no priors needed".
-    const priorsReady =
-      $semantic.fields.length > 0 && stochasticFields.every((field) => coveredTargets.has(field.name));
+    const missingEstimates = estimated.filter((view) => !coveredTargets.has(view.field.name));
+    const characteristicsReady = $characteristics.length > 0 && toFinish.length === 0;
 
     return [
       {
@@ -67,32 +74,34 @@ export const readinessChecks = derived(
           : 'Upload and validate GIS data first.',
       },
       {
-        id: 'semantic-fields',
-        label: 'Semantic fields defined',
-        ready: $semantic.fields.length > 0,
-        workflow: 'semantic-fields',
-        detail:
-          $semantic.fields.length > 0
-            ? `${$semantic.fields.length} fields configured`
-            : 'Create or load semantic fields.',
+        id: 'characteristics',
+        label: 'Building characteristics complete',
+        ready: characteristicsReady,
+        workflow: 'characteristics',
+        detail: characteristicsReady
+          ? `${$characteristics.length} characteristics, nothing left to fix.`
+          : $characteristics.length === 0
+            ? 'Add the characteristics that set your buildings apart.'
+            : `${toFinish.length} characteristic${toFinish.length === 1 ? '' : 's'} still to finish.`,
       },
       {
-        id: 'component-map',
-        label: 'Component map configured',
+        id: 'model-parts',
+        label: 'Model parts connected and checked',
         ready: $componentMap.valid,
-        workflow: 'component-map',
+        workflow: 'characteristics',
         detail: $componentMap.valid
-          ? 'Component map references valid semantic fields.'
-          : 'Load and validate a component map.',
+          ? 'Every model part refers to a defined characteristic.'
+          : 'Connect model parts, then press Check on Building Characteristics.',
       },
       {
-        id: 'prior-trees',
-        label: 'Prior trees cover stochastic fields',
-        ready: priorsReady,
-        workflow: 'prior-trees',
-        detail: priorsReady
-          ? 'Required priors are configured.'
-          : 'Add priors for stochastic semantic fields.',
+        id: 'estimates',
+        label: 'Every estimated characteristic has an estimate',
+        ready: missingEstimates.length === 0,
+        workflow: 'characteristics',
+        detail:
+          missingEstimates.length === 0
+            ? 'Every estimated characteristic has its odds set.'
+            : `No estimate yet for ${missingEstimates.map((view) => view.field.name).join(', ')}.`,
       },
     ];
   }

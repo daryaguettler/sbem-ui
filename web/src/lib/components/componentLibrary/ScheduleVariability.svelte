@@ -6,10 +6,10 @@
    * The preview runs globi's own perturbation on a SpaceUse for 20 synthetic buildings.
    */
   import { onMount } from 'svelte';
-  import { fetchSavedArtifact, formatSavedAt, saveArtifact } from '../api/artifacts';
-  import { fetchComponentRecords } from '../api/componentLibrary';
-  import { markSaved, savedAt } from '../stores/projectArtifacts';
-  import { semanticFieldsStore } from '../stores/semanticFieldsStore';
+  import { fetchSavedArtifact, formatSavedAt, saveArtifact } from '../../api/artifacts';
+  import { fetchComponentRecords } from '../../api/componentLibrary';
+  import { markSaved, savedAt } from '../../stores/projectArtifacts';
+  import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
 
   type ParamKey =
     | 'time_shift_std_h'
@@ -150,18 +150,16 @@
   });
 </script>
 
-<section class="workflow">
-  <div class="workflow-header">
+<section class="variability">
+  <div class="section-head">
     <div>
-      <h1>Schedule Variability</h1>
-      <p class="subtitle">Give each building its own seeded variation, so buildings sharing a schedule don't all switch on at once.</p>
+      <p class="intro">Give each building its own seeded variation, so buildings sharing a schedule don't all switch on at once. globi applies it in batch runs (<code>schedule_variability_config</code>).</p>
       <p class="saved-line">{formatSavedAt($savedAt['schedule-variability'])}{dirty ? ' · unsaved changes' : ''}</p>
     </div>
-    <button type="button" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
+    <button type="button" class="btn" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
   </div>
 
-  <div class="workflow-content">
-    {#if error}<p class="error">{error}</p>{/if}
+    {#if error}<p class="error" role="alert">{error}</p>{/if}
     {#if loading}
       <p class="muted">Loading…</p>
     {:else}
@@ -251,24 +249,13 @@
         {/if}
       </div>
     {/if}
-  </div>
 </section>
 
 <style>
-  .workflow { display: flex; flex-direction: column; height: 100%; }
-  .workflow-header {
-    padding: 24px 32px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .workflow-header h1 { margin: 0 0 4px; font-size: 24px; }
-  .subtitle { margin: 0; color: var(--text-muted); font-size: 14px; }
+  .variability { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
+  .section-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .intro { margin: 0; color: var(--text-muted); font-size: 14px; }
   .saved-line { margin: 2px 0 0; color: var(--text-faint); font-size: 12px; }
-  .workflow-content { padding: 32px; display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
-  .panel { border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-  .panel h2 { margin: 0; font-size: 15px; }
   .controls { display: flex; align-items: center; gap: 12px; font-size: 13px; flex-wrap: wrap; }
   table { border-collapse: collapse; font-size: 13px; }
   th { text-align: left; font-weight: 500; color: var(--text-muted); padding: 0 6px 6px 0; }
@@ -281,8 +268,5 @@
   .axis { stroke: var(--border); }
   .sample { fill: none; stroke: var(--accent); stroke-opacity: 0.3; stroke-width: 1; }
   .base { fill: none; stroke: var(--text); stroke-width: 2; }
-  button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
   .muted { color: var(--text-muted); font-size: 13px; margin: 0; }
-  .error { color: var(--err-text); font-size: 13px; margin: 0; }
 </style>

@@ -93,7 +93,7 @@ def test_generates_building_file_only_until_a_gis_is_saved():
     result = generate()
     assert result.status_code == 200, result.text
     assert result.json()["written"] == ["building.yml"]
-    assert "No GIS saved" in result.json()["warnings"][0]
+    assert "No buildings saved" in result.json()["warnings"][0]
 
     building = yaml.safe_load(workspace.path("building").read_text())
     assert building["semantic_field_context"] == CONTEXT

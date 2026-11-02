@@ -2,15 +2,14 @@
   import { onMount } from 'svelte';
   import Sidebar from './lib/components/Sidebar.svelte';
   import ProjectPicker from './lib/components/ProjectPicker.svelte';
-  import SemanticFields from './lib/workflows/SemanticFields.svelte';
+  import BuildingCharacteristics from './lib/workflows/BuildingCharacteristics.svelte';
   import ComponentLibrary from './lib/workflows/ComponentLibrary.svelte';
-  import ComponentMap from './lib/workflows/ComponentMap.svelte';
-  import PriorTrees from './lib/workflows/PriorTrees.svelte';
   import Retrofits from './lib/workflows/Retrofits.svelte';
-  import ScheduleVariability from './lib/workflows/ScheduleVariability.svelte';
+  import Sampling from './lib/workflows/Sampling.svelte';
   import GISCleaning from './lib/workflows/GISCleaning.svelte';
   import ModelExecution from './lib/workflows/ModelExecution.svelte';
   import ProjectFiles from './lib/workflows/ProjectFiles.svelte';
+  import SingleBuilding from './lib/workflows/SingleBuilding.svelte';
   import { currentWorkflow, navigateTo, restoreLastWorkflow } from './lib/stores/projectStore';
   import { workspaceStore } from './lib/stores/workspaceStore';
   import { componentTreeStore } from './lib/stores/componentTreeStore';
@@ -44,12 +43,12 @@
 </script>
 
 {#if checkingWorkspace}
-  <div class="boot-loading">Loading...</div>
+  <div class="boot-loading">Loading…</div>
 {:else if $workspaceStore.backendUnreachable}
   <div class="boot-loading">
     <div class="unreachable">
       <p>{$workspaceStore.error}</p>
-      <button type="button" onclick={bootstrap}>Retry</button>
+      <button type="button" class="btn btn-secondary" onclick={bootstrap}>Retry</button>
     </div>
   </div>
 {:else if !$workspaceStore.open}
@@ -58,22 +57,20 @@
   <main class="layout">
     <Sidebar currentWorkflow={$currentWorkflow} setWorkflow={navigateTo} />
     <section class="main">
-      {#if $currentWorkflow === 'semantic-fields'}
-        <SemanticFields />
+      {#if $currentWorkflow === 'characteristics'}
+        <BuildingCharacteristics />
       {:else if $currentWorkflow === 'component-library'}
         <ComponentLibrary />
-      {:else if $currentWorkflow === 'component-map'}
-        <ComponentMap />
-      {:else if $currentWorkflow === 'prior-trees'}
-        <PriorTrees />
       {:else if $currentWorkflow === 'retrofits'}
         <Retrofits />
-      {:else if $currentWorkflow === 'schedule-variability'}
-        <ScheduleVariability />
+      {:else if $currentWorkflow === 'sampling'}
+        <Sampling />
       {:else if $currentWorkflow === 'gis-cleaning'}
         <GISCleaning />
       {:else if $currentWorkflow === 'model-execution'}
         <ModelExecution />
+      {:else if $currentWorkflow === 'single-building'}
+        <SingleBuilding />
       {:else if $currentWorkflow === 'project-files'}
         <ProjectFiles />
       {/if}
@@ -87,7 +84,6 @@
     display: flex;
     height: 100vh;
     overflow: hidden;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg);
     color: var(--text);
   }
@@ -105,7 +101,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: var(--text-muted);
     font-size: 14px;
   }
@@ -119,17 +114,4 @@
     gap: 12px;
   }
 
-  .unreachable button {
-    padding: 8px 16px;
-    border: 1px solid var(--border-strong);
-    border-radius: 6px;
-    background: var(--surface);
-    color: var(--text);
-    font-size: 14px;
-    cursor: pointer;
-  }
-
-  .unreachable button:hover {
-    background: var(--surface-3);
-  }
 </style>

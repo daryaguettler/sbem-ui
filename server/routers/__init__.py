@@ -11,6 +11,9 @@ from .globi_files import router as globi_files_router
 from .workspace import router as workspace_router
 from .assist import router as assist_router
 from .schedule_variability import router as schedule_variability_router
+from .inspect import router as inspect_router
+from .flat_model import router as flat_model_router
+from .sampling import router as sampling_router
 
 __all__ = [
     "artifacts_router",
@@ -24,4 +27,7 @@ __all__ = [
     "workspace_router",
     "assist_router",
     "schedule_variability_router",
+    "inspect_router",
+    "flat_model_router",
+    "sampling_router",
 ]

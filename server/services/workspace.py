@@ -59,6 +59,7 @@ FILE_KEYS: dict[str, str] = {
     "schedule_variability": SCHEDULE_VARIABILITY_FILE,
     "gis_dir": GIS_DIR,
     "weather_dir": "weather",
+    "sampling": "sampling.yaml",
     # globi run files, generated from the files above (services/globi_run_files.py)
     "building": "building.yml",
     "artifacts": "artifacts.yml",

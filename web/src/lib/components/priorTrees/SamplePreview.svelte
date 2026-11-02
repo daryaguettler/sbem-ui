@@ -233,14 +233,14 @@
   .bar-track {
     height: 14px;
     background: var(--surface-3);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
   .bar-fill {
     display: block;
     height: 100%;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   }
 
   .value-share {
@@ -272,7 +272,7 @@
     display: block;
     height: 16px;
     background: var(--surface-3);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
   }
 
   .spread {
@@ -281,7 +281,7 @@
     height: 6px;
     min-width: 2px;
     background: var(--seq-2);
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
   }
 
   .dot {
@@ -312,14 +312,14 @@
     height: 110px;
     padding: 4px;
     background: var(--surface-2);
-    border-radius: 6px;
+    border-radius: var(--radius);
   }
 
   .bin {
     flex: 1;
     min-height: 1px;
     background: var(--series-1);
-    border-radius: 3px 3px 0 0;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   }
 
   .stats {
@@ -334,7 +334,7 @@
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--accent);
-    border-radius: 6px;
+    border-radius: var(--radius);
     padding: 5px 10px;
     font-size: 12px;
     font-weight: 600;
@@ -349,7 +349,7 @@
     overflow: auto;
     max-height: 360px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
   }
 
   table {
@@ -379,7 +379,7 @@
     display: inline-block;
     width: 9px;
     height: 9px;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
     margin-right: 4px;
   }
 

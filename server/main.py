@@ -10,7 +10,10 @@ from routers import (
     component_tree_router,
     gis_router,
     globi_files_router,
+    inspect_router,
+    flat_model_router,
     prior_trees_router,
+    sampling_router,
     schedule_variability_router,
     semantic_fields_router,
     workspace_router,
@@ -55,6 +58,9 @@ app.include_router(globi_files_router)
 app.include_router(workspace_router)
 app.include_router(assist_router)
 app.include_router(schedule_variability_router)
+app.include_router(inspect_router)
+app.include_router(flat_model_router)
+app.include_router(sampling_router)
 
 
 @app.get("/")

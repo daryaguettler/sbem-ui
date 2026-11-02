@@ -23,8 +23,16 @@
   export let onCellChange: (key: string, weights: Distribution) => void;
   export let onFallbackChange: (weights: Distribution) => void;
   export let onRemoveRow: (key: string) => void;
+  /** Show weights as "buildings out of 100" (natural frequencies) instead of 0–1 shares. */
+  export let asCounts = false;
 
   let filter = '';
+  // Stored weights stay 0–1 shares either way; this only changes what is shown and typed.
+  $: scale = asCounts ? 100 : 1;
+
+  function shown(weight: number): number {
+    return asCounts ? Math.round(weight * 1000) / 10 : weight;
+  }
 
   $: evidenceByKey = new Map(evidence.map((entry) => [entry.key, entry]));
   $: keys = Object.keys(joint.table)
@@ -37,13 +45,13 @@
   }
 
   function updateCell(key: string, value: string, raw: string) {
-    const weight = Number(raw);
+    const weight = Number(raw) / scale;
     if (!Number.isFinite(weight) || weight < 0) return;
     onCellChange(key, { ...joint.table[key], [value]: weight });
   }
 
   function updateFallback(value: string, raw: string) {
-    const weight = Number(raw);
+    const weight = Number(raw) / scale;
     if (!Number.isFinite(weight) || weight < 0) return;
     onFallbackChange({ ...fallback, [value]: weight });
   }
@@ -70,7 +78,11 @@
   <div class="toolbar">
     <label class="filter">
       <span class="sr-only">Filter combinations</span>
-      <input type="text" placeholder="Filter combinations..." bind:value={filter} />
+      <input type="text" placeholder="Filter combinations…" bind:value={filter} />
+    </label>
+    <label class="mode">
+      <input type="checkbox" bind:checked={asCounts} />
+      Show as buildings out of 100
     </label>
     <span class="count">
       {keys.length} of {Object.keys(joint.table).length}
@@ -101,10 +113,10 @@
             {@const info = evidenceByKey.get(key)}
             <tr>
               <th scope="row" class="key-col">
-                <span class="key-name">{key}</span>
+                <span class="key-name">{key.split('.').join(' · ')}</span>
                 {#if info}
                   <span class="key-source" class:estimated={info.estimated}>
-                    {info.estimated ? `estimated from ${info.supportingCount} buildings` : 'inherited from fallback'}
+                    {info.estimated ? `estimated from ${info.supportingCount} buildings` : 'uses “Everything else”'}
                   </span>
                 {/if}
               </th>
@@ -115,16 +127,16 @@
                   <input
                     type="number"
                     min="0"
-                    max="1"
-                    step="0.01"
+                    max={scale}
+                    step={asCounts ? 1 : 0.01}
                     style="color: {weightInk(weight)};"
-                    value={weight}
+                    value={shown(weight)}
                     aria-label="{key} · {value}"
                     onchange={(event) => updateCell(key, value, event.currentTarget.value)}
                   />
                 </td>
               {/each}
-              <td class="total-col" class:off={Math.abs(total - 1) > 0.005}>{total.toFixed(2)}</td>
+              <td class="total-col" class:off={Math.abs(total - 1) > 0.005}>{asCounts ? shown(total) : total.toFixed(2)}</td>
               <td class="actions-col">
                 <button type="button" title="Rescale this row to sum to 1" aria-label="Rescale row to sum to 1" onclick={() => normalizeRow(key)}>Σ1</button>
                 <button type="button" title="Spread evenly across all values" aria-label="Spread row evenly" onclick={() => levelRow(key)}>Even</button>
@@ -139,7 +151,7 @@
 
   <div class="fallback">
     <div class="fallback-header">
-      <h4>Fallback</h4>
+      <h4>Everything else <span class="globi">(fallback)</span></h4>
       <p>
         For buildings whose combination isn't listed above. Without it, those buildings can't be sampled.
       </p>
@@ -152,9 +164,9 @@
           <input
             type="number"
             min="0"
-            max="1"
-            step="0.01"
-            value={Number(fallback[value] ?? 0)}
+            max={scale}
+            step={asCounts ? 1 : 0.01}
+            value={shown(Number(fallback[value] ?? 0))}
             onchange={(event) => updateFallback(value, event.currentTarget.value)}
           />
         </label>
@@ -164,6 +176,19 @@
 </div>
 
 <style>
+  .mode {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+
+  .globi {
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
   .table-editor {
     display: flex;
     flex-direction: column;
@@ -180,7 +205,7 @@
   .filter input {
     padding: 6px 10px;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     font-size: 13px;
     width: 240px;
   }
@@ -194,7 +219,7 @@
     overflow: auto;
     max-height: 460px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
   }
 
   table {
@@ -313,7 +338,7 @@
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-2);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 2px 6px;
     font-size: 12px;
     cursor: pointer;
@@ -340,7 +365,7 @@
     gap: 10px;
     padding: 14px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface-2);
   }
 
@@ -373,7 +398,7 @@
   .fallback-inputs input {
     padding: 5px 8px;
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
   }

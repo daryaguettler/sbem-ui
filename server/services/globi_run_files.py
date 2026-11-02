@@ -1,7 +1,7 @@
 """Write globi's run files from a project's saved artifacts.
 
 The project already holds the inputs globi reads (semantic-fields.yaml, component-map.yaml,
-components-lib.db, gis/buildings.geojson, schedule-variability.yaml). This adds the files that
+components-lib.db, gis/buildings-sampled.geojson or gis/buildings.geojson, schedule-variability.yaml). This adds the files that
 point at them, each validated with globi's own model before it is written:
 
 - building.yml: one building for `globi simulate` (MinimalBuildingSpec)
@@ -46,6 +46,15 @@ def _ref(path: Path) -> str:
         return str(path)
 
 
+def _saved_gis(workspace: ProjectWorkspace) -> Path | None:
+    """The stock a batch run covers: Sampling's buildings × draws, else the saved enriched GIS."""
+    for name in ("buildings-sampled.geojson", "buildings.geojson"):
+        path = workspace.path("gis_dir") / name
+        if path.exists():
+            return path
+    return None
+
+
 def _is_remote(value: str) -> bool:
     return value.startswith(("http://", "https://", "s3://"))
 
@@ -60,11 +69,11 @@ def run_file_status(workspace: ProjectWorkspace) -> dict[str, Any]:
     ]
     weather_dir = workspace.path("weather_dir")
     weather = sorted(str(p.relative_to(workspace.root)) for p in weather_dir.glob("*.zip")) if weather_dir.exists() else []
-    gis = workspace.path("gis_dir") / "buildings.geojson"
+    gis = _saved_gis(workspace)
     return {
         "fields": fields,
         "weather": weather,
-        "gisFile": workspace.relative("gis_dir") + "/buildings.geojson" if gis.exists() else None,
+        "gisFile": str(gis.relative_to(workspace.root)) if gis else None,
         "componentMapSaved": workspace.path("component_map").exists(),
     }
 
@@ -87,9 +96,9 @@ def generate_run_files(
 
     status = run_file_status(workspace)
     if not status["fields"]:
-        raise GlobiFilesError("Save semantic fields first (Semantic Fields → Save).")
+        raise GlobiFilesError("Save your building characteristics first (Building Characteristics → Save).")
     if not status["componentMapSaved"]:
-        raise GlobiFilesError("Save the component map first (Component Map → Save).")
+        raise GlobiFilesError("Save the model parts first (Building Characteristics → Save).")
     if not workspace.path("components_db").exists():
         raise GlobiFilesError("The project has no components-lib.db.")
 
@@ -121,8 +130,8 @@ def generate_run_files(
         "building": {**inputs, "semantic_field_context": context, **building},
     }
     warnings: list[str] = []
-    gis = workspace.path("gis_dir") / "buildings.geojson"
-    if gis.exists():
+    gis = _saved_gis(workspace)
+    if gis:
         documents["artifacts"] = {"gis_file": _ref(gis), **inputs}
         documents["gis_preprocessor"] = DeterministicGISPreprocessorConfig().model_dump(mode="json")
         manifest = {
@@ -143,12 +152,12 @@ def generate_run_files(
         if missing:
             warnings.append(
                 f"The saved GIS has no column for {', '.join(missing)}. A batch run needs a value per "
-                "building for every field, and globi doesn't sample priors: make these fields From GIS."
+                "building for every field, and globi doesn't sample priors: make them From my data, or write sampled buildings (Sampling)."
             )
     else:
         warnings.append(
-            "No GIS saved to the project (Semantic Fields → Save GIS to project, from a GeoJSON), "
-            "so only building.yml was written."
+            "No buildings saved to the project (Sampling → Write sampled buildings, or Building "
+            "Characteristics → GloBI files → Save to project, from a GeoJSON), so only building.yml was written."
         )
 
     try:

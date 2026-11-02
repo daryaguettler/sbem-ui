@@ -20,14 +20,11 @@ import {
   type PriorValidation,
   type RegistryField,
   type SampleSummary,
-  type ScenarioOverride,
-  type ScenarioPreview,
-  type ScenarioSpec,
   type UnconditionalPriorSpec,
 } from '../types/priorTrees';
 
 /** Prefix the sampling engine gives the join keys it generates. */
-const COMPOUND_PREFIX = 'compound.';
+export const COMPOUND_PREFIX = 'compound.';
 
 export function emptyConfig(): PriorConfig {
   return { registry: { fields: [] }, priors: {}, joints: [], scenarios: [] };
@@ -42,7 +39,6 @@ const initialState: PriorTreesState = {
   validationWarnings: [],
   dependencies: { nodes: [], edges: [] },
   sample: null,
-  scenarioPreview: null,
 };
 
 /**
@@ -116,8 +112,7 @@ function touched(state: PriorTreesState, config: PriorConfig): PriorTreesState {
     validationErrors: [],
     validationWarnings: [],
     sample: null,
-    scenarioPreview: null,
-  };
+    };
 }
 
 const { subscribe, set, update } = writable<PriorTreesState>(initialState);
@@ -303,81 +298,6 @@ export const priorTreesStore = {
 
   setSample: (sample: SampleSummary | null) => {
     update((state) => ({ ...state, sample }));
-  },
-
-  setScenarioPreview: (scenarioPreview: ScenarioPreview | null) => {
-    update((state) => ({ ...state, scenarioPreview }));
-  },
-
-  // -- scenarios -------------------------------------------------------------
-
-  addScenario: (name: string) => {
-    update((state) => {
-      const taken = new Set(state.config.scenarios.map((scenario) => scenario.name));
-      let unique = name;
-      let suffix = 2;
-      while (taken.has(unique)) unique = `${name} ${suffix++}`;
-      const scenario: ScenarioSpec = {
-        name: unique,
-        overrides: {},
-        label_column: 'scenario',
-        resample_changed_features: false,
-      };
-      return touched(state, { ...state.config, scenarios: [...state.config.scenarios, scenario] });
-    });
-  },
-
-  updateScenario: (index: number, updates: Partial<ScenarioSpec>) => {
-    update((state) => {
-      const scenarios = state.config.scenarios.map((scenario, position) =>
-        position === index ? { ...scenario, ...updates } : scenario
-      );
-      return touched(state, { ...state.config, scenarios });
-    });
-  },
-
-  removeScenario: (index: number) => {
-    update((state) =>
-      touched(state, {
-        ...state.config,
-        scenarios: state.config.scenarios.filter((_, position) => position !== index),
-      })
-    );
-  },
-
-  setOverride: (index: number, target: string, override: ScenarioOverride) => {
-    update((state) => {
-      const scenarios = state.config.scenarios.map((scenario, position) =>
-        position === index
-          ? { ...scenario, overrides: { ...scenario.overrides, [target]: override } }
-          : scenario
-      );
-      return touched(state, { ...state.config, scenarios });
-    });
-  },
-
-  /** Move an override to a different feature, keeping its rule. */
-  retargetOverride: (index: number, from: string, to: string) => {
-    update((state) => {
-      const scenarios = state.config.scenarios.map((scenario, position) => {
-        if (position !== index) return scenario;
-        const { [from]: moved, ...rest } = scenario.overrides;
-        if (moved === undefined) return scenario;
-        return { ...scenario, overrides: { ...rest, [to]: moved } };
-      });
-      return touched(state, { ...state.config, scenarios });
-    });
-  },
-
-  removeOverride: (index: number, target: string) => {
-    update((state) => {
-      const scenarios = state.config.scenarios.map((scenario, position) => {
-        if (position !== index) return scenario;
-        const { [target]: _removed, ...overrides } = scenario.overrides;
-        return { ...scenario, overrides };
-      });
-      return touched(state, { ...state.config, scenarios });
-    });
   },
 
   reset: () => set({ ...initialState, config: emptyConfig() }),

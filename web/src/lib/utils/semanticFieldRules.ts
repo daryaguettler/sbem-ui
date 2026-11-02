@@ -140,3 +140,16 @@ export function fromApiField(field: ApiSemanticField): SemanticField {
       : undefined,
   };
 }
+
+/** A field with a new options list, its rule re-fitted without losing typed ranges. */
+export function withOptions(field: SemanticField, options: string[], gisColumns: GISColumn[]): SemanticField {
+  const next = ensureTransformationRule({ ...field, options }, gisColumns);
+  if (next.transformationRule?.type !== 'numeric_range') return next;
+  return {
+    ...next,
+    transformationRule: {
+      ...next.transformationRule,
+      numericRanges: syncNumericRanges(field.transformationRule?.numericRanges, options),
+    },
+  };
+}

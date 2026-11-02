@@ -38,7 +38,7 @@
   onblur={hide}
   onkeydown={(event) => event.key === 'Escape' && hide()}
 >
-  <span aria-hidden="true">i</span>
+  <span aria-hidden="true">?</span>
 </button>
 <div bind:this={bubble} {id} role="tooltip" popover="manual" class="help-bubble">{text}</div>
 
@@ -54,7 +54,7 @@
     border-radius: 50%;
     background: var(--surface);
     color: var(--text-muted);
-    font: italic 600 10px/1 Georgia, serif;
+    font: 600 10px/1 system-ui, sans-serif;
     vertical-align: middle;
     cursor: help;
     flex: none;
@@ -73,7 +73,7 @@
     max-width: 280px;
     padding: 8px 10px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius);
     background: var(--surface);
     color: var(--text-2);
     box-shadow: var(--shadow-lg);

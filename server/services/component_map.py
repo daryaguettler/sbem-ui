@@ -113,6 +113,8 @@ def validate_component_map(
     selectors = _collect_selectors(component_map)
     known_fields = set(semantic_field_names)
 
+    if not selectors:
+        errors.append("No model parts are connected to semantic fields yet.")
     for selector in selectors:
         if not selector["source_fields"]:
             errors.append(f"{selector['path']}: selector has no source fields.")

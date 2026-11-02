@@ -77,10 +77,9 @@
   .node {
     min-width: 230px;
     border: 2px solid var(--status-color);
-    border-radius: 8px;
+    border-radius: var(--radius);
     background: var(--surface);
     padding: 10px 12px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     color: var(--text);
     cursor: pointer;
   }
@@ -98,7 +97,7 @@
     height: 4px;
     margin: -10px -12px 8px;
     background: var(--status-color);
-    border-radius: 6px 6px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
   }
 
   .node.selected {
@@ -119,7 +118,7 @@
   .path {
     font-size: 10px;
     color: var(--text-faint);
-    font-family: monospace;
+    font-family: var(--font-mono);
   }
 
   .actions {
@@ -131,7 +130,7 @@
     border: 1px solid var(--border);
     background: var(--surface);
     color: var(--text-2);
-    border-radius: 6px;
+    border-radius: var(--radius);
     padding: 2px 6px;
     font-size: 10px;
     cursor: pointer;
@@ -156,7 +155,7 @@
     display: inline-block;
     font-size: 10px;
     padding: 2px 8px;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: color-mix(in srgb, var(--status-color) 14%, var(--surface));
     color: var(--text);
     font-weight: 600;

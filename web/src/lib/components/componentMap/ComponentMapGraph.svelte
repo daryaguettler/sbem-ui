@@ -259,7 +259,7 @@
   .swatch {
     width: 18px;
     height: 12px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     border: 2px solid;
   }
 
@@ -281,7 +281,7 @@
   .canvas {
     height: 560px;
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: var(--radius);
     overflow: hidden;
     background: var(--surface);
   }
@@ -306,6 +306,6 @@
 
   :global(.svelte-flow__minimap) {
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius);
   }
 </style>

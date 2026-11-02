@@ -1,0 +1,198 @@
+# Residential Semantic Fields Template
+# Every field the residential component map (templates/component_maps/residential.yml) selects on.
+# Options follow the MA residential model (epinterface tests/data/semantic-fields-ma.yml).
+# Typology, Age_bracket and Region come from GIS columns; the rest are sampled from priors.
+
+Name: Residential (complete)
+description: All 19 fields the Residential component map needs. Typology, age and region come from GIS; the rest are sampled.
+Fields:
+  - Name: Region
+    Options:
+      - MA
+    Description: Study region; usually one value for every building. Point it at a column that holds the region code.
+    GIS_Source: region
+    Transformation: categorical_mapping
+    Groups:
+      - group_label: MA
+        source_values:
+          - MA
+
+  - Name: Typology
+    Options:
+      - SFH
+      - MFH
+    Description: Building typology (single-family vs multi-family)
+    GIS_Source: building_type
+    Transformation: categorical_mapping
+
+  - Name: Age_bracket
+    Options:
+      - pre_1975
+      - btw_1975_2003
+      - post_2003
+    Description: Construction age bracket
+    GIS_Source: construction_year
+    Transformation: numeric_range
+    Ranges:
+      - min: 0
+        max: 1974
+        label: pre_1975
+      - min: 1975
+        max: 2003
+        label: btw_1975_2003
+      - min: 2004
+        max: 9999
+        label: post_2003
+
+  - Name: Weatherization
+    Options:
+      - LeakyEnvelope
+      - SomewhatLeakyEnvelope
+      - TightEnvelope
+      - TightEnvelopeHRV
+    Description: Envelope airtightness (and heat-recovery ventilation)
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: AtticVentilation
+    Options:
+      - UnventilatedAttic
+      - VentilatedAttic
+    Description: Whether the attic is ventilated
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: AtticFloorInsulation
+    Options:
+      - NoInsulation
+      - Insulated
+      - HighlyInsulated
+    Description: Insulation in the attic floor
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: RoofInsulation
+    Options:
+      - UninsulatedRoof
+      - InsulatedRoof
+      - HighlyInsulatedRoof
+    Description: Roof insulation level
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: BasementCeilingInsulation
+    Options:
+      - UninsulatedCeiling
+      - InsulatedCeiling
+    Description: Insulation in the basement ceiling
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: BasementWallsInsulation
+    Options:
+      - UninsulatedWalls
+      - InsulatedWalls
+    Description: Basement wall insulation
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: GroundSlabInsulation
+    Options:
+      - UninsulatedGroundSlab
+      - InsulatedGroundSlab
+    Description: Ground slab insulation
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Walls
+    Options:
+      - UninsulatedWalls
+      - SomeInsulationWalls
+      - SIP
+      - FullInsulationWallsCavity
+      - FullInsulationWallsCavityExterior
+    Description: Wall insulation level
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Windows
+    Options:
+      - SinglePane
+      - SinglePaneStormWindows
+      - DoublePaneLowE
+      - TriplePaneLowE
+    Description: Window glazing type
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Heating
+    Options:
+      - ElectricResistance
+      - OilHeating
+      - NaturalGasHeating
+      - NaturalGasCondensingHeating
+      - ASHPHeating
+      - GSHPHeating
+    Description: Primary heating system type
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Cooling
+    Options:
+      - ACWindow
+      - ACCentral
+      - WindowASHP
+      - ASHPCooling
+      - GSHPCooling
+    Description: Primary cooling system type
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Distribution
+    Options:
+      - Steam
+      - HotWaterUninsulated
+      - AirDuctsUninsulated
+      - AirDuctsConditionedUninsulated
+      - HotWaterInsulated
+      - AirDuctsInsulated
+    Description: Heating/cooling distribution system
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: DHW
+    Options:
+      - ElectricResistanceDHW
+      - NaturalGasDHW
+      - NaturalGasHeatingDHWCombo
+      - HPWH
+    Description: Domestic hot water system
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Lighting
+    Options:
+      - NoLED
+      - LED
+    Description: Lighting technology
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Thermostat
+    Options:
+      - NoControls
+      - Controls
+    Description: Thermostat controls (setbacks)
+    Type: stochastic
+    Requires_Prior: true
+
+  - Name: Equipment
+    Options:
+      - LowEfficiencyEquipment
+      - HighEfficiencyEquipment
+    Description: Plug-load equipment efficiency
+    Type: stochastic
+    Requires_Prior: true
+
+Building_ID_col: building_id
+Num_Floors_col: num_floors

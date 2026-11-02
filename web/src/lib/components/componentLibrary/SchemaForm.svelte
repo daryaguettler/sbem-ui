@@ -13,6 +13,7 @@
   // (e.g. Lighting's Schedule field opens a nested Year form). `svelte:self`
   // is deprecated in Svelte 5 in favor of this pattern.
   import SchemaForm from './SchemaForm.svelte';
+  import Select from '../Select.svelte';
 
   type Mode = 'create' | 'edit';
 
@@ -129,6 +130,14 @@
   }
 
   async function submit() {
+    // The dropdowns aren't native selects, so the browser no longer enforces `required`.
+    const missing = (schema?.fields ?? []).filter(
+      (field) => field.kind === 'relation' && field.required && !values[field.name]
+    );
+    if (missing.length > 0) {
+      error = `Choose ${missing.map((field) => field.title).join(', ')} first.`;
+      return;
+    }
     saving = true;
     error = null;
     try {
@@ -162,7 +171,7 @@
 </script>
 
 {#if loading}
-  <p class="hint">Loading form...</p>
+  <p class="hint">Loading form…</p>
 {:else if schema}
   <!-- While a related record is being created, this form stays mounted (so its values
        survive) but hidden, and the nested form takes its place: one form on screen at
@@ -187,31 +196,29 @@
 
           {#if field.kind === 'relation'}
             <div class="relation-row">
-              <select
-                id={fieldId(field.name)}
-                required={field.required}
-                value={values[field.name] ?? ''}
-                onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLSelectElement).value)}
-              >
-                <option value="" disabled>Choose {field.relationType}…</option>
-                {#each relationOptions[field.relationType ?? ''] ?? [] as optionName}
-                  <option value={optionName}>{optionName}</option>
-                {/each}
-              </select>
+              <span class="relation-pick">
+                <Select
+                  id={fieldId(field.name)}
+                  value={String(values[field.name] ?? '')}
+                  options={(relationOptions[field.relationType ?? ''] ?? []).map((optionName) => ({
+                    value: optionName,
+                    label: optionName,
+                  }))}
+                  placeholder={`Choose ${field.relationType}…`}
+                  onChange={(value) => updateValue(field.name, value)}
+                />
+              </span>
               <button type="button" class="btn btn-secondary btn-sm" onclick={() => openCreateRelation(field.name)}>
                 + New
               </button>
             </div>
           {:else if field.kind === 'enum'}
-            <select
+            <Select
               id={fieldId(field.name)}
-              value={values[field.name] ?? ''}
-              onchange={(event) => updateValue(field.name, (event.currentTarget as HTMLSelectElement).value)}
-            >
-              {#each field.options ?? [] as option}
-                <option value={option}>{option}</option>
-              {/each}
-            </select>
+              value={String(values[field.name] ?? '')}
+              options={(field.options ?? []).map((option) => ({ value: option, label: option }))}
+              onChange={(value) => updateValue(field.name, value)}
+            />
           {:else if field.kind === 'boolean'}
             <input
               id={fieldId(field.name)}
@@ -338,10 +345,9 @@
   }
 
   input[type='text'],
-  input[type='number'],
-  select {
+  input[type='number'] {
     border: 1px solid var(--border-strong);
-    border-radius: 6px;
+    border-radius: var(--radius);
     padding: 8px 10px;
     font: inherit;
     min-width: 0;
@@ -365,7 +371,7 @@
     align-items: center;
   }
 
-  .relation-row select {
+  .relation-pick {
     flex: 1;
   }
 

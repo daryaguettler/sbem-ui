@@ -1,12 +1,11 @@
 export type WorkflowId =
   | 'gis-cleaning'
-  | 'semantic-fields'
+  | 'characteristics'
   | 'component-library'
-  | 'component-map'
-  | 'prior-trees'
   | 'retrofits'
-  | 'schedule-variability'
+  | 'sampling'
   | 'model-execution'
+  | 'single-building'
   | 'project-files';
 
 export interface GisDatasetSummary {
