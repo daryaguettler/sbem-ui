@@ -10,7 +10,6 @@ export interface GlobiFilesStatus {
   weather: string[];
   gisFile: string | null;
   componentMapSaved: boolean;
-  globiRoot: string;
 }
 
 export interface BuildingGeometry {
