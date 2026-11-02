@@ -61,6 +61,8 @@ export interface SemanticFieldsState {
   configName: string;
   buildingIdCol: string;
   numFloorsCol: string;
+  /** Top-level keys from the loaded file that the editor does not manage, written back on save. */
+  extraTopLevel: Record<string, unknown>;
   editorMode: 'browse' | 'edit';
   selectedFieldId: string | null;
 }

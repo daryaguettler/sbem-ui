@@ -99,12 +99,13 @@ function createWorkspaceStore() {
     return result.data.open as boolean;
   }
 
-  async function create(path: string, name: string) {
+  /** `template` is a templates/projects/*.yml filename (e.g. a populated component library). */
+  async function create(path: string, name: string, template: string | null = null) {
     update((state) => ({ ...state, loading: true, error: null }));
     const result = await safeFetchJson('/api/workspace/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path, name }),
+      body: JSON.stringify({ path, name, template }),
     });
     if (!result.ok) {
       const message = result.unreachable ? UNREACHABLE_MESSAGE : result.detail ?? 'Failed to create project workspace.';

@@ -5,7 +5,7 @@ export type WorkflowId =
   | 'component-map'
   | 'prior-trees'
   | 'retrofits'
-  | 'sampling'
+  | 'schedule-variability'
   | 'model-execution'
   | 'project-files';
 

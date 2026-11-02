@@ -152,9 +152,11 @@ export function setSelectorAtPath(
   suffix?: string
 ): Record<string, unknown> {
   const updated = deepCopy(componentMap);
-  const node = getNodeAtPath(updated, path);
-  if (!node) {
-    throw new Error(`component path '${path}' not found`);
+  // A loaded globi map is pruned to nodes that have selectors, so create the path as needed.
+  let node: Record<string, unknown> = updated;
+  for (const part of path.split('.')) {
+    if (!node[part] || typeof node[part] !== 'object') node[part] = {};
+    node = node[part] as Record<string, unknown>;
   }
 
   const selector: Record<string, unknown> = { source_fields: sourceFields };

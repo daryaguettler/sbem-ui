@@ -3,13 +3,11 @@
    * Retrofit packages (retrofits.yaml): each package is a list of measures that set a
    * semantic field to a better option, optionally only where another field has a given
    * value. "Never downgrade" orders a field's options so a measure only ever moves a
-   * building up. Preview asks the runner how many draws each package changes.
+   * building up.
    */
   import { onMount } from 'svelte';
-  import RunnerNotice from '../components/RunnerNotice.svelte';
   import WorkflowGuide from '../components/WorkflowGuide.svelte';
   import { fetchSavedArtifact, formatSavedAt, saveArtifact } from '../api/artifacts';
-  import { fetchRunnerStatus, runJob } from '../api/runner';
   import { markSaved, savedAt } from '../stores/projectArtifacts';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
 
@@ -32,19 +30,12 @@
     upgrade_order: Record<string, string[]>;
     packages: Package[];
   }
-  interface PreviewRow {
-    name: string;
-    share_changed: number;
-  }
 
   let doc: RetrofitsDoc = { upgrade_order: {}, packages: [] };
   let loading = true;
   let saving = false;
   let dirty = false;
   let error: string | null = null;
-  let runnerAvailable = false;
-  let previewing = false;
-  let preview: Record<string, number> = {};
 
   /** The package whose "+ measure" row is open, and that row's draft. */
   let adding: number | null = null;
@@ -64,7 +55,6 @@
       const content = (saved.content ?? {}) as Partial<RetrofitsDoc>;
       doc = { upgrade_order: content.upgrade_order ?? {}, packages: content.packages ?? [] };
       if (saved.exists) markSaved('retrofits', saved.savedAt);
-      runnerAvailable = (await fetchRunnerStatus()).available;
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to load retrofits.';
     } finally {
@@ -75,7 +65,6 @@
   function changed() {
     doc = doc;
     dirty = true;
-    preview = {};
   }
 
   function conditions(m: Measure): Condition[] {
@@ -160,21 +149,6 @@
       saving = false;
     }
   }
-
-  async function runPreview() {
-    if (dirty) await save();
-    if (error) return;
-    previewing = true;
-    try {
-      const result = await runJob<{ errors: string[]; packages: PreviewRow[] }>('retrofit-preview');
-      if (result.errors.length) throw new Error(result.errors.join('; '));
-      preview = Object.fromEntries(result.packages.map((r) => [r.name, r.share_changed]));
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Preview failed.';
-    } finally {
-      previewing = false;
-    }
-  }
 </script>
 
 <section class="workflow">
@@ -185,20 +159,12 @@
       <p class="saved-line">{formatSavedAt($savedAt['retrofits'])}{dirty ? ' · unsaved changes' : ''}</p>
     </div>
     <div class="actions">
-      {#if runnerAvailable}
-        <button type="button" class="secondary" onclick={runPreview} disabled={previewing || doc.packages.length === 0}>
-          {previewing ? 'Previewing…' : 'Preview'}
-        </button>
-      {/if}
       <button type="button" onclick={save} disabled={saving || !dirty}>{saving ? 'Saving…' : 'Save'}</button>
     </div>
   </div>
 
   <div class="workflow-content">
     {#if error}<p class="error">{error}</p>{/if}
-    {#if !loading && !runnerAvailable}
-      <RunnerNotice feature="Previewing how many buildings each package changes" />
-    {/if}
 
     {#if loading}
       <p class="muted">Loading…</p>
@@ -222,9 +188,6 @@
           <div class="package">
             <div class="package-head">
               <input class="name" bind:value={pkg.name} oninput={changed} aria-label="Package name" />
-              {#if preview[pkg.name] !== undefined}
-                <span class="share">{Math.round(preview[pkg.name] * 100)}% changed</span>
-              {/if}
               <button type="button" class="icon" title="Remove package" onclick={() => removePackage(p)}>×</button>
             </div>
             <div class="chips">
@@ -320,7 +283,6 @@
   .package-head { display: flex; align-items: center; gap: 10px; }
   .name { font-size: 15px; font-weight: 600; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; min-width: 200px; }
   .name:hover, .name:focus { border-color: var(--border); outline: none; }
-  .share { font-size: 12px; color: var(--accent); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface-3); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 13px; }
   .chip-x, .icon, .arrow { border: none; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 14px; padding: 0 4px; }
@@ -336,7 +298,6 @@
   .step { display: inline-flex; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 4px; }
   .lt { color: var(--text-faint); }
   button { border: none; border-radius: 8px; background: var(--accent); color: var(--on-accent); padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 13px; }
-  button.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
   button.small { padding: 4px 10px; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   .muted { color: var(--text-muted); font-size: 13px; }

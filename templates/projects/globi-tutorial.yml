@@ -1,0 +1,5 @@
+# Copied into a new project: globi-tutorial/components-lib.db (globi tests/data/e2e) and its
+# Boston TMYx weather (globi examples/tutorial). Refresh both from globi when its epinterface
+# schema changes. Records cover Region x Typology x Age_bracket x Income x Scenario.
+Name: GloBI tutorial library
+description: globi's e2e component library (5 typologies x 3 age brackets x 2 incomes x 2 scenarios) and Boston weather.

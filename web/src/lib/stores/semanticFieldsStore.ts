@@ -1,6 +1,7 @@
 import { writable } from 'svelte/store';
 import type { SemanticField, GISColumn, SemanticFieldsState } from '../types/semanticFields';
 import { ensureTransformationRule } from '../utils/semanticFieldRules';
+import { extraTopLevelKeys } from '../utils/semanticFieldsExtras';
 
 const initialState: SemanticFieldsState = {
   fields: [],
@@ -9,6 +10,7 @@ const initialState: SemanticFieldsState = {
   configName: 'Custom Semantic Fields',
   buildingIdCol: 'building_id',
   numFloorsCol: 'num_floors',
+  extraTopLevel: {},
   editorMode: 'browse',
   selectedFieldId: null,
 };
@@ -107,6 +109,7 @@ export const semanticFieldsStore = {
       configName: String(templateData.Name || 'Template'),
       buildingIdCol: String(templateData.Building_ID_col || state.buildingIdCol),
       numFloorsCol: String(templateData.Num_Floors_col || state.numFloorsCol),
+      extraTopLevel: extraTopLevelKeys(templateData),
       editorMode: 'edit',
       selectedFieldId: fields[0]?.id || null,
     }));
@@ -117,6 +120,7 @@ export const semanticFieldsStore = {
       fields: [],
       selectedTemplate: null,
       configName: 'Custom Semantic Fields',
+      extraTopLevel: {},
       editorMode: 'edit',
     }));
   },
@@ -130,6 +134,7 @@ export const semanticFieldsStore = {
     name: state.configName,
     building_id_col: state.buildingIdCol,
     num_floors_col: state.numFloorsCol,
+    extra_top_level: state.extraTopLevel,
     fields: state.fields.map((field) => ({
       id: field.id,
       name: field.name,
@@ -176,6 +181,7 @@ export const semanticFieldsStore = {
     })),
     Building_ID_col: state.buildingIdCol,
     Num_Floors_col: state.numFloorsCol,
+    ...state.extraTopLevel,
   }),
   reset: () => set(initialState),
 };

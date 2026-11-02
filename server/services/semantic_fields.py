@@ -86,4 +86,5 @@ def semantic_fields_to_yaml(config: dict[str, Any]) -> dict[str, Any]:
         ],
         "Building_ID_col": config.get("building_id_col"),
         "Num_Floors_col": config.get("num_floors_col"),
+        **(config.get("extra_top_level") or {}),
     }

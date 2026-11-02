@@ -14,7 +14,7 @@
     { id: 'component-map', label: 'Component Map' },
     { id: 'prior-trees', label: 'Prior Trees' },
     { id: 'retrofits', label: 'Retrofits' },
-    { id: 'sampling', label: 'Sampling' },
+    { id: 'schedule-variability', label: 'Schedule Variability' },
     { id: 'model-execution', label: 'Model Execution' },
   ];
 

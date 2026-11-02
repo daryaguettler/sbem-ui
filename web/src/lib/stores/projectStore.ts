@@ -15,7 +15,7 @@ const WORKFLOW_IDS: WorkflowId[] = [
   'component-map',
   'prior-trees',
   'retrofits',
-  'sampling',
+  'schedule-variability',
   'model-execution',
   'project-files',
 ];
@@ -52,9 +52,9 @@ export const readinessChecks = derived(
     );
     // A field's prior lives in `priors` when unconditioned and in `joints` when not.
     const coveredTargets = new Set(priorTargets($priors.config));
+    // No fields at all means nothing has been decided yet, not "no priors needed".
     const priorsReady =
-      stochasticFields.length === 0 ||
-      stochasticFields.every((field) => coveredTargets.has(field.name));
+      $semantic.fields.length > 0 && stochasticFields.every((field) => coveredTargets.has(field.name));
 
     return [
       {

@@ -21,6 +21,7 @@ export const savedAt = writable<Record<ArtifactKind, string | null>>({
   'component-map': null,
   priors: null,
   retrofits: null,
+  'schedule-variability': null,
 });
 
 export function markSaved(kind: ArtifactKind, timestamp: string | null) {
@@ -118,5 +119,11 @@ export function resetProjectArtifacts(): void {
   componentMapStore.reset();
   priorTreesStore.reset();
   gisDataset.set(null);
-  savedAt.set({ 'semantic-fields': null, 'component-map': null, priors: null, retrofits: null });
+  savedAt.set({
+    'semantic-fields': null,
+    'component-map': null,
+    priors: null,
+    retrofits: null,
+    'schedule-variability': null,
+  });
 }

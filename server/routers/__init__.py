@@ -7,9 +7,10 @@ from .component_tree import router as component_tree_router
 from .component_library import router as component_library_router
 from .prior_trees import router as prior_trees_router
 from .gis import router as gis_router
+from .globi_files import router as globi_files_router
 from .workspace import router as workspace_router
-from .norway import router as runner_router
 from .assist import router as assist_router
+from .schedule_variability import router as schedule_variability_router
 
 __all__ = [
     "artifacts_router",
@@ -19,7 +20,8 @@ __all__ = [
     "component_library_router",
     "prior_trees_router",
     "gis_router",
+    "globi_files_router",
     "workspace_router",
-    "runner_router",
     "assist_router",
+    "schedule_variability_router",
 ]

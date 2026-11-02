@@ -7,7 +7,7 @@
   import ComponentMap from './lib/workflows/ComponentMap.svelte';
   import PriorTrees from './lib/workflows/PriorTrees.svelte';
   import Retrofits from './lib/workflows/Retrofits.svelte';
-  import Sampling from './lib/workflows/Sampling.svelte';
+  import ScheduleVariability from './lib/workflows/ScheduleVariability.svelte';
   import GISCleaning from './lib/workflows/GISCleaning.svelte';
   import ModelExecution from './lib/workflows/ModelExecution.svelte';
   import ProjectFiles from './lib/workflows/ProjectFiles.svelte';
@@ -68,8 +68,8 @@
         <PriorTrees />
       {:else if $currentWorkflow === 'retrofits'}
         <Retrofits />
-      {:else if $currentWorkflow === 'sampling'}
-        <Sampling />
+      {:else if $currentWorkflow === 'schedule-variability'}
+        <ScheduleVariability />
       {:else if $currentWorkflow === 'gis-cleaning'}
         <GISCleaning />
       {:else if $currentWorkflow === 'model-execution'}

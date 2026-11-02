@@ -19,6 +19,7 @@
     'component-map': 'component-map',
     priors: 'prior-trees',
     retrofits: 'retrofits',
+    'schedule-variability': 'schedule-variability',
   };
 
   let root = $state('');

@@ -1,14 +1,25 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { workspaceStore } from '../stores/workspaceStore';
 
   let mode: 'create' | 'open' = 'create';
   let path = '';
   let name = 'My Project';
+  let templates: Array<{ name: string; filename: string; description: string }> = [];
+  let template = '';
+
+  onMount(async () => {
+    try {
+      templates = (await (await fetch('/api/workspace/templates')).json()).templates ?? [];
+    } catch {
+      templates = [];
+    }
+  });
 
   async function submit() {
     if (!path.trim()) return;
     if (mode === 'create') {
-      await workspaceStore.create(path.trim(), name.trim() || 'My Project');
+      await workspaceStore.create(path.trim(), name.trim() || 'My Project', template || null);
     } else {
       await workspaceStore.open(path.trim());
     }
@@ -38,6 +49,18 @@
           Project name
           <input type="text" bind:value={name} placeholder="My Project" />
         </label>
+        {#if templates.length > 0}
+          <label>
+            Component library
+            <select bind:value={template}>
+              <option value="">Empty</option>
+              {#each templates as t}<option value={t.filename}>{t.name}</option>{/each}
+            </select>
+            {#if template}
+              <span class="hint">{templates.find((t) => t.filename === template)?.description}</span>
+            {/if}
+          </label>
+        {/if}
       {/if}
       <label>
         Folder path
@@ -130,12 +153,18 @@
     color: var(--text-2);
   }
 
-  input {
+  input,
+  select {
     font-weight: 400;
     padding: 8px 12px;
     border: 1px solid var(--border-strong);
     border-radius: 6px;
     font-size: 14px;
+  }
+
+  .hint {
+    font-weight: 400;
+    color: var(--text-muted);
   }
 
   .error {

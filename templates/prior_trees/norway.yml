@@ -1,5 +1,5 @@
-# Norway priors, converted from the legacy globi fork (data/priors/Norway/priors.yaml)
-# by norway-globi/scripts/convert_legacy_priors.py. Starting point only; not calibrated.
+# Norway priors, converted from the legacy globi fork (data/priors/Norway/priors.yaml).
+# Starting point only; not calibrated.
 Name: Norway (legacy priors)
 description: Walls, roof, windows, HVAC, DHW etc. conditioned on Typology x Age_bracket.
 

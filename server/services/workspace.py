@@ -14,18 +14,18 @@ real project directory that survives restarts:
       component-map.yaml            # generated output
       components-lib.db             # real Prisma SQLite DB (epinterface schema)
       priors/priors.yaml            # semantic-priors RegionConfig shape
+      schedule-variability.yaml     # globi ScheduleVariabilityConfig
       manifest.json                 # readiness/export summary
 
 `project.json` may override any of these locations with a `"files"` map (keys are the
 `FILE_KEYS` below, values paths relative to the project root), which lets an existing
-repo layout -- e.g. norway-globi's `inputs/` folder -- be opened as a project. An optional
-`"runner"` (path relative to the project root) names the repo whose `norway` CLI
-validates inputs and runs local test simulations.
+repo layout -- e.g. a globi `inputs/` folder -- be opened as a project.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -45,6 +45,7 @@ GIS_DIR = "gis"
 GIS_COLUMN_MAPPINGS_FILE = "gis/column_mappings.json"
 GIS_DATASET_FILE = "gis/dataset.json"
 RETROFITS_FILE = "retrofits.yaml"
+SCHEDULE_VARIABILITY_FILE = "schedule-variability.yaml"
 
 #: Default location of every file a project can hold, keyed by the names `project.json`'s
 #: optional `"files"` map uses to relocate them.
@@ -55,9 +56,14 @@ FILE_KEYS: dict[str, str] = {
     "components_db": COMPONENTS_DB_FILE,
     "priors": PRIORS_FILE,
     "retrofits": RETROFITS_FILE,
+    "schedule_variability": SCHEDULE_VARIABILITY_FILE,
     "gis_dir": GIS_DIR,
-    "training_config": "configs/training.yml",
-    "inference_config": "configs/inference.yml",
+    "weather_dir": "weather",
+    # globi run files, generated from the files above (services/globi_run_files.py)
+    "building": "building.yml",
+    "artifacts": "artifacts.yml",
+    "manifest": "manifest.yml",
+    "gis_preprocessor": "gis-preprocessor.yml",
 }
 
 
@@ -73,8 +79,6 @@ class ProjectWorkspace:
         project_file = root / PROJECT_FILE
         metadata = json.loads(project_file.read_text()) if project_file.exists() else {}
         self._files: dict[str, str] = {**FILE_KEYS, **(metadata.get("files") or {})}
-        runner = metadata.get("runner")
-        self.runner: Path | None = (root / runner).resolve() if runner else None
 
     def path(self, key: str) -> Path:
         """Absolute path of one project file (see `FILE_KEYS`), honoring `project.json`."""
@@ -87,13 +91,18 @@ class ProjectWorkspace:
     # -- lifecycle -----------------------------------------------------------
 
     @classmethod
-    def create(cls, root: Path, name: str, init_db: bool = True) -> "ProjectWorkspace":
+    def create(
+        cls, root: Path, name: str, init_db: bool = True, template_dir: Path | None = None
+    ) -> "ProjectWorkspace":
         """Scaffold a brand-new project workspace directory.
 
         `init_db` runs the (relatively slow, ~seconds: spawns `prisma migrate
         deploy`) components-lib.db schema setup. It's on by default for real
         workspace creation; tests that don't touch the component library can
         pass `init_db=False` and skip straight past it.
+
+        `template_dir` (e.g. templates/projects/globi-tutorial) is copied in first, so a
+        template's components-lib.db replaces the empty one. Files already in the folder win.
         """
         if (root / PROJECT_FILE).exists():
             raise WorkspaceError(f"{root} is already a project; open it instead.")
@@ -101,6 +110,12 @@ class ProjectWorkspace:
         root.mkdir(parents=True, exist_ok=True)
         (root / GIS_DIR).mkdir(exist_ok=True)
         (root / "priors").mkdir(exist_ok=True)
+        if template_dir is not None:
+            for source in template_dir.rglob("*"):
+                target = root / source.relative_to(template_dir)
+                if source.is_file() and not target.exists():
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(source, target)
 
         workspace = cls(root)
         workspace._write_project_metadata(name)

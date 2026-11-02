@@ -120,7 +120,17 @@
       error = 'Choose a CSV or GeoJSON file first.';
       return;
     }
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    await loadDataset(() => fetch('/api/gis/upload', { method: 'POST', body: formData }));
+  }
 
+  /** The bundled mock GIS: globi's 100-building tutorial stock. */
+  function useSample() {
+    return loadDataset(() => fetch('/api/gis/sample', { method: 'POST' }));
+  }
+
+  async function loadDataset(request: () => Promise<Response>) {
     uploading = true;
     error = null;
     validationIssues = [];
@@ -130,9 +140,7 @@
         await loadRoles();
       }
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      const response = await fetch('/api/gis/upload', { method: 'POST', body: formData });
+      const response = await request();
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || 'Upload failed.');
@@ -258,6 +266,10 @@
         />
         <button type="button" onclick={uploadFile} disabled={uploading || !selectedFile}>
           {uploading ? 'Uploading…' : 'Upload'}
+        </button>
+        <span class="or">or</span>
+        <button type="button" class="secondary" onclick={useSample} disabled={uploading}>
+          Use sample buildings (100)
         </button>
       </div>
       {#if $gisDataset}
@@ -434,6 +446,11 @@
     gap: 12px;
     align-items: center;
     margin-top: 12px;
+  }
+
+  .or {
+    color: var(--text-muted);
+    font-size: 14px;
   }
 
   button {

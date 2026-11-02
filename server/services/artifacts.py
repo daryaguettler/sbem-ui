@@ -20,6 +20,8 @@ from typing import Any, Callable
 
 import yaml
 
+from services.gis_session import get_column_mappings
+from services.globi_columns import mappings_to_semantic_field_cols
 from services.semantic_fields import semantic_fields_to_yaml
 from services.globi_component_map import to_globi
 from services.workspace import ProjectWorkspace
@@ -39,6 +41,17 @@ class ArtifactError(Exception):
 def _as_is(payload: dict[str, Any]) -> dict[str, Any]:
     """Editors whose working state is already the on-disk document."""
     return payload
+
+
+def _schedule_variability_document(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate with globi's own model, so a saved file is one globi will load."""
+    from globi.models.schedule_variability import ScheduleVariabilityConfig
+    from pydantic import ValidationError
+
+    try:
+        return ScheduleVariabilityConfig.model_validate(payload).model_dump()
+    except ValidationError as exc:
+        raise ArtifactError(str(exc)) from exc
 
 
 @dataclass(frozen=True)
@@ -81,6 +94,13 @@ ARTIFACTS: dict[str, ArtifactSpec] = {
         description="Retrofit packages applied to every prior draw.",
         to_document=_as_is,
     ),
+    "schedule-variability": ArtifactSpec(
+        kind="schedule-variability",
+        label="Schedule variability",
+        file_key="schedule_variability",
+        description="Seeded per-building noise on schedules (globi schedule_variability_config).",
+        to_document=_schedule_variability_document,
+    ),
 }
 
 
@@ -101,6 +121,9 @@ def save_artifact(
     """Write one editor's working state into the project, returning its file entry."""
     spec = get_spec(kind)
     document = spec.to_document(payload)
+    if kind == "semantic-fields":
+        # column roles (Building_ID_col, Height_col, WWR_col, ...) are set in GIS Cleaning
+        document.update(mappings_to_semantic_field_cols(get_column_mappings(workspace)))
 
     path = workspace.path(spec.file_key)
     path.parent.mkdir(parents=True, exist_ok=True)

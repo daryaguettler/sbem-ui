@@ -2,13 +2,17 @@
 name = "sbem-ui"
 version = "0.1.0"
 description = "Svelte-based UI for creating SBEM model artifacts"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
     "pydantic>=2.0.0",
     "pyyaml>=6.0.0",
     "python-multipart>=0.0.6",
+    # globi sets the epinterface version, so sbem-ui edits the same component db globi simulates.
+    # Only import globi.models / globi.gis: globi.pipelines and globi.allocate create
+    # Hatchet / boto3 clients at import time.
+    "globi",
     "epinterface",
     # semantic_priors is vendored in lib/ (see lib/semantic_priors/VENDORED.md)
     "networkx",
@@ -31,8 +35,9 @@ dev = [
 link-mode = "copy"
 
 [tool.uv.sources]
-# same epinterface as globi pins, so sbem-ui and norway-globi read the same component db
-epinterface = { git = "https://github.com/szvsw/epinterface", branch = "feature/onezone-converter" }
+# shortcut: local sibling checkout until globi is tagged with the narrowed epinterface range;
+# then switch to: globi = { git = "https://github.com/MITSustainableDesignLab/globi", tag = "vX.Y.Z" }
+globi = { path = "../globi", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

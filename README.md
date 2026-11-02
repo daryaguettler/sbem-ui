@@ -80,7 +80,7 @@ sbem-ui/
 ### Prerequisites
 
 - Node.js 18+
-- Python 3.11+
+- Python 3.12+
 - uv (recommended) or pip
 
 ### Frontend Setup
@@ -95,8 +95,9 @@ The frontend will be available at `http://localhost:5173`
 
 ### Backend Setup
 
-No other checkouts are needed. `epinterface` installs from GitHub (the same branch
-globi pins), and `semantic_priors` is vendored in `lib/semantic_priors` (see its
+Clone `globi` next to this repo (`../globi`): sbem-ui depends on it, and globi sets
+the `epinterface` version, so the component db you edit here is the one globi
+simulates. `semantic_priors` is vendored in `lib/semantic_priors` (see its
 `VENDORED.md`).
 
 ```bash

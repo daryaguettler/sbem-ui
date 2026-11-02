@@ -27,6 +27,8 @@ class SemanticFieldsPayload(BaseModel):
     building_id_col: str | None = None
     num_floors_col: str | None = None
     fields: list[SemanticField] = Field(default_factory=list)
+    # top-level keys the editor doesn't manage (e.g. globi's Height_col), written back unchanged
+    extra_top_level: dict[str, Any] = Field(default_factory=dict)
 
 
 def _gis_column_names(workspace: ProjectWorkspace) -> list[str]:
@@ -130,6 +132,7 @@ async def export_semantic_fields(payload: SemanticFieldsPayload) -> Response:
             "building_id_col": config.get("building_id_col"),
             "num_floors_col": config.get("num_floors_col"),
             "fields": [field.model_dump(by_alias=False) for field in payload.fields],
+            "extra_top_level": config.get("extra_top_level"),
         }
     )
     content = yaml.safe_dump(yaml_payload, sort_keys=False)

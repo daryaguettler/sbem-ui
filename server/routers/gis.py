@@ -32,9 +32,12 @@ from services.gis_session import (
     set_dataset,
     set_validated_columns,
 )
+from services.template_loader import TEMPLATES_DIR
 from services.workspace import ProjectWorkspace
 
 router = APIRouter(prefix="/api/gis", tags=["gis"])
+
+SAMPLE_GIS = TEMPLATES_DIR / "gis" / "buildings-100.geojson"
 
 
 class CleanRequest(BaseModel):
@@ -96,9 +99,18 @@ async def upload_gis_file(file: UploadFile, workspace: ProjectWorkspace = Depend
     if not file.filename:
         raise HTTPException(status_code=400, detail="Filename is required.")
 
-    content = await file.read()
+    return _load_dataset(workspace, file.filename, await file.read())
+
+
+@router.post("/sample")
+async def load_sample_gis(workspace: ProjectWorkspace = Depends(get_workspace)):
+    """Load the bundled mock GIS (globi's 100-building tutorial stock) as if it were uploaded."""
+    return _load_dataset(workspace, SAMPLE_GIS.name, SAMPLE_GIS.read_bytes())
+
+
+def _load_dataset(workspace: ProjectWorkspace, filename: str, content: bytes) -> dict[str, Any]:
     try:
-        dataset = parse_gis_upload(file.filename, content)
+        dataset = parse_gis_upload(filename, content)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -250,7 +262,7 @@ async def export_enriched_dataset(
     """Download GIS data with deterministic semantic fields applied.
 
     With ``?save=true`` the file is written into the project instead
-    (``<gis dir>/buildings.geojson`` or ``.csv``), where norway-globi reads the stock.
+    (``<gis dir>/buildings.geojson`` or ``.csv``), where globi reads the stock (``gis_file``).
     """
     dataset = get_dataset(workspace)
     if dataset is None:

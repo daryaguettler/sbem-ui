@@ -4,7 +4,12 @@
  * POST -- saving writes that document into the project instead of downloading it.
  */
 
-export type ArtifactKind = 'semantic-fields' | 'component-map' | 'priors' | 'retrofits';
+export type ArtifactKind =
+  | 'semantic-fields'
+  | 'component-map'
+  | 'priors'
+  | 'retrofits'
+  | 'schedule-variability';
 
 export interface ArtifactStatus {
   kind: ArtifactKind;
