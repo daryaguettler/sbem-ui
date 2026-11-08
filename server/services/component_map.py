@@ -14,6 +14,7 @@ def _collect_selectors(node: Any, path: str = "") -> list[dict[str, Any]]:
                 {
                     "path": path or "root",
                     "source_fields": selector.get("source_fields", []),
+                    "prefix": selector.get("prefix"),
                     "suffix": selector.get("suffix"),
                 }
             )

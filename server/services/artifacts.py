@@ -87,6 +87,13 @@ ARTIFACTS: dict[str, ArtifactSpec] = {
         description="What each model part depends on, and which library record each combination uses.",
         to_document=_as_is,
     ),
+    "component-priors": ArtifactSpec(
+        kind="component-priors",
+        label="Component priors",
+        file_key="component_priors",
+        description="Uncertainty on component values: a curve per number, and how many variants each component stands for.",
+        to_document=_as_is,
+    ),
     "priors": ArtifactSpec(
         kind="priors",
         label="Prior trees",
@@ -112,7 +119,7 @@ ARTIFACTS: dict[str, ArtifactSpec] = {
 
 
 #: Saving one of these recompiles the part rules (the map, generated records, Scenario).
-COMPILES_RULES = ("part-rules", "semantic-fields", "retrofits")
+COMPILES_RULES = ("part-rules", "semantic-fields", "retrofits", "component-priors")
 
 
 def get_spec(kind: str) -> ArtifactSpec:

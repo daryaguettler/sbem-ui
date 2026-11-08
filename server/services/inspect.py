@@ -97,6 +97,16 @@ def _shares(values: list[Any]) -> list[dict[str, Any]]:
     return [{"value": value, "share": count / total} for value, count in counts.most_common()]
 
 
+def _record_name(selector: dict[str, Any], values: list[str]) -> str:
+    """The name epinterface's ComponentNameConstructor looks up; a prefix-only selector gives `prefix_`."""
+    name = "_".join(values)
+    if selector.get("prefix") is not None:
+        name = f"{selector['prefix']}_{name}"
+    if selector.get("suffix") is not None:
+        name = f"{name}_{selector['suffix']}"
+    return name
+
+
 def inspect_building(
     rows: list[dict[str, Any]],
     id_column: str,
@@ -128,7 +138,7 @@ def inspect_building(
             if any(value is None for value in values):
                 names.append(None)
                 continue
-            names.append("_".join([*values, *([selector["suffix"]] if selector.get("suffix") else [])]))
+            names.append(_record_name(selector, values))
         parts.append(
             {
                 "path": selector["path"],

@@ -13,6 +13,7 @@ real project directory that survives restarts:
       component-map.selectors.yaml  # per-node selector declarations (source of truth)
       component-map.yaml            # generated output
       part-rules.yaml               # what each model part depends on (compiled into the map)
+      component-priors.yaml         # optional uncertainty on component values (compiled into variants)
       components-lib.db             # real Prisma SQLite DB (epinterface schema)
       priors/priors.yaml            # semantic-priors RegionConfig shape
       schedule-variability.yaml     # globi ScheduleVariabilityConfig
@@ -55,6 +56,7 @@ FILE_KEYS: dict[str, str] = {
     "component_map_selectors": COMPONENT_MAP_SELECTORS_FILE,
     "component_map": COMPONENT_MAP_FILE,
     "part_rules": "part-rules.yaml",
+    "component_priors": "component-priors.yaml",
     "components_db": COMPONENTS_DB_FILE,
     "priors": PRIORS_FILE,
     "retrofits": RETROFITS_FILE,

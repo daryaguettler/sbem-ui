@@ -16,6 +16,19 @@ records globi looks up by name are build outputs, rewritten by every compile:
 Retrofit packages compile into a generated Scenario characteristic: a group whose parts depend
 on a characteristic a package changes also varies by Scenario, and its rows for a package point
 at the options the retrofitted values pick. globi sets Scenario from each manifest.
+
+Components with priors (component-priors.yaml) compile into variants: n records
+`auto_<component>__1..n`, one per stratified point of their curves. A part using one also
+depends on a generated variant-index characteristic (`<part>_variant`, values 1..L) that
+Sampling draws evenly; index k picks variant ceil(k·n/L), so components with different n keep
+equal weights and every component keeps the building's rank (under retrofits too). Parts
+linked to move together share one index field; correlated ones keep their own, and Sampling
+draws them jointly.
+
+A package can also act on a part directly: replace its component (`{part, to}`, fixed or
+uncertain), or shift one of its numbers (`{part, number, op, value}`, op scale / add /
+at_most / at_least). A shifted part gets `<its option>__<package>` records, variant by variant,
+so a building keeps its draw from the curve.
 """
 
 from __future__ import annotations
@@ -24,6 +37,9 @@ import functools
 import hashlib
 import itertools
 import json
+import math
+import operator
+import re
 import uuid
 from collections import Counter
 from typing import Any, Callable
@@ -31,7 +47,13 @@ from typing import Any, Callable
 import yaml
 
 from services import component_library as lib
-from services.globi_component_map import SCENARIO, _selectors, building_contexts, to_globi
+from services import component_priors
+from services.globi_component_map import (
+    SCENARIO,
+    _selectors,
+    building_contexts,
+    to_globi,
+)
 
 GROUPS = ("Envelope", "Operations.SpaceUse", "Operations.HVAC", "Operations.DHW")
 #: Generated record names start with this; compiles delete and rewrite exactly these.
@@ -42,6 +64,11 @@ INTERNAL_MASS = "Envelope.Assemblies.InternalMassAssembly"
 MAX_PRODUCT = 5_000
 BASELINE = "Baseline"
 GENERATED_NOTE = "Generated from retrofits.yaml: Baseline plus one value per retrofit package."
+VARIANT_NOTE = "Generated from component-priors.yaml: which variant of an uncertain component a building draws."
+GENERATED_NOTES = (GENERATED_NOTE, VARIANT_NOTE)
+VARIANT_SUFFIX = "_variant"
+#: Most variant-index values one part may need (the lcm of its components' n).
+MAX_LEVELS = 120
 
 
 class PartRulesError(Exception):
@@ -99,23 +126,34 @@ def _conditions(measure: dict[str, Any]) -> list[dict[str, Any]]:
     return when if isinstance(when, list) else [when]
 
 
+def _holds(measure: dict[str, Any], values: dict[str, str]) -> bool:
+    return all(
+        values.get(c["field"]) in c["in"] if "in" in c else values.get(c["field"]) not in c.get("not_in", [])
+        for c in _conditions(measure)
+    )
+
+
 def apply_package(values: dict[str, str], package: dict[str, Any], upgrade_order: dict[str, list[str]]) -> dict[str, str]:
     """A combination's values after a retrofit package's measures, in order; never a downgrade."""
     out = dict(values)
     for measure in package.get("measures") or []:
-        field = measure["field"]
-        if field not in out:
+        field = measure.get("field")
+        if field not in out:  # also every part measure
             continue
-        holds = all(
-            out.get(c["field"]) in c["in"] if "in" in c else out.get(c["field"]) not in c.get("not_in", [])
-            for c in _conditions(measure)
-        )
         new = measure.get("to") or (measure.get("map") or {}).get(out[field])
         order = upgrade_order.get(field) or []
-        if not holds or new is None or (new in order and out[field] in order and order.index(new) < order.index(out[field])):
+        if not _holds(measure, out) or new is None or (new in order and out[field] in order and order.index(new) < order.index(out[field])):
             continue
         out[field] = new
     return out
+
+
+#: How a part measure shifts a number: U × 0.5, COP + 0.5, or "at most U 0.25" (never worse).
+SHIFTS: dict[str, Callable[[float, float], float]] = {"scale": operator.mul, "add": operator.add, "at_most": min, "at_least": max}
+
+
+def _package_slug(name: str) -> str:
+    return re.sub(r"\W+", "-", name).strip("-")
 
 
 # -- reading the library ------------------------------------------------------------
@@ -128,6 +166,26 @@ class _Library:
         self.db = db
         self._flat: dict[tuple[str, str], dict[str, Any] | None] = {}
         self._ids: dict[str, dict[str, str]] = {}
+        #: Variant records queued this compile, by name; not in the database yet.
+        self.variant_rows: dict[str, dict[str, Any]] = {}
+        #: Each variant's source record and the numbers set on it.
+        self.variant_values: dict[str, tuple[str, dict[str, float]]] = {}
+        self._conductivity: dict[str, float] | None = None
+
+    def conductivity(self) -> dict[str, float]:
+        if self._conductivity is None:
+            self._conductivity = {m["Name"]: m["Conductivity"] for m in lib.list_records(self.db, "ConstructionMaterial")}
+        return self._conductivity
+
+    def queue_variant(self, component_type: str, name: str, source: str, values: dict[str, float], rows) -> None:
+        """Queue record `name`: `source` with `values` in place (component_priors.variant_record)."""
+        payload = component_priors.variant_record(component_type, self.record(component_type, source), values, self.conductivity())
+        validated = lib._validate_payload(component_type, {**payload, "Name": name}, self.db)
+        row = {**lib._to_prisma_write_data(component_type, validated, self.db), "id": str(uuid.uuid4())}
+        rows.append((component_type, row))
+        self.ids(component_type)[name] = row["id"]
+        self.variant_rows[name] = row
+        self.variant_values[name] = (source, values)
 
     def record(self, component_type: str, name: str) -> dict[str, Any] | None:
         if (component_type, name) not in self._flat:
@@ -248,14 +306,16 @@ def compile_rules(
     retrofits: dict[str, Any] | None,
     db,
     found: Callable[[], dict[str, Any]] | None = None,
+    priors: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """-> {component_map, rows: [(type, row)] in write order, scenario: values | None, groups}
+    """-> {component_map, rows: [(type, row)] in write order, scenario: values | None,
+    variants: {field: levels}, groups}
 
     `found` returns the buildings' combinations (`building_contexts`); it is only called for a
     group whose full product is too large."""
     library = _Library(db)
     rule_for = rules.get("parts") or {}
-    user_fields = [f for f in semantic_fields.get("Fields") or [] if f.get("Description") != GENERATED_NOTE]
+    user_fields = [f for f in semantic_fields.get("Fields") or [] if f.get("Description") not in GENERATED_NOTES]
     options = {f["Name"]: [str(o) for o in f.get("Options") or []] for f in user_fields}
     order = list(options)
     packages = (retrofits or {}).get("packages") or []
@@ -276,11 +336,30 @@ def compile_rules(
         for option in {rule["default"], *(rule.get("cells") or {}).values()}:
             if option not in library.ids(_type(part)):
                 problems.append(f"{part}: option {option!r} isn't a {_type(part)} record.")
+    for package in packages:
+        for measure in package.get("measures") or []:
+            part = measure.get("part")
+            if part is None:
+                continue
+            where = f"{package['name']}: {part.split('.')[-1]}"
+            if part not in rule_for:
+                problems.append(f"{where} isn't a model part.")
+            elif measure.get("to"):
+                if measure["to"] not in library.ids(_type(part)):
+                    problems.append(f"{where}: {measure['to']!r} isn't a {_type(part)} record.")
+            elif measure.get("op") not in SHIFTS or not isinstance(measure.get("value"), (int, float)) or not measure.get("number"):
+                problems.append(f"{where}: give a number, how to change it ({', '.join(SHIFTS)}) and by how much.")
     if problems:
         raise PartRulesError(" ".join(problems))
 
-    tree_map: dict[str, Any] = {}
     rows: list[tuple[str, dict[str, Any]]] = []
+    uncertain, part_variant = _variants(rule_for, (priors or {}).get("components") or {}, options, library, rows, packages)
+    _link_together(part_variant, (priors or {}).get("links") or [], options)
+    for field, levels in {v[0]: v[1] for v in part_variant.values()}.items():
+        options[field] = [str(k) for k in range(1, levels + 1)]
+        order.append(field)
+
+    tree_map: dict[str, Any] = {}
     generated_ids: dict[str, dict[str, str]] = {}
     base = rules.get("assembly_base")
     base_assembly = library.record("EnvelopeAssembly", base) if base else None
@@ -288,10 +367,10 @@ def compile_rules(
     for group in GROUPS:
         group_parts = [p for p in parts() if _group_of(p) == group]
         deps = set().union(*(rule_for[p].get("depends_on") or [] for p in group_parts))
-        measured = {m["field"] for p in packages for m in p.get("measures") or [] if m["field"] in deps}
-        if measured:
-            deps |= {c["field"] for p in packages for m in p.get("measures") or [] if m["field"] in measured
-                     for c in _conditions(m) if c["field"] in options}
+        deps |= {part_variant[p][0] for p in group_parts if p in part_variant}
+        acting = [m for p in packages for m in p.get("measures") or [] if m.get("field") in deps or m.get("part") in group_parts]
+        measured = bool(acting)
+        deps |= {c["field"] for m in acting for c in _conditions(m) if c["field"] in options}
         fields = _ordered(deps, order)
         combos = _combinations(fields, options, found)
         if measured:
@@ -305,18 +384,156 @@ def compile_rules(
         names_seen: dict[str, tuple] = {}
         for combo in combos:
             values = dict(zip(fields, combo))
-            if measured and combo[-1] != BASELINE:
-                values = apply_package(values, next(p for p in packages if p["name"] == combo[-1]), upgrade_order)
+            package = next((p for p in packages if p["name"] == combo[-1]), None) if measured else None
+            if package:
+                values = apply_package(values, package, upgrade_order)
             name = "_".join([PREFIX, "_".join(combo)])
             if names_seen.setdefault(name, combo) != combo:
                 raise PartRulesError(
                     f"{' / '.join(combo)} and {' / '.join(names_seen[name])} give the same record name; "
                     "rename a value so they differ."
                 )
-            choice = {p: option_for(rule_for[p], values) for p in group_parts}
+            choice = {
+                p: _part_measures(p, option_for(rule_for[p], values), values, package, uncertain, part_variant, library, rows)
+                if package else _variant_of(p, option_for(rule_for[p], values), values, uncertain, part_variant)
+                for p in group_parts
+            }
             _build(group, name, choice, library, base_assembly, generated_ids, rows)
         summary[group] = {"fields": selector_fields, "combinations": len(combos)}
-    return {"component_map": tree_map, "rows": rows, "scenario": scenarios, "groups": summary}
+    variants = {field: levels for field, levels in part_variant.values()}
+    return {"component_map": tree_map, "rows": rows, "scenario": scenarios, "variants": variants, "groups": summary}
+
+
+def _variants(rule_for, components, options, library, rows, packages=()):
+    """Queue the variant records of every uncertain component a rule (or a package's replace)
+    uses, and give each part that uses one a variant-index field.
+    -> ({(type, name): n}, {part: (field, levels)})"""
+    uncertain: dict[tuple[str, str], int] = {}
+    part_variant: dict[str, tuple[str, int]] = {}
+    for part in parts():
+        component_type = _type(part)
+        rule = rule_for[part]
+        replaced = {m["to"] for p in packages for m in p.get("measures") or [] if m.get("part") == part and m.get("to")}
+        used = sorted({rule["default"], *(rule.get("cells") or {}).values(), *replaced} & set(components.get(component_type) or {}))
+        if not used:
+            continue
+        for name in used:
+            if (component_type, name) in uncertain:
+                continue
+            prior = components[component_type][name]
+            try:
+                for j, value in enumerate(component_priors.variants(name, prior), start=1):
+                    library.queue_variant(component_type, f"{PREFIX}_{name}__{j}", name, value, rows)
+            except (component_priors.PriorError, ValueError, LookupError) as exc:
+                raise PartRulesError(f"{name}: {exc}") from exc
+            uncertain[(component_type, name)] = prior["n"]
+        field = variant_field(part)
+        if field in options:
+            raise PartRulesError(f"Rename your {field!r} characteristic: the app uses that name for {part}'s variants.")
+        levels = math.lcm(*(uncertain[(component_type, name)] for name in used))
+        if levels > MAX_LEVELS:
+            raise PartRulesError(
+                f"{part}: its uncertain components need {levels} variant levels together; "
+                "give them the same n, or ns that divide each other."
+            )
+        part_variant[part] = (field, levels)
+    return uncertain, part_variant
+
+
+def variant_field(part: str) -> str:
+    """The generated variant-index characteristic of a part (Envelope...FacadeAssembly -> FacadeAssembly_variant)."""
+    return part.split(".")[-1] + VARIANT_SUFFIX
+
+
+def _links(links: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The links, checked: each part in one link at most, and each a valid way to move together."""
+    seen: set[str] = set()
+    for link in links:
+        how = link.get("link")
+        names = " + ".join(link.get("parts") or [])
+        if how != "together" and not (isinstance(how, (int, float)) and -1 < how < 1):
+            raise PartRulesError(f"Link {names}: use together or a correlation between -1 and 1.")
+        m = len(link.get("parts") or [])
+        if how != "together" and m > 2 and how <= -1 / (m - 1):
+            raise PartRulesError(f"Link {names}: {m} parts can't all be correlated at {how}; it has to be above {-1 / (m - 1):.2f}.")
+        for part in link.get("parts") or []:
+            if part in seen:
+                raise PartRulesError(f"{part} is in two links; link it once, with every part it moves with.")
+            seen.add(part)
+    return links
+
+
+def _link_together(part_variant: dict[str, tuple[str, int]], links: list[dict[str, Any]], options) -> None:
+    """Parts linked to move together share one variant index, so variant k of each goes together."""
+    for link in _links(links):
+        members = [p for p in link.get("parts") or [] if p in part_variant]
+        if link["link"] != "together" or len(members) < 2:
+            continue
+        field = "_".join(p.split(".")[-1] for p in members) + VARIANT_SUFFIX
+        if field in options:
+            raise PartRulesError(f"Rename your {field!r} characteristic: the app uses that name for linked variants.")
+        levels = math.lcm(*(part_variant[p][1] for p in members))
+        if levels > MAX_LEVELS:
+            raise PartRulesError(f"{' + '.join(members)} need {levels} variant levels together; give their components the same n.")
+        for part in members:
+            part_variant[part] = (field, levels)
+
+
+def correlated(priors: dict[str, Any], levels: dict[str, int]) -> list[tuple[list[str], float]]:
+    """Variant-index fields to draw jointly, with their correlation, for Sampling."""
+    groups = []
+    for link in priors.get("links") or []:
+        fields = [variant_field(p) for p in link.get("parts") or [] if variant_field(p) in levels]
+        if isinstance(link.get("link"), (int, float)) and len(fields) > 1:
+            groups.append((fields, float(link["link"])))
+    return groups
+
+
+def _variant_of(part, option, values, uncertain, part_variant):
+    """The variant a combination's variant index picks, for an uncertain option."""
+    n = uncertain.get((_type(part), option)) if part in part_variant else None
+    if n is None:
+        return option
+    field, levels = part_variant[part]
+    return f"{PREFIX}_{option}__{math.ceil(int(values[field]) * n / levels)}"
+
+
+def _part_measures(part, option, values, package, uncertain, part_variant, library, rows):
+    """The record a part ends on under a package's measures on it, in order: a replace swaps the
+    option, a shift changes one of its numbers (on the variant the building drew)."""
+    measures = package.get("measures") or []
+    shifts: list[int] = []
+    for i, measure in enumerate(measures):
+        if measure.get("part") != part or not _holds(measure, values):
+            continue
+        if measure.get("to"):
+            option, shifts = measure["to"], []
+        else:
+            shifts.append(i)
+    chosen = _variant_of(part, option, values, uncertain, part_variant)
+    if not shifts:
+        return chosen
+    stem = chosen if chosen.startswith(f"{PREFIX}_") else f"{PREFIX}_{chosen}"
+    every = [i for i, m in enumerate(measures) if m.get("part") == part and not m.get("to")]
+    name = f"{stem}__{_package_slug(package['name'])}" + ("" if shifts == every else "-" + "-".join(str(i + 1) for i in shifts))
+    if name in library.variant_rows:
+        return name
+    component_type = _type(part)
+    source, numbers = library.variant_values.get(chosen, (chosen, {}))
+    numbers = dict(numbers)
+    record = library.record(component_type, source)
+    try:
+        for i in shifts:
+            number, op = measures[i]["number"], measures[i]["op"]
+            if number not in numbers:
+                numbers[number] = component_priors.u_value(record["Layers"], library.conductivity()) if number == component_priors.U else record.get(number)
+            if not isinstance(numbers[number], (int, float)) or isinstance(numbers[number], bool):
+                raise component_priors.PriorError(f"{component_type} has no number called {number!r}.")
+            numbers[number] = SHIFTS[op](numbers[number], float(measures[i]["value"]))
+        library.queue_variant(component_type, name, source, numbers, rows)
+    except (component_priors.PriorError, ValueError, LookupError) as exc:
+        raise PartRulesError(f"{package['name']}: {part.split('.')[-1]} ({source}): {exc}") from exc
+    return name
 
 
 def _combinations(fields: list[str], options: dict[str, list[str]], found) -> list[tuple]:
@@ -330,7 +547,8 @@ def _combinations(fields: list[str], options: dict[str, list[str]], found) -> li
         raise PartRulesError(
             f"{' × '.join(fields)} make {size:,} combinations; save your buildings so only the ones they have are built."
         )
-    return sorted({tuple(c[f] for f in fields) for c in found["contexts"]})
+    # a field the buildings don't carry yet (a new variant index) expands over its options
+    return sorted({combo for c in found["contexts"] for combo in itertools.product(*([c[f]] if f in c else options[f] for f in fields))})
 
 
 def _build(path, name, choice, library, base_assembly, generated_ids, rows) -> str:
@@ -341,8 +559,8 @@ def _build(path, name, choice, library, base_assembly, generated_ids, rows) -> s
         if path not in GROUPS:
             return library.ids(component_type)[option]
         # DHW: globi looks the leaf itself up by the generated name
-        source = lib._client_accessor(library.db, component_type).find_unique(where={"Name": option})
-        data = {k: v for k, v in source.model_dump().items() if k not in ("id", "Name") and v is not None and not isinstance(v, (dict, list))}
+        source = library.variant_rows.get(option) or lib._client_accessor(library.db, component_type).find_unique(where={"Name": option}).model_dump()
+        data = {k: v for k, v in source.items() if k not in ("id", "Name") and v is not None and not isinstance(v, (dict, list))}
         row = {"id": str(uuid.uuid4()), "Name": name, **data}
         rows.append((component_type, row))
         return row["id"]
@@ -373,10 +591,15 @@ _GENERATED_TABLES = ("Envelope", "HVAC", "SpaceUse", "DHW", "EnvelopeAssembly", 
 
 
 def write_rows(db, rows: list[tuple[str, dict[str, Any]]]) -> None:
-    """Replace every generated record with `rows`, in one batch."""
+    """Replace every generated record with `rows` (variants first), in one batch."""
+    generated = {"Name": {"startswith": f"{PREFIX}_"}}
     with db.batch_() as batch:
         for component_type in _GENERATED_TABLES:
-            lib._client_accessor(batch, component_type).delete_many(where={"Name": {"startswith": f"{PREFIX}_"}})
+            lib._client_accessor(batch, component_type).delete_many(where=generated)
+        # then the variants the group records pointed at
+        batch.constructionassemblylayer.delete_many(where={"ConstructionAssembly": {"is": generated}})
+        for component_type in sorted({_type(p) for p in parts()} - set(_GENERATED_TABLES)):
+            lib._client_accessor(batch, component_type).delete_many(where=generated)
         for component_type, row in rows:
             lib._client_accessor(batch, component_type).create(data=row)
 
@@ -401,11 +624,12 @@ def compile_project(workspace) -> dict[str, Any]:
         return {"ok": True, "skipped": True, "errors": []}
     semantic = workspace.read_semantic_fields()
     retrofits = _read_yaml(workspace.path("retrofits"))
+    priors = _read_yaml(workspace.path("component_priors"))
     db = workspace.prisma_client()
     db.connect()
     try:
         found = functools.cache(lambda: building_contexts(workspace, semantic))
-        result = compile_rules(rules, semantic, retrofits, db, found)
+        result = compile_rules(rules, semantic, retrofits, db, found, priors)
         write_rows(db, result["rows"])
     except PartRulesError as exc:
         return {"ok": False, "errors": [str(exc)]}
@@ -413,14 +637,21 @@ def compile_project(workspace) -> dict[str, Any]:
         db.disconnect()
     workspace.write_component_map_selectors(result["component_map"])
     workspace.write_generated_component_map(to_globi(result["component_map"]))
-    _write_scenario_field(workspace, semantic, result["scenario"])
-    return {"ok": True, "errors": [], "groups": result["groups"], "records": len(result["rows"])}
+    _write_generated_fields(workspace, semantic, result["scenario"], result["variants"])
+    return {"ok": True, "errors": [], "groups": result["groups"], "records": len(result["rows"]), "variants": result["variants"]}
 
 
-def _write_scenario_field(workspace, semantic: dict[str, Any], scenarios: list[str] | None) -> None:
-    fields = [f for f in semantic.get("Fields") or [] if f.get("Description") != GENERATED_NOTE]
+def variant_fields(semantic: dict[str, Any]) -> dict[str, int]:
+    """The generated variant-index fields and their levels, for Sampling to draw."""
+    return {f["Name"]: len(f.get("Options") or []) for f in semantic.get("Fields") or [] if f.get("Description") == VARIANT_NOTE}
+
+
+def _write_generated_fields(workspace, semantic: dict[str, Any], scenarios: list[str] | None, variants: dict[str, int]) -> None:
+    fields = [f for f in semantic.get("Fields") or [] if f.get("Description") not in GENERATED_NOTES]
     if scenarios:
         fields.append({"Name": SCENARIO, "Options": scenarios, "Description": GENERATED_NOTE})
+    for name, levels in variants.items():
+        fields.append({"Name": name, "Options": [str(k) for k in range(1, levels + 1)], "Description": VARIANT_NOTE})
     if fields != (semantic.get("Fields") or []):
         workspace.write_semantic_fields({**semantic, "Fields": fields})
 

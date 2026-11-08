@@ -15,6 +15,7 @@ from routers import (
     prior_trees_router,
     sampling_router,
     part_rules_router,
+    component_priors_router,
     schedule_variability_router,
     semantic_fields_router,
     workspace_router,
@@ -63,6 +64,7 @@ app.include_router(inspect_router)
 app.include_router(flat_model_router)
 app.include_router(sampling_router)
 app.include_router(part_rules_router)
+app.include_router(component_priors_router)
 
 
 @app.get("/")

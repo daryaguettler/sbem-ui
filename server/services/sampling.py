@@ -102,12 +102,16 @@ def _plan(
     else:
         chosen, groups = usable, None
 
-    estimated = _estimated(priors)
+    from services.part_rules import variant_fields
+
+    variants = variant_fields(workspace.read_semantic_fields())
+    estimated = _estimated(priors) + list(variants)
     draws = max(1, int(settings.get("draws") or 1)) if estimated else 1
     return {
         "dataset": dataset,
         "rows": rows,
         "priors": priors,
+        "variants": variants,
         "context_fields": context_fields,
         "chosen": chosen,
         "summary": {
@@ -154,9 +158,11 @@ def write_sample(
             drawn = priors.sample(frame, len(repeated), new_generator(int(settings.get("seed") or 0)))
         except (SamplingError, ValueError, KeyError) as exc:
             raise SamplingRequestError(f"Drawing the estimates failed: {exc}") from exc
-        sampled = [
-            {name: _plain(drawn[name].iloc[k]) for name in summary["estimated"]} for k in range(len(repeated))
-        ]
+        sampled = [{name: _plain(drawn[name].iloc[k]) for name in _estimated(priors)} for k in range(len(repeated))]
+    # which variant of each uncertain component: every index equally likely, correlated ones jointly
+    for name, indices in _variant_indices(workspace, plan["variants"], len(repeated), int(settings.get("seed") or 0) + 1).items():
+        for k, index in enumerate(indices):
+            sampled[k][name] = str(index)
 
     id_col = (dataset.get("column_mappings") or {}).get("building_id")
     core = export_columns(dataset.get("column_mappings", {}), dataset.get("validated_columns", []))
@@ -181,6 +187,28 @@ def write_sample(
         "rows": len(out),
         "compile": compile_project(workspace),
     }
+
+
+def _variant_indices(workspace: ProjectWorkspace, levels: dict[str, int], n: int, seed: int) -> dict[str, list[int]]:
+    """n draws of each variant index, uniform on 1..L. Linked fields share Gaussian-copula
+    uniforms, so a correlation keeps their ranks together whatever each L is."""
+    import numpy as np
+    from scipy.stats import norm
+
+    from services.part_rules import correlated
+
+    path = workspace.path("component_priors")
+    priors = (yaml.safe_load(path.read_text()) or {}) if path.exists() else {}
+    rng = new_generator(seed)
+    uniforms: dict[str, np.ndarray] = {}
+    for fields, rho in correlated(priors, levels):
+        m = len(fields)
+        chol = np.linalg.cholesky(np.full((m, m), rho) + np.eye(m) * (1 - rho))
+        u = norm.cdf(rng.standard_normal((n, m)) @ chol.T)
+        uniforms.update({field: u[:, i] for i, field in enumerate(fields)})
+    for field in levels:
+        uniforms.setdefault(field, rng.random(n))
+    return {field: [int(i) for i in np.minimum((u * levels[field]).astype(int) + 1, levels[field])] for field, u in uniforms.items()}
 
 
 def _plain(value: Any) -> Any:
