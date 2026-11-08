@@ -10,6 +10,7 @@ export type ArtifactKind =
   | 'semantic-fields'
   | 'component-map'
   | 'part-rules'
+  | 'component-priors'
   | 'priors'
   | 'retrofits'
   | 'schedule-variability';

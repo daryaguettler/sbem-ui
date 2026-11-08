@@ -13,7 +13,7 @@
   import { HELP } from '../../help';
   const help = HELP.characteristics;
 
-  const LABELS = { 'semantic-fields': 'Characteristics', 'component-map': 'Component map', priors: 'Estimates', 'part-rules': 'Part rules (the component map’s source)' };
+  const LABELS = { 'semantic-fields': 'Characteristics', 'component-map': 'Component map', priors: 'Estimates', 'part-rules': 'Part rules (the component map’s source)', 'component-priors': 'Component priors (variants of uncertain components)' };
 
   let { reloadKey = 0 }: { /** Bump to re-read the files, e.g. after a save. */ reloadKey?: number } = $props();
 

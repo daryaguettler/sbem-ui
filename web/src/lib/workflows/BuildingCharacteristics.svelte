@@ -84,7 +84,7 @@
     }
   }
 
-  const DIRTY_LABELS = { 'semantic-fields': 'characteristics', 'component-map': 'component map', priors: 'estimates', 'part-rules': 'component map' };
+  const DIRTY_LABELS = { 'semantic-fields': 'characteristics', 'component-map': 'component map', priors: 'estimates', 'part-rules': 'component map', 'component-priors': 'component priors' };
   const hasSaved = $derived(EDITOR_KINDS.some((kind) => $savedAt[kind]));
 
   onMount(() => {

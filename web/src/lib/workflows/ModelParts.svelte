@@ -9,6 +9,7 @@
   import { onMount } from 'svelte';
   import PartRuleEditor from '../components/modelParts/PartRuleEditor.svelte';
   import SidePanel from '../components/SidePanel.svelte';
+  import LinkedUncertainty from '../components/priors/LinkedUncertainty.svelte';
   import Explain from '../components/Explain.svelte';
   import Icon from '../components/Icon.svelte';
   import { fetchParts, type PartInfo } from '../api/partRules';
@@ -19,6 +20,8 @@
   import { partStatus, usedOptions, type PartRule } from '../utils/partRules';
   import { partGroup, partLabel, walkOrder } from '../utils/modelParts';
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
+  import { componentPriorsStore } from '../stores/componentPriorsStore';
+  import { priorFor } from '../utils/componentPriors';
   import { HELP } from '../help';
   const help = HELP.componentMap;
 
@@ -51,6 +54,11 @@
   /** One colour per component a part uses, in the same order its editor shows them. */
   function swatches(rule: PartRule | undefined): string[] {
     return rule ? usedOptions(rule, options).map((_, i) => `var(--series-${(i % 8) + 1})`) : [];
+  }
+
+  /** Whether a part uses a component with a curve on one of its values. */
+  function uncertainPart(path: string, rule: PartRule | undefined): boolean {
+    return Boolean(rule) && usedOptions(rule as PartRule, options).some((option) => priorFor($componentPriorsStore, typeOf[path], option));
   }
 
   async function loadRecords(type: string) {
@@ -137,6 +145,7 @@
           </div>
           <Explain text={help.start} />
         {/if}
+        <LinkedUncertainty parts={ordered.filter((path) => uncertainPart(path, rules.parts[path])).map((path) => ({ path, label: partLabel(path) }))} />
         {#each GROUPS as group}
           <section class="group">
             <h2>{group.label}</h2>
@@ -153,6 +162,7 @@
                     {:else}
                       {#each swatches(rule).slice(0, 8) as colour}<span class="swatch" style:background={colour}></span>{/each}
                     {/if}
+                    {#if uncertainPart(path, rule)}<span class="uncertain" title="Uses an uncertain component"><Icon name="bell-curve" size={14} /></span>{/if}
                   </span>
                   {#if rule?.depends_on.length}<span class="by">{rule.depends_on.join(' × ')}</span>{/if}
                 </button>
@@ -212,6 +222,7 @@
   .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
   .swatch.filled { background: var(--series-1); }
   .swatch.hollow { border: 1.5px dashed var(--text-muted); }
+  .uncertain { display: inline-flex; color: var(--accent); }
   .swatch.big { width: 18px; height: 18px; }
   @media (max-width: 1100px) {
     .body.panel-open { grid-template-columns: minmax(0, 1fr); }

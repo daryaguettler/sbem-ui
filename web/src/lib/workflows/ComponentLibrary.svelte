@@ -2,6 +2,8 @@
   import SchemaForm from '../components/componentLibrary/SchemaForm.svelte';
   import ScheduleVariability from '../components/componentLibrary/ScheduleVariability.svelte';
   import SidePanel from '../components/SidePanel.svelte';
+  import ComponentPriorEditor from '../components/priors/ComponentPriorEditor.svelte';
+  import { keyField } from '../utils/componentPriors';
   import Icon from '../components/Icon.svelte';
   import {
     fetchComponentTypes,
@@ -123,7 +125,7 @@
       const fields = $semanticFieldsStore.fields.map((field) => ({ name: field.name, options: field.options }));
       const namesByType = new Map<string, Set<string>>();
       // with part rules, the options they use; otherwise every name the map's selectors build
-      for (const [path, options] of Object.entries(rules ? optionsInUse(rules) : {})) {
+      for (const [path, options] of Object.entries(rules ? optionsInUse(rules, Object.fromEntries(fields.map((field) => [field.name, field.options]))) : {})) {
         const type = $componentTreeStore.nodesByPath[path]?.componentType;
         if (!type) continue;
         namesByType.set(type, new Set([...(namesByType.get(type) ?? []), ...options]));
@@ -207,6 +209,13 @@
               onSaved={onSaved}
               onCancel={closePanel}
             />
+            <!-- uncertainty is for the components parts pick (walls, lighting, ...), which all have a key number -->
+            {#if panel.mode === 'edit' && keyField(selectedType)}
+              <section class="uncertainty">
+                <h3>Uncertainty</h3>
+                <ComponentPriorEditor type={selectedType} name={panel.name} standalone />
+              </section>
+            {/if}
           {/key}
         </SidePanel>
       </div>
@@ -394,6 +403,8 @@
   }
 
   /* The editor docks as a third column; records stay visible beside it. */
+  .uncertainty { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+  .uncertainty h3 { margin: 0 0 var(--space-2); font-size: var(--text-md); }
   .body.panel-open {
     grid-template-columns: 220px minmax(0, 1fr) minmax(400px, 560px);
   }

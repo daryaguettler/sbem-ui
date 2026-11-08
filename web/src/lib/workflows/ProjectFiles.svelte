@@ -21,6 +21,7 @@
     'semantic-fields': 'characteristics',
     'component-map': 'characteristics',
     'part-rules': 'model-parts',
+    'component-priors': 'model-parts',
     priors: 'characteristics',
     retrofits: 'retrofits',
     'schedule-variability': 'component-library',

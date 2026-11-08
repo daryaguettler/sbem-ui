@@ -12,26 +12,29 @@ import { derived, get, writable } from 'svelte/store';
 import { fetchSavedArtifact, saveArtifact, type ArtifactKind } from '../api/artifacts';
 import { baselineRules, importRules } from '../api/partRules';
 import { componentMapStore } from './componentMapStore';
+import { componentPriorsStore } from './componentPriorsStore';
 import { partRulesStore } from './partRulesStore';
 import { priorTreesStore } from './priorTreesStore';
 import { gisDataset, libraryCheck, runLibraryCheck } from './projectStore';
 import { semanticFieldsStore } from './semanticFieldsStore';
 import type { PriorConfig } from '../types/priorTrees';
+import type { ComponentPriorsDoc } from '../utils/componentPriors';
 
 /** When each artifact was last written to disk, so editors can show "Saved 3 min ago". */
 export const savedAt = writable<Record<ArtifactKind, string | null>>({
   'semantic-fields': null,
   'component-map': null,
   'part-rules': null,
+  'component-priors': null,
   priors: null,
   retrofits: null,
   'schedule-variability': null,
 });
 
 /** The files the characteristics and model parts pages write, in the order they are saved:
- * part rules compile against the saved characteristics, so they come after them. */
-export const EDITOR_KINDS = ['semantic-fields', 'component-map', 'priors', 'part-rules'] as const;
-type EditorKind = (typeof EDITOR_KINDS)[number];
+ * part rules compile against the saved characteristics and component priors, so they come last. */
+export const EDITOR_KINDS = ['semantic-fields', 'component-map', 'priors', 'component-priors', 'part-rules'] as const;
+export type EditorKind = (typeof EDITOR_KINDS)[number];
 
 /** Each editor file as it was last saved or loaded, to tell which have unsaved edits. */
 const savedSnapshot = writable<Partial<Record<EditorKind, string>>>({});
@@ -42,9 +45,11 @@ function documentFor(
   semantic = get(semanticFieldsStore),
   map = get(componentMapStore).map,
   config = get(priorTreesStore).config,
-  rules = get(partRulesStore).rules
+  rules = get(partRulesStore).rules,
+  componentPriors: ComponentPriorsDoc = get(componentPriorsStore)
 ): Record<string, unknown> | null {
   if (kind === 'semantic-fields') return semanticFieldsStore.buildApiPayload(semantic);
+  if (kind === 'component-priors') return componentPriors as unknown as Record<string, unknown>;
   // with part rules, the map is their compiled output and is never saved on its own
   if (kind === 'component-map') return rules ? null : map;
   if (kind === 'part-rules') return rules as unknown as Record<string, unknown> | null;
@@ -55,6 +60,10 @@ function hasContent(kind: EditorKind, doc: Record<string, unknown> | null): bool
   if (!doc) return false;
   if (kind === 'semantic-fields') return (doc.fields as unknown[]).length > 0;
   if (kind === 'component-map' || kind === 'part-rules') return true;
+  if (kind === 'component-priors') {
+    const priors = doc as unknown as ComponentPriorsDoc;
+    return Object.keys(priors.components).length > 0 || (priors.links ?? []).length > 0;
+  }
   const config = doc as unknown as PriorConfig;
   return config.registry.fields.length > 0 || Object.keys(config.priors).length > 0 || config.joints.length > 0;
 }
@@ -69,10 +78,10 @@ export function markSaved(kind: ArtifactKind, timestamp: string | null) {
 
 /** Editor files whose current content differs from what is on disk (or was never saved). */
 export const dirtyKinds = derived(
-  [semanticFieldsStore, componentMapStore, priorTreesStore, partRulesStore, savedSnapshot],
-  ([$semantic, $map, $priors, $rules, $snapshot]) =>
+  [semanticFieldsStore, componentMapStore, priorTreesStore, partRulesStore, componentPriorsStore, savedSnapshot],
+  ([$semantic, $map, $priors, $rules, $componentPriors, $snapshot]) =>
     EDITOR_KINDS.filter((kind) => {
-      const doc = documentFor(kind, $semantic, $map.map, $priors.config, $rules.rules);
+      const doc = documentFor(kind, $semantic, $map.map, $priors.config, $rules.rules, $componentPriors);
       // nothing to save on its own (the map, once part rules compile it) is never unsaved
       if (doc === null) return false;
       const saved = $snapshot[kind];
@@ -84,16 +93,18 @@ const FILE_NAMES: Record<EditorKind, string> = {
   'semantic-fields': 'semantic-fields.yaml',
   'component-map': 'component-map.yaml',
   priors: 'priors/priors.yaml',
+  'component-priors': 'component-priors.yaml',
   'part-rules': 'part-rules.yaml',
 };
 
 /**
- * Save every editor file with unsaved edits, in EDITOR_KINDS order. Stops at the first
- * failure: files already written stay saved, and the error names the one that failed.
+ * Save every editor file with unsaved edits (or only those of `only`), in EDITOR_KINDS order.
+ * Stops at the first failure: files already written stay saved, and the error names the one
+ * that failed.
  */
-export async function saveDirtyArtifacts(): Promise<EditorKind[]> {
+export async function saveDirtyArtifacts(only?: EditorKind[]): Promise<EditorKind[]> {
   const saved: EditorKind[] = [];
-  for (const kind of get(dirtyKinds)) {
+  for (const kind of get(dirtyKinds).filter((kind) => !only || only.includes(kind))) {
     const doc = documentFor(kind);
     if (!doc) continue;
     try {
@@ -141,6 +152,8 @@ export async function loadSavedArtifact(kind: ArtifactKind): Promise<boolean> {
     priorTreesStore.loadFromTemplate(artifact.content, artifact.path);
   } else if (kind === 'part-rules') {
     partRulesStore.load(artifact.content);
+  } else if (kind === 'component-priors') {
+    componentPriorsStore.load(artifact.content);
   }
 
   markSaved(kind, artifact.savedAt);
@@ -230,12 +243,14 @@ export function resetProjectArtifacts(): void {
   componentMapStore.reset();
   priorTreesStore.reset();
   partRulesStore.reset();
+  componentPriorsStore.reset();
   libraryCheck.set(null);
   gisDataset.set(null);
   savedAt.set({
     'semantic-fields': null,
     'component-map': null,
     'part-rules': null,
+    'component-priors': null,
     priors: null,
     retrofits: null,
     'schedule-variability': null,

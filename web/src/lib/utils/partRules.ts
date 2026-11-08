@@ -30,7 +30,11 @@ export interface Row {
 export const SEP = '|';
 export const GENERATED_PREFIX = 'auto_';
 /** Marks the Scenario characteristic the server makes from retrofit packages. */
-export const GENERATED_SCENARIO_NOTE = 'Generated from retrofits.yaml: Baseline plus one value per retrofit package.';
+
+/** Fields the server writes into semantic-fields.yaml on every compile (Scenario, variant indices). */
+export function isGeneratedField(field: { Description?: unknown }): boolean {
+  return typeof field.Description === 'string' && field.Description.startsWith('Generated from ');
+}
 
 export function emptyRule(option: string | null = null): PartRule {
   return { depends_on: [], default: option, cells: {} };
@@ -147,14 +151,9 @@ export function summary(rule: PartRule | undefined): string {
   return [`by ${rule.depends_on.join(' × ')}`, ...groups, `${groups.length ? 'everything else' : 'every row'}: ${rule.default}`].join(' · ');
 }
 
-/** Every option a rule set uses, by part. */
-export function optionsInUse(rules: PartRules): Record<string, string[]> {
-  return Object.fromEntries(
-    Object.entries(rules.parts).map(([path, rule]) => [
-      path,
-      [...new Set([rule.default, ...Object.values(rule.cells)].filter((option): option is string => Boolean(option)))],
-    ])
-  );
+/** Every option a rule set uses, by part: a default no row falls back to is left out. */
+export function optionsInUse(rules: PartRules, options: Record<string, string[]>): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(rules.parts).map(([path, rule]) => [path, usedOptions(rule, options)]));
 }
 
 /** Parts whose rules depend on a characteristic, for its card. */

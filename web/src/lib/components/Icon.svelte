@@ -23,6 +23,8 @@
       'M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
     ],
     grid: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M14 14h7v7h-7z', 'M3 14h7v7H3z'],
+    // not from Lucide: a bell curve on its baseline, for uncertain values
+    'bell-curve': ['M2 19C7 19 8 5 12 5s5 14 10 14', 'M2 19h20'],
   } as const;
 
   export type IconName = keyof typeof PATHS;

@@ -3,7 +3,8 @@
    * Retrofit packages (retrofits.yaml): each package is a list of measures that set a
    * semantic field to a better option, optionally only where another field has a given
    * value. "Never downgrade" orders a field's options so a measure only ever moves a
-   * building up.
+   * building up. A measure can also act on a model part: replace its component, or shift one
+   * of its numbers (scale, add, at most, at least), uncertain components variant by variant.
    */
   import { onMount } from 'svelte';
   import WorkflowGuide from '../components/WorkflowGuide.svelte';
@@ -13,6 +14,10 @@
   import Explain from '../components/Explain.svelte';
   import Select from '../components/Select.svelte';
   import Icon from '../components/Icon.svelte';
+  import { fetchParts, type PartInfo } from '../api/partRules';
+  import { fetchComponentRecords, fetchComponentSchema } from '../api/componentLibrary';
+  import { partLabel } from '../utils/modelParts';
+  import { U, keyField } from '../utils/componentPriors';
   import { HELP } from '../help';
   const help = HELP.retrofits;
 
@@ -21,8 +26,13 @@
     in?: string[];
     not_in?: string[];
   }
+  type Shift = 'scale' | 'add' | 'at_most' | 'at_least';
   interface Measure {
-    field: string;
+    field?: string;
+    part?: string;
+    number?: string;
+    op?: Shift;
+    value?: number;
     to?: string;
     map?: Record<string, string>;
     when?: Condition[] | Condition;
@@ -44,7 +54,20 @@
 
   /** The package whose "+ measure" row is open, and that row's draft. */
   let adding: number | null = null;
-  let draft = { field: '', to: '', ifField: '', ifValue: '' };
+  let draft = { kind: 'field', field: '', to: '', part: '', op: 'to', number: '', value: '', ifField: '', ifValue: '' };
+
+  const ACTIONS = [
+    { value: 'to', label: 'replace with' },
+    { value: 'scale', label: 'multiply' },
+    { value: 'add', label: 'add' },
+    { value: 'at_most', label: 'at most' },
+    { value: 'at_least', label: 'at least' },
+  ];
+  const SHOWN: Record<Shift, string> = { scale: '×', add: '+', at_most: 'at most', at_least: 'at least' };
+  let parts: PartInfo[] = [];
+  /** The draft part's records (replace with) and numbers (shift). */
+  let partRecords: string[] = [];
+  let partNumbers: string[] = [];
 
   $: options = Object.fromEntries(
     $semanticFieldsStore.fields
@@ -52,10 +75,11 @@
       .map((f) => [f.name, f.options])
   ) as Record<string, string[]>;
   $: fieldNames = Object.keys(options);
-  $: usedFields = [...new Set(doc.packages.flatMap((p) => p.measures.map((m) => m.field)))];
+  $: usedFields = [...new Set(doc.packages.flatMap((p) => p.measures.flatMap((m) => (m.field ? [m.field] : []))))];
 
   onMount(async () => {
     try {
+      fetchParts().then((found) => (parts = found));
       const saved = await fetchSavedArtifact('retrofits');
       const content = (saved.content ?? {}) as Partial<RetrofitsDoc>;
       doc = { upgrade_order: content.upgrade_order ?? {}, packages: content.packages ?? [] };
@@ -81,7 +105,25 @@
     const when = conditions(m)
       .map((c) => `${c.field} ${c.in ? 'is' : 'is not'} ${(c.in ?? c.not_in ?? []).join(' or ')}`)
       .join(', ');
-    return `${m.field} → ${target}${when ? `  if ${when}` : ''}`;
+    const what = !m.part ? `${m.field} → ${target}` : m.to ? `${partLabel(m.part)} → ${m.to}` : `${partLabel(m.part)}: ${m.number} ${SHOWN[m.op as Shift]} ${m.value}`;
+    return `${what}${when ? `  if ${when}` : ''}`;
+  }
+
+  async function pickPart(path: string) {
+    draft = { ...draft, part: path, to: '', number: '' };
+    const type = parts.find((part) => part.path === path)?.type;
+    partRecords = [];
+    partNumbers = [];
+    if (!type) return;
+    const [records, schema] = await Promise.all([
+      fetchComponentRecords(type).catch(() => []),
+      fetchComponentSchema(type).catch(() => null),
+    ]);
+    if (draft.part !== path) return;
+    partRecords = records.map((record) => record.Name).filter((name) => !name.startsWith('auto_'));
+    const numbers = (schema?.fields ?? []).filter((field) => field.kind === 'number').map((field) => field.name);
+    partNumbers = type === 'ConstructionAssembly' ? [U, ...numbers] : numbers;
+    draft = { ...draft, number: keyField(type) ?? partNumbers[0] ?? '' };
   }
 
   function addPackage() {
@@ -94,12 +136,22 @@
 
   function openAdd(index: number) {
     adding = index;
-    draft = { field: fieldNames[0] ?? '', to: '', ifField: '', ifValue: '' };
+    draft = { kind: 'field', field: fieldNames[0] ?? '', to: '', part: '', op: 'to', number: '', value: '', ifField: '', ifValue: '' };
   }
 
+  $: draftReady =
+    draft.kind === 'field'
+      ? !!draft.field && !!draft.to
+      : !!draft.part && (draft.op === 'to' ? !!draft.to : !!draft.number && draft.value !== '' && Number.isFinite(Number(draft.value)));
+
   function addMeasure() {
-    if (adding === null || !draft.field || !draft.to) return;
-    const measure: Measure = { field: draft.field, to: draft.to };
+    if (adding === null || !draftReady) return;
+    const measure: Measure =
+      draft.kind === 'field'
+        ? { field: draft.field, to: draft.to }
+        : draft.op === 'to'
+          ? { part: draft.part, to: draft.to }
+          : { part: draft.part, number: draft.number, op: draft.op as Shift, value: Number(draft.value) };
     if (draft.ifField && draft.ifValue) measure.when = [{ field: draft.ifField, in: [draft.ifValue] }];
     doc.packages[adding].measures = [...doc.packages[adding].measures, measure];
     adding = null;
@@ -148,6 +200,7 @@
       const file = await saveArtifact('retrofits', doc);
       markSaved('retrofits', file.modifiedAt);
       dirty = false;
+      if (file.compile && !file.compile.ok) error = `Saved, but the model can't be built yet: ${file.compile.errors.join(' ')}`;
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to save.';
     } finally {
@@ -205,25 +258,69 @@
               {/each}
               {#if adding === p}
                 <span class="add-row">
-                  <span class="pick">
-                    <Select
-                      value={draft.field}
-                      options={fieldNames.map((name) => ({ value: name, label: name }))}
-                      placeholder="characteristic"
-                      ariaLabel="Characteristic to change"
-                      onChange={(value) => (draft = { ...draft, field: value, to: '' })}
-                    />
+                  <span class="kind" role="radiogroup" aria-label="What the measure changes">
+                    <button type="button" role="radio" aria-checked={draft.kind === 'field'} class:selected={draft.kind === 'field'} onclick={() => (draft = { ...draft, kind: 'field', to: '' })}>characteristic</button>
+                    <button type="button" role="radio" aria-checked={draft.kind === 'part'} class:selected={draft.kind === 'part'} onclick={() => (draft = { ...draft, kind: 'part', to: '' })}>model part</button>
                   </span>
-                  <Icon name="arrow-right" size={14} />
-                  <span class="pick">
-                    <Select
-                      value={draft.to}
-                      options={(options[draft.field] ?? []).map((opt) => ({ value: opt, label: opt }))}
-                      placeholder="value"
-                      ariaLabel="Change it to"
-                      onChange={(value) => (draft = { ...draft, to: value })}
-                    />
-                  </span>
+                  {#if draft.kind === 'field'}
+                    <span class="pick">
+                      <Select
+                        value={draft.field}
+                        options={fieldNames.map((name) => ({ value: name, label: name }))}
+                        placeholder="characteristic"
+                        ariaLabel="Characteristic to change"
+                        onChange={(value) => (draft = { ...draft, field: value, to: '' })}
+                      />
+                    </span>
+                    <Icon name="arrow-right" size={14} />
+                    <span class="pick">
+                      <Select
+                        value={draft.to}
+                        options={(options[draft.field] ?? []).map((opt) => ({ value: opt, label: opt }))}
+                        placeholder="value"
+                        ariaLabel="Change it to"
+                        onChange={(value) => (draft = { ...draft, to: value })}
+                      />
+                    </span>
+                  {:else}
+                    <span class="pick">
+                      <Select
+                        value={draft.part}
+                        options={parts.map((part) => ({ value: part.path, label: partLabel(part.path) }))}
+                        placeholder="part"
+                        ariaLabel="Model part to change"
+                        onChange={pickPart}
+                      />
+                    </span>
+                    {#if draft.op !== 'to'}
+                      <span class="pick">
+                        <Select
+                          value={draft.number}
+                          options={partNumbers.map((name) => ({ value: name, label: name }))}
+                          placeholder="number"
+                          ariaLabel="Number to change"
+                          onChange={(value) => (draft = { ...draft, number: value })}
+                        />
+                      </span>
+                    {/if}
+                    <span class="pick">
+                      <Select value={draft.op} options={ACTIONS} ariaLabel="How it changes" onChange={(value) => (draft = { ...draft, op: value })} />
+                    </span>
+                    {#if draft.op === 'to'}
+                      <span class="pick">
+                        <Select
+                          value={draft.to}
+                          options={partRecords.map((name) => ({ value: name, label: name }))}
+                          placeholder="component"
+                          ariaLabel="Replace with"
+                          onChange={(value) => (draft = { ...draft, to: value })}
+                        />
+                      </span>
+                    {:else}
+                      <input class="amount" type="number" step="any" value={draft.value} aria-label="By how much" placeholder={draft.op === 'scale' ? '0.5' : ''}
+                        oninput={(e) => (draft = { ...draft, value: (e.currentTarget as HTMLInputElement).value })} />
+                    {/if}
+                  {/if}
                   <span class="hint">if</span>
                   <span class="pick">
                     <Select
@@ -247,7 +344,7 @@
                       />
                     </span>
                   {/if}
-                  <button type="button" class="btn" onclick={addMeasure} disabled={!draft.to || (!!draft.ifField && !draft.ifValue)}>Add</button>
+                  <button type="button" class="btn" onclick={addMeasure} disabled={!draftReady || (!!draft.ifField && !draft.ifValue)}>Add</button>
                   <button type="button" class="btn btn-ghost square" title="Cancel" aria-label="Cancel" onclick={() => (adding = null)}><Icon name="x" /></button>
                 </span>
               {:else}
@@ -307,6 +404,11 @@
   .chip-x:hover, .arrow:hover { color: var(--text); }
   .add-row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font-size: var(--text-sm); color: var(--text-muted); }
   .add-row .pick { min-width: 130px; }
+  .add-row .amount { width: 80px; }
+  .kind { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
+  .kind button { min-height: var(--control-h-sm); padding: 0 var(--space-2); border: none; background: var(--surface); color: var(--text-2); font-size: var(--text-xs); cursor: pointer; }
+  .kind button + button { border-left: 1px solid var(--border-strong); }
+  .kind button.selected { background: var(--accent-soft); color: var(--text); font-weight: 600; }
   .square { padding: 0; width: var(--control-h); }
   .btn-link { align-self: flex-start; }
   .order-row { display: flex; align-items: center; gap: var(--space-4); font-size: var(--text-sm); }

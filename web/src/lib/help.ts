@@ -24,6 +24,14 @@ export const HELP = {
     construction:
       'By U-value builds a construction from a typical stack for this part (e.g. brick, mineral wool, gypsum for a wall) and sizes the insulation to reach the U-value. Build layers lets you set every layer; the form shows the U-value as you go. U-values are 1/Σ(thickness/conductivity) over the layers, as epinterface reports them.',
   },
+  componentPriors: {
+    intro:
+      'Optional. When you don’t know a component’s value exactly (a wall is somewhere between U 0.6 and 1.1), give the number a curve instead of one value. The model then uses n versions of the component, spread evenly over the curve, and each simulated building draws one of them, so the results carry the uncertainty. Every building that uses the component shares the curve. A U-value is reached by resizing the construction’s insulation, or adding mineral wool if it has none. Saved to component-priors.yaml.',
+    n: 'How many versions of the component the curve is turned into, each standing for an equal share of buildings. 5 is usually enough; more versions follow the curve more closely but multiply the records GloBI looks up. The draws per building (Sampling) decide how many simulations each building gets.',
+    links:
+      'Uncertain parts vary independently unless you link them. Move together: a building that draws the lowest wall also draws the lowest roof, and the model needs no extra records (they share one draw). Correlated: they tend to go together, by a rank correlation ρ from -1 to 1, drawn jointly in Sampling. Characteristics such as age already tie parts together; link only what is left, such as build quality.',
+    link: 'Vary independently: knowing one number tells you nothing about the other. Move together: the version with the lowest of one has the lowest of the other. Correlated: in between, by a rank correlation ρ from -1 to 1.',
+  },
   characteristics: {
     page: 'The few things about each building that change its energy use, such as age, typology or heating system. For each one, say what values it can take, how we know it for every building, and which parts of the energy model it changes.',
     globi: 'GloBI calls these semantic fields; they are saved to semantic-fields.yaml.',
@@ -74,7 +82,7 @@ export const HELP = {
   retrofits: {
     page: 'Bundle upgrades into packages, e.g. “oil boiler → heat pump where built before 1975”.',
     packages:
-      "Make one package per option you want to compare (e.g. “envelope only” vs “envelope + heat pump”); each is compared against the baseline. Add an “if” condition so a measure only hits buildings where it makes sense.",
+      "Make one package per option you want to compare (e.g. “envelope only” vs “envelope + heat pump”); each is compared against the baseline. Add an “if” condition so a measure only hits buildings where it makes sense. A measure changes a characteristic (Heating → heat pump), or acts on a model part: replace its component, or change one of its numbers (multiply U by 0.5, add 0.5 to a COP, or “at most U 0.25”, which never makes a better part worse). An uncertain component is changed variant by variant, so a building keeps its place on the curve.",
     order:
       'Tick a field and order its options from worst (left) to best (right); measures then only move a building rightwards.',
   },

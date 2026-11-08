@@ -8,6 +8,9 @@
   import Icon from '../Icon.svelte';
   import Explain from '../Explain.svelte';
   import SchemaForm from '../componentLibrary/SchemaForm.svelte';
+  import ComponentPriorEditor from '../priors/ComponentPriorEditor.svelte';
+  import { componentPriorsStore } from '../../stores/componentPriorsStore';
+  import { priorFor } from '../../utils/componentPriors';
   import { constructionForU, type ComponentRecord } from '../../api/componentLibrary';
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
   import { createEmptyField, parseOptionsText } from '../../utils/semanticFieldRules';
@@ -84,6 +87,8 @@
   let created = $state<string | null>(null);
   let error = $state<string | null>(null);
   let addingField = $state(false);
+  /** The row whose component's uncertainty is open. */
+  let uncertain = $state<string | null>(null);
   let newField = $state({ name: '', values: '' });
 
   const colour = (name: string | null) =>
@@ -119,6 +124,7 @@
 
   function openPicker(key: string) {
     picking = picking === key ? null : key;
+    uncertain = null;
     filter = '';
     creating = null;
     error = null;
@@ -150,6 +156,17 @@
     assign(String(record.Name));
   }
 
+  function openPrior(key: string) {
+    uncertain = uncertain === key ? null : key;
+    picking = null;
+  }
+
+  /** How many other rows share a row's component, and so its uncertainty. */
+  function shared(key: string, option: string): string {
+    const others = rows.filter((row) => row.key !== key && row.option === option).length;
+    return key !== DEFAULT_KEY && others > 0 ? `${others} other row${others === 1 ? '' : 's'} use${others === 1 ? 's' : ''} this component too.` : '';
+  }
+
   const optionFor = (key: string) => (key === DEFAULT_KEY ? current.default : (rows.find((row) => row.key === key)?.option ?? null));
 </script>
 
@@ -159,6 +176,24 @@
     <span class="value">{valueOf(option)}</span>
     <Icon name="chevron-down" size={14} />
   </button>
+{/snippet}
+
+{#snippet uncertainty(key: string, option: string | null)}
+  {#if option}
+    {@const on = priorFor($componentPriorsStore, type, option) !== null}
+    <button type="button" class="unc" class:on class:open={uncertain === key} aria-expanded={uncertain === key}
+      aria-label={on ? 'Edit its uncertainty' : 'Make it uncertain'} title={on ? 'Uncertain: edit its curve' : 'Make a value of this component uncertain'} onclick={() => openPrior(key)}>
+      <Icon name="bell-curve" size={14} />
+    </button>
+  {/if}
+{/snippet}
+
+{#snippet priorPanel(key: string, option: string | null)}
+  {#if uncertain === key && option}
+    <div class="prior-panel">
+      <ComponentPriorEditor {type} name={option} record={byName[option] ?? null} {conductivity} note={shared(key, option)} />
+    </div>
+  {/if}
 {/snippet}
 
 {#snippet picker()}
@@ -213,9 +248,11 @@
   {#if shown === 'same'}
     <div class="row single">
       {@render pill(DEFAULT_KEY, current.default)}
+      {@render uncertainty(DEFAULT_KEY, current.default)}
       {#if !sameChosen}<span class="tag" title="Nobody has decided this part yet; it uses the archetype's component">default</span>{/if}
     </div>
     {#if picking === DEFAULT_KEY}{@render picker()}{/if}
+    {@render priorPanel(DEFAULT_KEY, current.default)}
   {:else}
     <div class="chips" data-tour="part-mode" role="group" aria-label="Characteristics it varies by">
       {#each fields as field (field.id)}
@@ -241,9 +278,10 @@
           <li>
             <div class="row">
               <span class="values">{current.depends_on.map((name) => row.values[name]).join(' · ')}</span>
-              {@render pill(row.key, row.option)}
+              <span class="choose">{@render pill(row.key, row.option)}{@render uncertainty(row.key, row.option)}</span>
             </div>
             {#if picking === row.key}{@render picker()}{/if}
+            {@render priorPanel(row.key, row.option)}
           </li>
         {/each}
       </ul>
@@ -277,6 +315,11 @@
   .values { color: var(--text); }
   .pill { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--control-h-sm); padding: 0 var(--space-2); border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-size: var(--text-sm); cursor: pointer; }
   .pill.open, .pill:hover { border-color: var(--accent); }
+  .choose { display: inline-flex; align-items: center; gap: var(--space-1); }
+  .unc { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px dashed var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-muted); cursor: pointer; }
+  .unc:hover, .unc.open { border-color: var(--accent); color: var(--accent); }
+  .unc.on { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .prior-panel { padding: var(--space-2) 0 var(--space-3); }
   .dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
   .picker { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) 0 var(--space-3); }
   .filter { max-width: 240px; }
