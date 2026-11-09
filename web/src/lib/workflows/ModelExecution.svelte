@@ -50,8 +50,6 @@
   let sampleSize = 10;
   let runScenarios: string[] = [];
   let chosenScenarios: string[] = [];
-  // shortcut: batch submission still fails in globi main (allocate.py's schedule variability); set true once it runs
-  const BATCH_RUNS = false;
   /** The embedded Hatchet dashboard loads only while its section is open. */
   let showHatchet = false;
 
@@ -291,14 +289,11 @@
           </fieldset>
         </div>
         <div class="actions">
-          <button type="button" class="btn" onclick={runTheSample} disabled={!BATCH_RUNS || running !== null || chosenScenarios.length === 0}>
+          <button type="button" class="btn" onclick={runTheSample} disabled={running !== null || chosenScenarios.length === 0}>
             {running === 'sample' ? 'Running…' : `Run ${sampleSize} buildings × ${chosenScenarios.length} scenario${chosenScenarios.length === 1 ? '' : 's'}`}
-            {#if !BATCH_RUNS}<span class="tag tag-warn">in progress</span>{/if}
           </button>
         </div>
-        {#if !BATCH_RUNS}
-          <p class="hint">Batch runs are still being connected to GloBI. You can set up the sample here; the run itself isn't available yet.</p>
-        {/if}
+        <p class="hint">Schedule variability isn't applied yet: every building uses its schedules as they are in the library.</p>
       {/if}
 
       {#if running === 'sample'}<p class="hint" role="status">{stage} · {minutes(elapsed)}</p>{/if}

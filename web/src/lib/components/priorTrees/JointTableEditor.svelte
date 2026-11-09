@@ -16,6 +16,8 @@
   import { distributionTotal, weightColor, weightInk } from '../../utils/priorViz';
   import Icon from '../Icon.svelte';
   import WeightBar from './WeightBar.svelte';
+  import PasteOdds from './PasteOdds.svelte';
+  import { FALLBACK_KEY, type PastedRow } from '../../utils/pasteOdds';
 
   export let joint: JointSpec;
   export let values: string[];
@@ -28,6 +30,15 @@
   export let asCounts = false;
 
   let filter = '';
+  /** The row open as a draggable bar under the table (click its name). */
+  let barKey: string | null = null;
+
+  function applyPasted(rows: PastedRow[]) {
+    for (const row of rows) {
+      if (row.key === FALLBACK_KEY) onFallbackChange(row.weights);
+      else if (row.key) onCellChange(row.key, row.weights);
+    }
+  }
   // Stored weights stay 0–1 shares either way; this only changes what is shown and typed.
   $: scale = asCounts ? 100 : 1;
 
@@ -85,6 +96,7 @@
       <input type="checkbox" bind:checked={asCounts} />
       Show as buildings out of 100
     </label>
+    <PasteOdds {values} keys={Object.keys(joint.table)} separator={joint.separator ?? '.'} onApply={applyPasted} />
     <span class="hint">
       {keys.length} of {Object.keys(joint.table).length}
       {Object.keys(joint.table).length === 1 ? 'combination' : 'combinations'}
@@ -114,10 +126,10 @@
             {@const info = evidenceByKey.get(key)}
             <tr>
               <th scope="row" class="key-col">
-                <span class="key-name">{key.split('.').join(' · ')}</span>
+                <button type="button" class="key-name" title="Adjust this row by dragging its bar" aria-expanded={barKey === key} onclick={() => (barKey = barKey === key ? null : key)}>{key.split('.').join(' · ')}</button>
                 {#if info}
                   <span class="key-source" class:estimated={info.estimated}>
-                    {info.estimated ? `estimated from ${info.supportingCount} buildings` : 'uses “Everything else”'}
+                    {info.source === 'resstock' ? 'from ResStock' : info.estimated ? `estimated from ${info.supportingCount} buildings` : 'uses “Everything else”'}
                   </span>
                 {/if}
               </th>
@@ -150,6 +162,13 @@
     </div>
   {/if}
 
+  {#if barKey && joint.table[barKey]}
+    <div class="row-bar">
+      <h4>{barKey.split('.').join(' · ')} <button type="button" class="btn btn-ghost btn-sm" onclick={() => (barKey = null)}>Close</button></h4>
+      <WeightBar distribution={joint.table[barKey]} order={values} onChange={(weights) => onCellChange(barKey!, weights)} />
+    </div>
+  {/if}
+
   <div class="fallback">
     <div>
       <h4>Everything else <span class="hint">(fallback)</span></h4>
@@ -157,7 +176,7 @@
         For buildings whose combination isn't listed above. Without it, those buildings can't be sampled.
       </p>
     </div>
-    <WeightBar distribution={fallback} order={values} />
+    <WeightBar distribution={fallback} order={values} onChange={onFallbackChange} />
     <div class="field-grid" style="--field-min: 150px">
       {#each values as value}
         <label class="field">
@@ -235,8 +254,27 @@
 
   .key-name {
     display: block;
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
     font-weight: 600;
     color: var(--text);
+    text-align: left;
+    text-decoration: underline dotted var(--text-faint);
+    cursor: pointer;
+  }
+
+  .row-bar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .row-bar h4 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .key-source {

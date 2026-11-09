@@ -1,8 +1,10 @@
 <script module lang="ts">
-  import type { GeneratedKey } from '../../types/priorTrees';
+  import type { GeneratedKey, ResStockDependencySpec } from '../../types/priorTrees';
   /** Per-target evidence from the last generation, kept across remounts so the table
    * can still show where each row came from after switching characteristics. */
   const evidenceByTarget = new Map<string, GeneratedKey[]>();
+  /** How each ResStock dependency was set, per target, so regenerating keeps the choices (this session only). */
+  const resstockSpecByTarget = new Map<string, Record<string, ResStockDependencySpec>>();
 </script>
 
 <script lang="ts">
@@ -18,6 +20,8 @@
   import NumericTableEditor from '../priorTrees/NumericTableEditor.svelte';
   import SamplePreview from '../priorTrees/SamplePreview.svelte';
   import WeightBar from '../priorTrees/WeightBar.svelte';
+  import PasteOdds from '../priorTrees/PasteOdds.svelte';
+  import { fetchStockPreset } from '../../api/partRules';
   import Explain from '../Explain.svelte';
   import Select from '../Select.svelte';
   import { priorTreesStore, jointFor } from '../../stores/priorTreesStore';
@@ -25,6 +29,7 @@
   import {
     fetchConditioningFields,
     fetchRegistrySuggestions,
+    fetchResStockDependencies,
     generatePrior,
     previewConditioning,
     samplePriorTree,
@@ -35,6 +40,7 @@
     type ConditioningCandidate,
     type Distribution,
     type GenerationMethod,
+    type ResStockDependency,
     type SampleSummary,
   } from '../../types/priorTrees';
   import { distributionTotal } from '../../utils/priorViz';
@@ -70,6 +76,10 @@
   let sample = $state<SampleSummary | null>(null);
   let error = $state<string | null>(null);
   let notice = $state<string | null>(null);
+  /** The ResStock characteristic this one came from (its preset entry), and what ResStock's odds for it depend on. */
+  let resstockName = $state<string | null>(null);
+  let resstockDeps = $state<ResStockDependency[]>([]);
+  let resstockSpec = $state<Record<string, ResStockDependencySpec>>(untrack(() => resstockSpecByTarget.get(target) ?? {}));
 
   const fields = $derived($semanticFieldsStore.fields);
   const config = $derived($priorTreesStore.config);
@@ -101,7 +111,54 @@
     }
     observedColumn = guessObservedColumn();
     void refreshConditionPreview();
+    void loadResStock();
   });
+
+  /** A characteristic added from the ResStock preset keeps its name (or, renamed, its options). */
+  async function loadResStock() {
+    const preset = await fetchStockPreset().catch(() => null);
+    const match =
+      preset?.characteristics.find((c) => c.name === target) ??
+      preset?.characteristics.find((c) => targetValues.length > 0 && targetValues.every((value) => value in c.options));
+    if (!match) return;
+    const data = await fetchResStockDependencies(match.name);
+    if (!data.available) return;
+    resstockName = match.name;
+    resstockDeps = data.dependencies;
+    if (!prior && !joint) method = 'resstock';
+  }
+
+  /** The project's characteristics a ResStock dependency can be mapped from: any other one with values. */
+  const mappableFields = $derived(fields.filter((field) => field.name !== target && (field.options?.length ?? 0) > 0));
+
+  function specFor(dependency: string): ResStockDependencySpec {
+    return resstockSpec[dependency] ?? { mode: 'any' };
+  }
+
+  function setSpec(dependency: string, spec: ResStockDependencySpec) {
+    resstockSpec = { ...resstockSpec, [dependency]: spec };
+    resstockSpecByTarget.set(target, resstockSpec);
+  }
+
+  function setMode(dep: ResStockDependency, mode: string) {
+    if (mode === 'fixed') setSpec(dep.name, { mode: 'fixed', value: dep.values[0]?.value ?? '' });
+    else if (mode === 'field') setSpec(dep.name, { mode: 'field', field: mappableFields[0]?.name ?? '', mapping: {} });
+    else setSpec(dep.name, { mode: 'any' });
+  }
+
+  function toggleMapped(dependency: string, userValue: string, resstockValue: string) {
+    const spec = specFor(dependency);
+    if (spec.mode !== 'field') return;
+    const current = spec.mapping[userValue] ?? [];
+    const next = current.includes(resstockValue) ? current.filter((v) => v !== resstockValue) : [...current, resstockValue];
+    setSpec(dependency, { ...spec, mapping: { ...spec.mapping, [userValue]: next } });
+  }
+
+  /** The characteristics mapped onto ResStock's dependencies: the odds table's conditions. */
+  const resstockConditions = $derived([
+    ...new Set(Object.values(resstockSpec).flatMap((spec) => (spec.mode === 'field' && spec.field ? [spec.field] : []))),
+  ]);
+  const share = (value: number) => `${(value * 100).toFixed(value < 0.01 ? 1 : 0)}%`;
 
   /** The target's possible values: its field options, else whatever the registry declares. */
   function valuesFor(name: string): string[] {
@@ -165,6 +222,10 @@
     error = null;
     notice = null;
     try {
+      if (method === 'resstock') {
+        conditionOn = resstockConditions;
+        void refreshConditionPreview();
+      }
       const generated = await generatePrior(fields, {
         target,
         targetValues,
@@ -173,6 +234,9 @@
         observedColumn: method === 'empirical' ? observedColumn : null,
         dtype,
         minCount,
+        ...(method === 'resstock' && resstockName
+          ? { resstock: { characteristic: resstockName, dependencies: resstockSpec } }
+          : {}),
       });
 
       if (generated.mode === 'joint' && generated.joint) {
@@ -217,6 +281,14 @@
     } finally {
       sampling = false;
     }
+  }
+
+  /** Replace the whole unconditional distribution (dragged bar, pasted odds). */
+  function setUnconditional(weights: Distribution) {
+    if (!unconditional) return;
+    const sampler = unconditional.sampler as { values?: string[]; weights?: number[] };
+    const values = sampler.values ?? [];
+    priorTreesStore.setPrior(target, { sampler: { ...sampler, values, weights: values.map((value) => Number(weights[value] ?? 0)) } });
   }
 
   function updateUnconditionalWeight(value: string, raw: string) {
@@ -270,6 +342,15 @@
           <small>Every value equally likely, a starting point to edit by hand.</small>
         </span>
       </label>
+      {#if resstockName}
+        <label class="radio">
+          <input type="radio" bind:group={method} value="resstock" />
+          <span>
+            <strong>From ResStock's odds</strong>
+            <small>ResStock's shares of homes with each option, for the kind of homes you pick below.</small>
+          </span>
+        </label>
+      {/if}
       <label class="radio">
         <input type="radio" bind:group={method} value="empirical" disabled={observedCandidates.length === 0} />
         <span>
@@ -298,6 +379,73 @@
           <span class="field-hint">Combinations with fewer use “Everything else” instead.</span>
           <input type="number" min="1" step="1" bind:value={minCount} />
         </label>
+      </div>
+    {/if}
+
+    {#if method === 'resstock' && resstockName}
+      <div class="resstock">
+        <p class="hint">
+          ResStock's odds for {resstockName} depend on {resstockDeps.map((dep) => dep.name).join(', ')}. Set each one:
+          <strong>Any</strong> uses ResStock's mix of homes, <strong>Fixed</strong> picks one value, and
+          <strong>My characteristic</strong> gives one row of odds for each value of one of yours. ResStock's rows are
+          weighted by how common each combination is among its homes. This replaces <em>Depends on</em> above.
+        </p>
+        {#each resstockDeps as dep (dep.name)}
+          {@const spec = specFor(dep.name)}
+          <div class="dep">
+            <div class="dep-head">
+              <strong>{dep.name}</strong>
+              <Select
+                value={spec.mode}
+                options={[
+                  { value: 'any', label: "Any (ResStock's mix)" },
+                  { value: 'fixed', label: 'Fixed value' },
+                  ...(mappableFields.length ? [{ value: 'field', label: 'My characteristic' }] : []),
+                ]}
+                onChange={(mode) => setMode(dep, mode)}
+                ariaLabel="How {dep.name} is set"
+              />
+              {#if spec.mode === 'fixed'}
+                <Select
+                  value={spec.value}
+                  options={dep.values.map((v) => ({ value: v.value, label: `${v.value} (${share(v.share)} of homes)` }))}
+                  onChange={(value) => setSpec(dep.name, { mode: 'fixed', value })}
+                  ariaLabel="{dep.name} value"
+                />
+              {:else if spec.mode === 'field'}
+                <Select
+                  value={spec.field}
+                  options={mappableFields.map((field) => ({ value: field.name, label: field.name }))}
+                  onChange={(field) => setSpec(dep.name, { mode: 'field', field, mapping: {} })}
+                  ariaLabel="Characteristic mapped onto {dep.name}"
+                />
+              {/if}
+            </div>
+            {#if spec.mode === 'field' && spec.field}
+              {@const userValues = fields.find((field) => field.name === spec.field)?.options ?? []}
+              <p class="hint">Tick the {dep.name} values each {spec.field} value stands for. A value with none ticked uses the overall odds.</p>
+              <table class="data-table mapping">
+                <tbody>
+                  {#each userValues as userValue}
+                    <tr>
+                      <th scope="row">{userValue}</th>
+                      <td>
+                        <div class="chips">
+                          {#each dep.values as v (v.value)}
+                            <label class="chip" class:on={spec.mapping[userValue]?.includes(v.value)}>
+                              <input type="checkbox" checked={spec.mapping[userValue]?.includes(v.value) ?? false} onchange={() => toggleMapped(dep.name, userValue, v.value)} />
+                              {v.value}
+                            </label>
+                          {/each}
+                        </div>
+                      </td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            {/if}
+          </div>
+        {/each}
       </div>
     {/if}
 
@@ -352,7 +500,8 @@
       <h4>Odds of {target}, the same for every building</h4>
       {#if sampler.values}
         {@const distribution = samplerDistribution(sampler)}
-        <WeightBar {distribution} order={(sampler.values as string[]) ?? []} />
+        <WeightBar {distribution} order={(sampler.values as string[]) ?? []} onChange={setUnconditional} />
+        <PasteOdds values={(sampler.values as string[]) ?? []} onApply={(rows) => rows[0] && setUnconditional(rows[0].weights)} />
         <div class="field-grid weight-inputs">
           {#each (sampler.values as string[]) ?? [] as value}
             <label class="field">
@@ -485,5 +634,58 @@
 
   .warnings {
     padding-left: var(--space-6);
+  }
+
+  .resstock {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .dep {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .dep-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .dep-head strong {
+    min-width: 12em;
+  }
+
+  .mapping th {
+    white-space: nowrap;
+    vertical-align: top;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    cursor: pointer;
+  }
+
+  .chip.on {
+    border-color: var(--accent-border);
+    background: var(--accent-soft);
   }
 </style>

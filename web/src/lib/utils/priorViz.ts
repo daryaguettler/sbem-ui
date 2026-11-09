@@ -72,3 +72,17 @@ export function toSegments(
 export function distributionTotal(distribution: Distribution): number {
   return Object.values(distribution).reduce((sum, weight) => sum + (Number(weight) || 0), 0);
 }
+
+/**
+ * Drag the boundary after value `index` of a 100% bar to `x` (0–1 along the bar): only the two
+ * values either side of it change, and the boundary snaps to `step`. `shares` sum to 1.
+ */
+export function moveBoundary(shares: number[], index: number, x: number, step = 0.01): number[] {
+  const lo = shares.slice(0, index).reduce((sum, s) => sum + s, 0);
+  const hi = lo + shares[index] + shares[index + 1];
+  const cut = Math.min(hi, Math.max(lo, Math.round(x / step) * step));
+  const next = [...shares];
+  next[index] = cut - lo;
+  next[index + 1] = hi - cut;
+  return next;
+}

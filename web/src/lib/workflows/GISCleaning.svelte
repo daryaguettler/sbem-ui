@@ -22,6 +22,13 @@
   let validationIssues: string[] = [];
   let columnMappings: GisColumnMappings = {};
   let validateColumns = new Set<string>();
+  /** "Columns to check" starts open for short files, then stays as the user leaves it. */
+  let columnsOpen = false;
+  let columnsOpenSet = false;
+  $: if (!columnsOpenSet && columns.length) {
+    columnsOpen = columns.length <= 12;
+    columnsOpenSet = true;
+  }
   let dropIncompleteRows = false;
   let incompleteRowCount = 0;
   let droppedRowCount = 0;
@@ -326,7 +333,7 @@
       <div class="panel" data-tour="gis-missing">
         <h2>Check for missing values <Explain text={help.missing} tip /></h2>
         <Explain text={help.missing} />
-        <details open={columns.length <= 12}>
+        <details bind:open={columnsOpen}>
           <summary>Columns to check ({validateColumns.size} of {columns.length} selected)</summary>
         <div class="validation-grid">
           {#each columns as column}

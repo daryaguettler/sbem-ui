@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from collections.abc import Callable
 from typing import Any
 
 import networkx as nx
@@ -28,6 +29,7 @@ from semantic_priors.engine import ConditionalPrior
 from semantic_priors.engine.samplers import SamplingError
 from semantic_priors.scenarios.scenario import KEEP as KEEP_TOKEN, FixedOverride
 
+from services import resstock_odds
 from services.semantic_transform import apply_semantic_fields_to_rows
 
 DEFAULT_SEPARATOR = "."
@@ -199,8 +201,14 @@ def generate_prior(
     dtype: str = "categorical",
     min_count: int = DEFAULT_MIN_COUNT,
     separator: str = DEFAULT_SEPARATOR,
+    resstock: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one feature's prior, plus the evidence behind every weight.
+
+    `resstock` method: the odds come from ResStock's table for `resstock["characteristic"]`,
+    with `resstock["dependencies"]` setting each of its dependencies (services/resstock_odds).
+    Dependencies mapped to project characteristics become the conditions, replacing
+    `condition_on`.
 
     `method` is either `uniform` (an even starting point the user then edits) or
     `empirical` (weights counted from `observed_column`, which is whichever GIS
@@ -214,14 +222,19 @@ def generate_prior(
     """
     if not target:
         raise PriorTreeError("A prior needs a target field.")
-    if method not in {"uniform", "empirical"}:
-        raise PriorTreeError(f"Unknown generation method {method!r}; expected 'uniform' or 'empirical'.")
+    if method not in {"uniform", "empirical", "resstock"}:
+        raise PriorTreeError(f"Unknown generation method {method!r}; expected 'uniform', 'empirical' or 'resstock'.")
     if method == "empirical" and not observed_column:
         raise PriorTreeError(
             f"Estimating '{target}' from data needs an observed column holding its values."
         )
 
     warnings: list[str] = []
+
+    if method == "resstock":
+        return _generate_resstock(
+            target=target, target_values=target_values, rows=rows, resstock=resstock or {}, separator=separator, warnings=warnings
+        )
 
     if dtype == "numeric":
         return _generate_numeric_prior(
@@ -285,6 +298,69 @@ def generate_prior(
     )
 
 
+def _generate_resstock(
+    *,
+    target: str,
+    target_values: list[str],
+    rows: list[dict[str, Any]],
+    resstock: dict[str, Any],
+    separator: str,
+    warnings: list[str],
+) -> dict[str, Any]:
+    """Odds from ResStock's table, one row per combination of the mapped characteristics."""
+    characteristic = resstock.get("characteristic") or ""
+    spec: dict[str, dict[str, Any]] = resstock.get("dependencies") or {}
+    if not target_values:
+        raise PriorTreeError(f"Prior '{target}' needs at least one possible value.")
+    try:
+        overall, covered, matched = resstock_odds.odds(characteristic, target_values, spec)
+        unused = resstock_odds.unused_options(characteristic, target_values)
+    except resstock_odds.ResStockOddsError as exc:
+        raise PriorTreeError(str(exc)) from exc
+    if not matched:
+        raise PriorTreeError("No ResStock homes match the fixed values you chose. Set fewer of them, or choose others.")
+    if unused:
+        warnings.append(f"ResStock's sample never uses {', '.join(unused)}, so they get 0.")
+    if covered < 0.999:
+        warnings.append(
+            f"Your options cover {covered:.0%} of ResStock's homes here; their odds are rescaled to add up to 100%."
+        )
+    marginal = {value: overall.get(value, 0.0) for value in target_values}
+    condition_on = resstock_odds.mapped_fields(spec)
+
+    if not condition_on:
+        rounded = {value: round(weight, 4) for value, weight in marginal.items()}
+        prior = {"sampler": {"values": list(rounded), "weights": list(rounded.values())}}
+        return {
+            "target": target,
+            "mode": "unconditional",
+            "prior": prior,
+            "priors": {target: prior},
+            "joint": None,
+            "keys": [{"key": "__all__", "count": len(rows), "estimated": True, "source": "resstock", "weights": rounded}],
+            "fallback": None,
+            "warnings": warnings,
+        }
+
+    def key_weights(values: list[str]) -> dict[str, float] | None:
+        found, _, n = resstock_odds.odds(characteristic, target_values, spec, dict(zip(condition_on, values, strict=False)))
+        return {value: found.get(value, 0.0) for value in target_values} if n else None
+
+    return _generate_joint(
+        target=target,
+        target_values=target_values,
+        condition_on=condition_on,
+        rows=rows,
+        method="resstock",
+        observed_column=None,
+        marginal=marginal,
+        min_count=1,
+        separator=separator,
+        warnings=warnings,
+        key_weights=key_weights,
+    )
+
+
 def _marginal_distribution(
     rows: list[dict[str, Any]],
     observed_column: str | None,
@@ -334,8 +410,10 @@ def _generate_joint(
     min_count: int,
     separator: str,
     warnings: list[str],
+    key_weights: Callable[[list[str]], dict[str, float] | None] | None = None,
 ) -> dict[str, Any]:
-    """Build the compound lookup table, one row per observed combination."""
+    """Build the compound lookup table, one row per observed combination. With `key_weights`
+    (condition values -> weights, or None to use the marginal), rows come from it instead of counts."""
     observed_keys = _observed_compound_keys(rows, condition_on, separator)
     if not observed_keys:
         warnings.append(
@@ -360,7 +438,13 @@ def _generate_joint(
         counts = per_key_counts.get(key, Counter())
         supporting = int(sum(counts.values()))
         estimated = method == "empirical" and supporting >= min_count
-        if estimated:
+        given = key_weights(key.split(separator)) if key_weights else None
+        if given is not None:
+            weights, estimated, supporting = given, True, key_count
+        elif key_weights:
+            weights = dict(marginal)
+            thin_keys.append(key)
+        elif estimated:
             weights = _normalize({value: float(counts.get(value, 0)) for value in target_values})
         else:
             weights = dict(marginal)
@@ -376,10 +460,16 @@ def _generate_joint(
                 "supportingCount": supporting,
                 "estimated": estimated,
                 "weights": table[key],
+                **({"source": "resstock"} if key_weights else {}),
             }
         )
 
-    if thin_keys:
+    if thin_keys and key_weights:
+        warnings.append(
+            f"{len(thin_keys)} of {len(observed_keys)} combinations map to no ResStock homes "
+            "(a value with no ResStock values ticked) and use the overall odds instead."
+        )
+    elif thin_keys:
         warnings.append(
             f"{len(thin_keys)} of {len(observed_keys)} combinations had fewer than "
             f"{min_count} observations and use the overall distribution instead."

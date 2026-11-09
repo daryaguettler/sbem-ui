@@ -31,7 +31,7 @@ def _curves(space_use: Any) -> dict[str, list[float]]:
 @router.post("/preview")
 async def preview(body: PreviewRequest, workspace: ProjectWorkspace = Depends(get_workspace)):
     from epinterface.sbem.prisma.client import SBEMDeepObjectNotFoundError, deep_fetcher
-    from globi.models.schedule_variability import ScheduleVariabilityConfig, perturb_space_use
+    from services.schedule_variability import ScheduleVariabilityConfig, perturb_space_use
 
     try:
         config = ScheduleVariabilityConfig.model_validate(body.config)
@@ -72,7 +72,7 @@ def perturb_profile(values: list[float], limit: str, day_name: str, params: Any,
     checks they agree); switch to a public globi helper once it exposes one."""
     import numpy as np
     from epinterface.sbem.components.schedules import TypeLimits
-    from globi.models.schedule_variability import _ar1, _clipped_normal, seeded_rng, shift_values
+    from services.schedule_variability import _ar1, _clipped_normal, seeded_rng, shift_values
 
     def rng(*keys: str):
         return seeded_rng(seed, building_id, *keys)
@@ -91,7 +91,7 @@ def perturb_profile(values: list[float], limit: str, day_name: str, params: Any,
 @router.post("/preview-profile")
 async def preview_profile(body: ProfilePreviewRequest):
     """n buildings' copies of one (possibly unsaved) day profile from the schedule editor."""
-    from globi.models.schedule_variability import ScheduleVariabilityConfig
+    from services.schedule_variability import ScheduleVariabilityConfig
 
     try:
         config = ScheduleVariabilityConfig.model_validate(body.config)

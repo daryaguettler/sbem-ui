@@ -14,6 +14,8 @@ import type {
   GenerationMethod,
   PriorConfig,
   PriorValidation,
+  ResStockDependency,
+  ResStockDependencySpec,
   SampleSummary,
 } from '../types/priorTrees';
 
@@ -83,6 +85,8 @@ export interface GenerateOptions {
   observedColumn?: string | null;
   dtype?: 'categorical' | 'numeric';
   minCount?: number;
+  /** method 'resstock': ResStock's characteristic and how each of its dependencies is set. */
+  resstock?: { characteristic: string; dependencies: Record<string, ResStockDependencySpec> };
 }
 
 export function generatePrior(
@@ -98,7 +102,16 @@ export function generatePrior(
     observed_column: options.observedColumn ?? null,
     dtype: options.dtype ?? 'categorical',
     ...(options.minCount === undefined ? {} : { min_count: options.minCount }),
+    ...(options.resstock ? { resstock: options.resstock } : {}),
   });
+}
+
+/** What ResStock's odds for `characteristic` depend on; `available` is false if ResStock has no table for it. */
+export async function fetchResStockDependencies(
+  characteristic: string
+): Promise<{ available: boolean; dependencies: ResStockDependency[] }> {
+  const response = await fetch(`/api/prior-trees/resstock-dependencies?characteristic=${encodeURIComponent(characteristic)}`);
+  return response.ok ? response.json() : { available: false, dependencies: [] };
 }
 
 /** Registry entries for fields the config references but hasn't declared yet. */

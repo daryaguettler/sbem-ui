@@ -229,10 +229,9 @@
 
   {#if view === 'variability'}
     <div class="variability-view">
-      <!-- shortcut: Save and Preview need globi's schedule variability (feature/add-variability-to-component-libs); drop this note after the merge -->
+      <!-- shortcut: globi main doesn't apply schedule variability yet (feature/add-variability-to-component-libs); drop this note after the merge -->
       <p class="callout callout-warn">
-        In progress: this is still being connected to GloBI. You can explore the settings, but <strong>Save</strong> and the
-        <strong>Preview</strong> will show an error until then, and batch runs don't apply it yet.
+        In progress: you can set up and preview schedule variability and save it, but GloBI runs don't apply it yet.
       </p>
       <ScheduleVariability />
     </div>

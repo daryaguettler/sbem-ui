@@ -54,6 +54,8 @@
   let saving = $state(false);
   let preview = $state<SemanticFieldsPreview | null>(null);
   let previewLoading = $state(false);
+  /** Why the counts per value can't be shown (e.g. the buildings aren't validated), instead of hiding them. */
+  let previewError = $state<string | null>(null);
   let previewTimer: ReturnType<typeof setTimeout> | null = null;
 
   const selected = $derived(
@@ -150,8 +152,10 @@
         body: JSON.stringify(semanticFieldsStore.buildApiPayload($semanticFieldsStore)),
       });
       preview = response.ok ? await response.json() : null;
+      previewError = response.ok ? null : ((await response.json().catch(() => null))?.detail ?? `Preview failed (${response.status}).`);
     } catch {
       preview = null;
+      previewError = 'Could not reach the backend for the preview.';
     } finally {
       previewLoading = false;
     }
@@ -447,6 +451,12 @@
             <AddCharacteristic onAdded={() => (adding = false)} onCancel={() => (adding = false)} />
           </div>
         {:else if selected}
+          {#if previewError}
+            <p class="callout callout-warn">
+              Can't count buildings per value: {previewError}
+              <button type="button" class="btn btn-link" onclick={() => navigateTo('gis-cleaning')}>Go to GIS Cleaning</button>
+            </p>
+          {/if}
           {#key selected.field.id}
             <CharacteristicCard
               view={selected}

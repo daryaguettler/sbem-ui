@@ -45,7 +45,7 @@ def _as_is(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _schedule_variability_document(payload: dict[str, Any]) -> dict[str, Any]:
     """Validate with globi's own model, so a saved file is one globi will load."""
-    from globi.models.schedule_variability import ScheduleVariabilityConfig
+    from services.schedule_variability import ScheduleVariabilityConfig
     from pydantic import ValidationError
 
     try:

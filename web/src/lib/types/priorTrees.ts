@@ -154,7 +154,20 @@ export interface ConditionPreview {
 }
 
 /** How a generated prior's weights were arrived at. */
-export type GenerationMethod = 'uniform' | 'empirical';
+export type GenerationMethod = 'uniform' | 'empirical' | 'resstock';
+
+/** How one of ResStock's dependencies is set when starting from its odds (server/services/resstock_odds.py). */
+export type ResStockDependencySpec =
+  | { mode: 'any' }
+  | { mode: 'fixed'; value: string }
+  /** One of the project's characteristics; `mapping` gives the ResStock values each of its values stands for. */
+  | { mode: 'field'; field: string; mapping: Record<string, string[]> };
+
+export interface ResStockDependency {
+  name: string;
+  /** Commonest first; share = its part of ResStock's homes. */
+  values: Array<{ value: string; share: number }>;
+}
 
 export interface GeneratedKey {
   key: string;
@@ -163,6 +176,8 @@ export interface GeneratedKey {
   supportingCount?: number;
   /** True when this row's weights were counted from data rather than inherited. */
   estimated: boolean;
+  /** 'resstock' when the weights came from ResStock's odds rather than the project's buildings. */
+  source?: 'resstock';
   weights: Distribution;
   /** Set for a numeric target: the normal fitted to this combination. */
   numeric?: NormalSampler;

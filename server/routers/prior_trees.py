@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from dependencies import get_workspace
 from models.semantic_fields import SemanticField
+from services import resstock_odds
 from services.gis_session import get_dataset
 from services.prior_trees import (
     DEFAULT_MIN_COUNT,
@@ -58,6 +59,8 @@ class GeneratePriorRequest(SemanticFieldsBody):
     dtype: str = "categorical"
     min_count: int = DEFAULT_MIN_COUNT
     separator: str = DEFAULT_SEPARATOR
+    #: method "resstock": {"characteristic": ..., "dependencies": {dependency: spec}} (services/resstock_odds)
+    resstock: dict[str, Any] | None = None
 
 
 class ConditionPreviewRequest(SemanticFieldsBody):
@@ -141,9 +144,18 @@ async def generate_prior_endpoint(
             dtype=body.dtype,
             min_count=body.min_count,
             separator=body.separator,
+            resstock=body.resstock,
         )
     except PriorTreeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/resstock-dependencies")
+async def get_resstock_dependencies(characteristic: str):
+    """What ResStock's odds for `characteristic` depend on, with each value's share of its homes."""
+    if not resstock_odds.has_odds(characteristic):
+        return {"available": False, "dependencies": []}
+    return {"available": True, "dependencies": resstock_odds.dependencies(characteristic)}
 
 
 @router.post("/registry-suggestions")
