@@ -7,6 +7,7 @@ export type WorkflowId =
   | 'sampling'
   | 'model-execution'
   | 'single-building'
+  | 'simulations'
   | 'project-files';
 
 export interface GisDatasetSummary {

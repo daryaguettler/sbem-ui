@@ -239,7 +239,7 @@
   }
 
   .option.disabled {
-    opacity: 0.55;
+    opacity: 0.7;
     cursor: not-allowed;
   }
 

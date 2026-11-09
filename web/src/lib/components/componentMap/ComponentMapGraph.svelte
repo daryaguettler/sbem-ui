@@ -297,7 +297,7 @@
   /* xyflow's own dark theme comes from colorMode; these keep it on our surfaces. */
   .canvas :global(.svelte-flow) {
     --xy-background-color: var(--surface);
-    --xy-node-background-color: var(--surface);
+    --xy-node-background-color: var(--surface-3);
     --xy-minimap-background-color: var(--surface-2);
     --xy-controls-button-background-color: var(--surface);
     --xy-controls-button-background-color-hover: var(--surface-3);

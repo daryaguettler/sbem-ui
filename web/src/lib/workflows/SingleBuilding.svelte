@@ -12,6 +12,7 @@
     type FlatModelField,
     type FlatModelResult,
   } from '../api/flatModel';
+  import BarChart from '../components/BarChart.svelte';
   import Select from '../components/Select.svelte';
 
   let fields: FlatModelField[] = [];
@@ -67,24 +68,8 @@
   <div class="workflow-content">
     {#if error}<p class="error">{error}</p>{/if}
 
-    {#if result}
-      <div class="panel">
-        <h2>Results</h2>
-        <table class="data-table">
-          <thead><tr><th>End use</th><th class="num">kWh/m²</th></tr></thead>
-          <tbody>
-            {#each endUses as [name, value]}
-              <tr><td>{name}</td><td class="num">{value.toFixed(1)}</td></tr>
-            {/each}
-            <tr class="total"><td>Total</td><td class="num">{total.toFixed(1)}</td></tr>
-          </tbody>
-        </table>
-        <p class="hint">
-          Peak: {peaks.map(([name, v]) => `${name} ${v.toFixed(3)} kW/m²`).join(' · ')} · files in <code>{result.output_dir}</code>
-        </p>
-      </div>
-    {/if}
-
+  <div class="layout">
+    <div class="form">
     {#if fields.length}
       <div class="panel">
         <div class="head">
@@ -124,11 +109,47 @@
         {/each}
       </div>
     {/if}
+    </div>
+    <aside class="results">
+    {#if result}
+      <div class="panel">
+        <h2>End uses <span class="unit">kWh/m² · total {total.toFixed(1)}</span></h2>
+        <BarChart rows={endUses} unit="kWh/m²" />
+        <details>
+          <summary>Show table</summary>
+          <table class="data-table">
+            <thead><tr><th>End use</th><th class="num">kWh/m²</th></tr></thead>
+            <tbody>
+              {#each endUses as [name, value]}
+                <tr><td>{name}</td><td class="num">{value.toFixed(1)}</td></tr>
+              {/each}
+              <tr class="total"><td>Total</td><td class="num">{total.toFixed(1)}</td></tr>
+            </tbody>
+          </table>
+        </details>
+      </div>
+      {#if peaks.length}
+        <div class="panel">
+          <h2>Peak loads <span class="unit">kW/m²</span></h2>
+          <BarChart rows={peaks} unit="kW/m²" decimals={3} />
+        </div>
+      {/if}
+      <p class="hint">Files in <code>{result.output_dir}</code></p>
+    {:else}
+      <p class="hint">Results appear here after a run.</p>
+    {/if}
+    </aside>
+  </div>
   </div>
 </section>
 
 <style>
-  .workflow-content { max-width: 860px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 860px) minmax(320px, 1fr); gap: var(--space-6); align-items: start; }
+  .form, .results { display: flex; flex-direction: column; gap: var(--space-6); }
+  .results { position: sticky; top: var(--space-6); }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } .results { position: static; } }
+  .unit { font-size: var(--text-sm); font-weight: 400; color: var(--text-muted); }
+  summary { cursor: pointer; font-size: var(--text-sm); color: var(--text-muted); }
   .data-table { max-width: 360px; }
   .total td { font-weight: 600; }
   .head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); }

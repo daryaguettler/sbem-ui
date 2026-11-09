@@ -31,6 +31,7 @@ const WORKFLOW_IDS: WorkflowId[] = [
   'sampling',
   'model-execution',
   'single-building',
+  'simulations',
   'project-files',
 ];
 

@@ -11,6 +11,7 @@
   import ModelExecution from './lib/workflows/ModelExecution.svelte';
   import ProjectFiles from './lib/workflows/ProjectFiles.svelte';
   import SingleBuilding from './lib/workflows/SingleBuilding.svelte';
+  import Simulations from './lib/workflows/Simulations.svelte';
   import { currentWorkflow, navigateTo, restoreLastWorkflow } from './lib/stores/projectStore';
   import { workspaceStore } from './lib/stores/workspaceStore';
   import { componentTreeStore } from './lib/stores/componentTreeStore';
@@ -77,6 +78,8 @@
         <ModelExecution />
       {:else if $currentWorkflow === 'single-building'}
         <SingleBuilding />
+      {:else if $currentWorkflow === 'simulations'}
+        <Simulations />
       {:else if $currentWorkflow === 'project-files'}
         <ProjectFiles />
       {/if}

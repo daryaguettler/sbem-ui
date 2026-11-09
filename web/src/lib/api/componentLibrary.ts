@@ -1,3 +1,5 @@
+import type { ScheduleDraft } from '../utils/schedules';
+
 export type FieldKind = 'string' | 'number' | 'boolean' | 'enum' | 'relation' | 'layers' | 'raw';
 
 export interface ComponentFieldDescriptor {
@@ -110,5 +112,19 @@ export function constructionForU(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, type, u_value: uValue }),
+  });
+}
+
+/** A Year with its Weeks and Days as one editable schedule. */
+export function fetchSchedule(name: string): Promise<ScheduleDraft> {
+  return requestJson(`/api/component-library/schedule/${encodeURIComponent(name)}`);
+}
+
+/** Create (oldName null) or replace a schedule; the server writes its Day/Week/Year records. */
+export function saveSchedule(draft: ScheduleDraft, oldName: string | null): Promise<ScheduleDraft> {
+  return requestJson('/api/component-library/schedule', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ draft, old_name: oldName }),
   });
 }

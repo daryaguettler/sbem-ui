@@ -71,6 +71,38 @@ async def get_record(component_type: str, name: str, workspace: ProjectWorkspace
     return record
 
 
+class SaveScheduleRequest(BaseModel):
+    draft: dict[str, Any]
+    # the schedule being edited; None creates a new one
+    old_name: str | None = None
+
+
+@router.get("/schedule/{name}")
+async def get_schedule(name: str, workspace: ProjectWorkspace = Depends(get_workspace)):
+    """A Year with its Weeks and Days, as one editable schedule draft."""
+    client = _client(workspace)
+    try:
+        draft = lib.get_schedule(client, name)
+    finally:
+        client.disconnect()
+    if draft is None:
+        raise HTTPException(status_code=404, detail=f"Schedule {name!r} not found.")
+    return draft
+
+
+@router.put("/schedule")
+async def save_schedule(body: SaveScheduleRequest, workspace: ProjectWorkspace = Depends(get_workspace)):
+    client = _client(workspace)
+    try:
+        return lib.save_schedule(client, body.draft, body.old_name)
+    except (ValueError, LookupError, KeyError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except prisma_errors.PrismaError as exc:
+        raise _db_error("Schedule", exc) from exc
+    finally:
+        client.disconnect()
+
+
 @router.post("/{component_type}/records")
 async def create_record(
     component_type: str, payload: dict[str, Any], workspace: ProjectWorkspace = Depends(get_workspace)

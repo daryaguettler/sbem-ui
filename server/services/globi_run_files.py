@@ -146,7 +146,8 @@ def generate_run_files(
         }
         variability = workspace.path("schedule_variability")
         variability_doc = yaml.safe_load(variability.read_text()) if variability.exists() else None
-        if variability_doc is not None:
+        # only a globi that has the feature (not yet on main) accepts the key
+        if variability_doc is not None and "schedule_variability_config" in GloBIExperimentSpec.model_fields:
             manifest["schedule_variability_config"] = _ref(variability)
         # globi sets the Scenario column from the manifest, so each Scenario value is its own run
         scenarios = next((f["options"] for f in status["fields"] if f["name"] == SCENARIO), None) or [scenario]
@@ -155,7 +156,8 @@ def generate_run_files(
             documents[f"manifest:{other}"] = {**manifest, "scenario": str(other)}
 
         columns = _geojson_columns(gis)
-        missing = [field["name"] for field in status["fields"] if field["name"] not in columns]
+        # Scenario is not a column: globi adds it from each manifest
+        missing = [field["name"] for field in status["fields"] if field["name"] not in columns and field["name"] != SCENARIO]
         if missing:
             warnings.append(
                 f"The saved GIS has no column for {', '.join(missing)}. A batch run needs a value per "

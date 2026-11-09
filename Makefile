@@ -13,6 +13,7 @@ prisma-generate:
 # Runs the FastAPI backend (:8000) and the Vite frontend (:5173) together.
 # Ctrl+C stops both -- the trap kills every job in this recipe's process group.
 dev:
+	@docker info >/dev/null 2>&1 || { echo 'Starting Docker Desktop (Single Building runs need it)...'; open -a Docker || true; }
 	@trap 'kill 0' EXIT INT TERM; \
 	(cd server && uv run uvicorn main:app --reload --port 8000) & \
 	(cd web && npm run dev) & \

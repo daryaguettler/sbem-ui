@@ -1,6 +1,7 @@
 <script lang="ts">
   import SchemaForm from '../components/componentLibrary/SchemaForm.svelte';
   import ScheduleVariability from '../components/componentLibrary/ScheduleVariability.svelte';
+  import ScheduleEditor from '../components/componentLibrary/ScheduleEditor.svelte';
   import SidePanel from '../components/SidePanel.svelte';
   import ComponentPriorEditor from '../components/priors/ComponentPriorEditor.svelte';
   import { keyField } from '../utils/componentPriors';
@@ -23,6 +24,8 @@
   import { HELP } from '../help';
   const help = HELP.componentLibrary;
 
+  const HIDDEN_TYPES = ['Day', 'Week'];
+  const typeLabel = (type: string) => (type === 'Year' ? 'Schedule' : type);
   let types = $state<string[]>([]);
   let selectedType = $state<string | null>(null);
   let records = $state<ComponentRecord[]>([]);
@@ -52,7 +55,8 @@
     loadingTypes = true;
     try {
       const { types: fetched } = await fetchComponentTypes();
-      types = fetched;
+      // a schedule's Days and Weeks are edited inside its Year (ScheduleEditor)
+      types = fetched.filter((type) => !HIDDEN_TYPES.includes(type));
       if (!selectedType && fetched.length > 0) {
         selectType(fetched[0]);
       }
@@ -162,7 +166,7 @@
 
   async function removeRecord(name: string) {
     if (!selectedType) return;
-    if (!confirm(`Delete ${selectedType} record "${name}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete ${typeLabel(selectedType)} record "${name}"? This cannot be undone.`)) return;
     try {
       await deleteComponentRecord(selectedType, name);
       await loadRecords();
@@ -186,7 +190,7 @@
         {rules ? 'Options in use' : 'Needed by the model'}
       </button>
       <button type="button" role="tab" aria-selected={view === 'variability'} class:active={view === 'variability'} onclick={() => (view = 'variability')}>
-        Schedule variability
+        Schedule variability <span class="tag tag-warn">in progress</span>
       </button>
     </div>
   </header>
@@ -195,12 +199,13 @@
     {#if panel.mode !== 'closed' && selectedType}
       <div class="editor-slot">
         <SidePanel
-          title={panel.mode === 'create' ? `New ${selectedType}` : `Edit ${panel.mode === 'edit' ? panel.name : ''}`}
-          subtitle={selectedType}
+          title={panel.mode === 'create' ? `New ${typeLabel(selectedType)}` : `Edit ${panel.mode === 'edit' ? panel.name : ''}`}
+          subtitle={typeLabel(selectedType)}
           onClose={closePanel}
         >
           {#key `${selectedType}:${panel.mode}:${panel.mode === 'edit' ? panel.name : (panel.presetName ?? '') + (panel.copyFrom ?? '')}`}
-            <SchemaForm
+            {@const Form = selectedType === 'Year' ? ScheduleEditor : SchemaForm}
+            <Form
               componentType={selectedType}
               mode={panel.mode === 'create' ? 'create' : 'edit'}
               name={panel.mode === 'edit' ? panel.name : null}
@@ -223,7 +228,14 @@
   {/snippet}
 
   {#if view === 'variability'}
-    <div class="variability-view"><ScheduleVariability /></div>
+    <div class="variability-view">
+      <!-- shortcut: Save and Preview need globi's schedule variability (feature/add-variability-to-component-libs); drop this note after the merge -->
+      <p class="callout callout-warn">
+        In progress: this is still being connected to GloBI. You can explore the settings, but <strong>Save</strong> and the
+        <strong>Preview</strong> will show an error until then, and batch runs don't apply it yet.
+      </p>
+      <ScheduleVariability />
+    </div>
   {:else if view === 'needed'}
     <div class="body needed-body" class:panel-open={panel.mode !== 'closed'}>
       <section class="records">
@@ -252,7 +264,7 @@
               : 'Records these point to (assemblies, constructions, schedules) are picked inside each form; create them there with + New or under their own type.'}
           </p>
           {#each needed as group (group.type)}
-            <h3 class="group-title">{group.type} <span class="hint">{group.records.filter((r) => r.exists).length} of {group.records.length} exist</span></h3>
+            <h3 class="group-title">{typeLabel(group.type)} <span class="hint">{group.records.filter((r) => r.exists).length} of {group.records.length} exist</span></h3>
             <table class="data-table">
               <tbody>
                 {#each group.records as record (record.name)}
@@ -295,7 +307,7 @@
             aria-current={type === selectedType ? 'true' : undefined}
             onclick={() => selectType(type)}
           >
-            {type}
+            {typeLabel(type)}
           </button>
         {/each}
       {/if}
@@ -304,8 +316,8 @@
     <section class="records">
       {#if selectedType}
         <div class="records-header">
-          <h2>{selectedType} <Explain text={help.records} tip /></h2>
-          <button type="button" class="btn" onclick={openCreate}><Icon name="plus" size={14} />Add {selectedType}</button>
+          <h2>{typeLabel(selectedType)} <Explain text={help.records} tip /></h2>
+          <button type="button" class="btn" onclick={openCreate}><Icon name="plus" size={14} />Add {typeLabel(selectedType)}</button>
         </div>
         <Explain text={help.records} />
         {#if generatedCount > 0}
@@ -323,7 +335,7 @@
           <p class="hint">Loading records…</p>
         {:else if shownRecords.length === 0}
           <div class="empty empty-box empty-state">
-            <p>No {selectedType} records yet.</p>
+            <p>No {typeLabel(selectedType)} records yet.</p>
             <button type="button" class="btn btn-secondary" onclick={openCreate}><Icon name="plus" size={14} />Add the first one</button>
           </div>
         {:else}

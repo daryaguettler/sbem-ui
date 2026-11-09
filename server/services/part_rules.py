@@ -166,10 +166,10 @@ class _Library:
         self.db = db
         self._flat: dict[tuple[str, str], dict[str, Any] | None] = {}
         self._ids: dict[str, dict[str, str]] = {}
-        #: Variant records queued this compile, by name; not in the database yet.
-        self.variant_rows: dict[str, dict[str, Any]] = {}
+        #: Variant records queued this compile, by (type, name); not in the database yet.
+        self.variant_rows: dict[tuple[str, str], dict[str, Any]] = {}
         #: Each variant's source record and the numbers set on it.
-        self.variant_values: dict[str, tuple[str, dict[str, float]]] = {}
+        self.variant_values: dict[tuple[str, str], tuple[str, dict[str, float]]] = {}
         self._conductivity: dict[str, float] | None = None
 
     def conductivity(self) -> dict[str, float]:
@@ -184,8 +184,8 @@ class _Library:
         row = {**lib._to_prisma_write_data(component_type, validated, self.db), "id": str(uuid.uuid4())}
         rows.append((component_type, row))
         self.ids(component_type)[name] = row["id"]
-        self.variant_rows[name] = row
-        self.variant_values[name] = (source, values)
+        self.variant_rows[component_type, name] = row
+        self.variant_values[component_type, name] = (source, values)
 
     def record(self, component_type: str, name: str) -> dict[str, Any] | None:
         if (component_type, name) not in self._flat:
@@ -516,10 +516,10 @@ def _part_measures(part, option, values, package, uncertain, part_variant, libra
     stem = chosen if chosen.startswith(f"{PREFIX}_") else f"{PREFIX}_{chosen}"
     every = [i for i, m in enumerate(measures) if m.get("part") == part and not m.get("to")]
     name = f"{stem}__{_package_slug(package['name'])}" + ("" if shifts == every else "-" + "-".join(str(i + 1) for i in shifts))
-    if name in library.variant_rows:
-        return name
     component_type = _type(part)
-    source, numbers = library.variant_values.get(chosen, (chosen, {}))
+    if (component_type, name) in library.variant_rows:
+        return name
+    source, numbers = library.variant_values.get((component_type, chosen), (chosen, {}))
     numbers = dict(numbers)
     record = library.record(component_type, source)
     try:
@@ -559,7 +559,7 @@ def _build(path, name, choice, library, base_assembly, generated_ids, rows) -> s
         if path not in GROUPS:
             return library.ids(component_type)[option]
         # DHW: globi looks the leaf itself up by the generated name
-        source = library.variant_rows.get(option) or lib._client_accessor(library.db, component_type).find_unique(where={"Name": option}).model_dump()
+        source = library.variant_rows.get((component_type, option)) or lib._client_accessor(library.db, component_type).find_unique(where={"Name": option}).model_dump()
         data = {k: v for k, v in source.items() if k not in ("id", "Name") and v is not None and not isinstance(v, (dict, list))}
         row = {"id": str(uuid.uuid4()), "Name": name, **data}
         rows.append((component_type, row))

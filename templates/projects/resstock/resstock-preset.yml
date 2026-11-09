@@ -14,6 +14,11 @@ assumptions:
   Fuel).'
 - 'Cooling: SEER or EER x 0.293 -> COP; heat-pump cooling is set by HVAC Heating Efficiency, so those options are skipped.'
 - 'Water heaters: EF / UEF -> COP; fuel from ResStock''s water_heater_fuel_type.'
+- 'Lighting: interior bulb mix -> power relative to all-incandescent from typical efficacies {''incandescent'': 15, ''cfl'':
+  60, ''led'': 90} lm/W (linear fluorescent as CFL); the starter lighting''s power density is taken as all-incandescent. Exterior
+  and garage lighting are ignored.'
+- 'Plug Loads: the starter equipment''s power density x ResStock''s plug-load usage multiplier.'
+- 'Occupants: people / a reference floor area of 163 m2 (1,750 ft2, the middle of ResStock''s 1500-1999 bin); ''10+'' is 11.'
 - 'Heating setpoint: constant all year, F -> C; the cooling setpoint stays the starter''s.'
 - Every value ResStock doesn't set (distribution COP, schedules, layer materials, ...) keeps the starter archetype's.
 characteristics:
@@ -260,6 +265,70 @@ characteristics:
     76F: resstock_Heating_Setpoint_76F
     78F: resstock_Heating_Setpoint_78F
     80F: resstock_Heating_Setpoint_80F
+  skipped: {}
+- name: Lighting
+  parts:
+  - Operations.SpaceUse.Lighting
+  options:
+    100% CFL: resstock_Lighting_100_CFL
+    100% Incandescent: resstock_Lighting_100_Incandescent
+    100% LED: resstock_Lighting_100_LED
+    20% LED: resstock_Lighting_20_LED
+    60% CFL: resstock_Lighting_60_CFL
+  skipped:
+    None: no lighting
+- name: Plug Loads
+  parts:
+  - Operations.SpaceUse.Equipment
+  options:
+    100%: resstock_Plug_Loads_100
+    101%: resstock_Plug_Loads_101
+    102%: resstock_Plug_Loads_102
+    103%: resstock_Plug_Loads_103
+    104%: resstock_Plug_Loads_104
+    105%: resstock_Plug_Loads_105
+    106%: resstock_Plug_Loads_106
+    108%: resstock_Plug_Loads_108
+    110%: resstock_Plug_Loads_110
+    113%: resstock_Plug_Loads_113
+    119%: resstock_Plug_Loads_119
+    121%: resstock_Plug_Loads_121
+    123%: resstock_Plug_Loads_123
+    134%: resstock_Plug_Loads_134
+    137%: resstock_Plug_Loads_137
+    140%: resstock_Plug_Loads_140
+    144%: resstock_Plug_Loads_144
+    166%: resstock_Plug_Loads_166
+    78%: resstock_Plug_Loads_78
+    79%: resstock_Plug_Loads_79
+    82%: resstock_Plug_Loads_82
+    84%: resstock_Plug_Loads_84
+    85%: resstock_Plug_Loads_85
+    86%: resstock_Plug_Loads_86
+    89%: resstock_Plug_Loads_89
+    91%: resstock_Plug_Loads_91
+    93%: resstock_Plug_Loads_93
+    94%: resstock_Plug_Loads_94
+    95%: resstock_Plug_Loads_95
+    96%: resstock_Plug_Loads_96
+    97%: resstock_Plug_Loads_97
+    99%: resstock_Plug_Loads_99
+  skipped: {}
+- name: Occupants
+  parts:
+  - Operations.SpaceUse.Occupancy
+  options:
+    '0': resstock_Occupants_0
+    '1': resstock_Occupants_1
+    10+: resstock_Occupants_10
+    '2': resstock_Occupants_2
+    '3': resstock_Occupants_3
+    '4': resstock_Occupants_4
+    '5': resstock_Occupants_5
+    '6': resstock_Occupants_6
+    '7': resstock_Occupants_7
+    '8': resstock_Occupants_8
+    '9': resstock_Occupants_9
   skipped: {}
 - name: Water Heater Efficiency
   parts:

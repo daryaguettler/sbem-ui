@@ -34,6 +34,7 @@
   const utilities: Array<{ id: WorkflowId; label: string; icon: IconName }> = [
     { id: 'component-library', label: 'Component Library', icon: 'grid' },
     { id: 'single-building', label: 'Single Building', icon: 'home' },
+    { id: 'simulations', label: 'Simulations', icon: 'bell-curve' },
     { id: 'project-files', label: 'Project Files', icon: 'file' },
   ];
 

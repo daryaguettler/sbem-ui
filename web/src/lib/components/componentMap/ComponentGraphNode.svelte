@@ -84,7 +84,7 @@
     min-width: 230px;
     border: 2px solid var(--status-color);
     border-radius: var(--radius);
-    background: var(--surface);
+    background: var(--surface-3);
     padding: var(--space-3);
     color: var(--text);
     cursor: pointer;
@@ -149,7 +149,7 @@
 
   .status-badge {
     margin-top: var(--space-2);
-    background: color-mix(in srgb, var(--status-color) 14%, var(--surface));
+    background: color-mix(in srgb, var(--status-color) 14%, var(--surface-3));
     color: var(--text);
   }
 </style>

@@ -13,6 +13,7 @@
   // (e.g. Lighting's Schedule field opens a nested Year form). `svelte:self`
   // is deprecated in Svelte 5 in favor of this pattern.
   import SchemaForm from './SchemaForm.svelte';
+  import ScheduleEditor from './ScheduleEditor.svelte';
   import Select from '../Select.svelte';
   import Icon from '../Icon.svelte';
   import { uValue } from '../../utils/optionValues';
@@ -394,7 +395,8 @@
   {#if creatingRelationFor}
     {@const field = schema.fields.find((f) => f.name === creatingRelationFor)}
     {#if field?.relationType}
-      <SchemaForm
+      {@const Form = field.relationType === 'Year' ? ScheduleEditor : SchemaForm}
+      <Form
         componentType={field.relationType}
         mode="create"
         trail={[...trail, mode === 'edit' && name ? name : `New ${componentType}`]}

@@ -441,3 +441,125 @@ def construction_for_u(client: Prisma, name: str, construction_type: str, u_valu
     record = create_record(client, "ConstructionAssembly", {"Name": name, "Type": construction_type, "Layers": layers})
     reached = 1 / (fixed + insulation / conductivity[INSULATION])
     return {"record": record, "u_value": round(reached, 3)}
+
+
+# -- a schedule as one component ---------------------------------------------------
+# A Year links 12 Weeks, each Week 7 Days. The editor works on one draft:
+#   {Name, Type, Limit, profiles: {profile: [24 values]}, weeks: {week: {weekday: profile}},
+#    months: {month: week}}
+# and saves its Days/Weeks as "{Year}__{profile}" / "{Year}__{week}", so editing one schedule
+# never changes another that shared the old Day/Week records.
+
+DAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+MONTHS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
+SEP = "__"
+
+
+def get_schedule(client: Prisma, name: str) -> dict[str, Any] | None:
+    year = get_record(client, "Year", name, deep=True)
+    if year is None:
+        return None
+
+    def labeller():
+        """Record name -> editor label: "{Year}__x" -> "x"; others keep their name, made unique and __-free."""
+        labels: dict[str, str] = {}
+
+        def label(record_name: str) -> str:
+            if record_name not in labels:
+                short = record_name.removeprefix(f"{name}{SEP}").replace(SEP, "_")
+                while short in labels.values():
+                    short += "'"
+                labels[record_name] = short
+            return labels[record_name]
+
+        return label
+
+    day_label, week_label = labeller(), labeller()
+    profiles: dict[str, list[float]] = {}
+    weeks: dict[str, dict[str, str]] = {}
+    for month in MONTHS:
+        week = year[month]
+        for day_name in DAYS:
+            day = week[day_name]
+            profiles.setdefault(day_label(day["Name"]), [day[f"Hour_{h:02d}"] for h in range(24)])
+        weeks.setdefault(week_label(week["Name"]), {d: day_label(week[d]["Name"]) for d in DAYS})
+    return {
+        "Name": name,
+        "Type": year["Type"],
+        "Limit": year["January"]["Monday"]["Type"],
+        "profiles": profiles,
+        "weeks": weeks,
+        "months": {m: week_label(year[m]["Name"]) for m in MONTHS},
+    }
+
+
+def _schedule_components(draft: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], Any]:
+    """Validate the draft through epinterface's own models -> (days, weeks, year)."""
+    from epinterface.sbem.components.schedules import DayComponent, WeekComponent, YearComponent
+
+    name = (draft.get("Name") or "").strip()
+    if not name:
+        raise ValueError("Give the schedule a name.")
+    for label in [*draft["profiles"], *draft["weeks"]]:
+        if not label.strip() or SEP in label:
+            raise ValueError(f"{label!r}: profile and week names can't be empty or contain {SEP!r}.")
+    days = {}
+    for label, values in draft["profiles"].items():
+        if len(values) != 24:
+            raise ValueError(f"Profile {label!r} needs 24 hourly values, not {len(values)}.")
+        try:
+            days[label] = DayComponent(
+                Name=f"{name}{SEP}{label}", Type=draft["Limit"], **{f"Hour_{h:02d}": v for h, v in enumerate(values)}
+            )
+        except ValueError as exc:
+            raise ValueError(f"Profile {label!r}: {exc}") from exc
+    weeks = {}
+    for label, pattern in draft["weeks"].items():
+        missing = [d for d in DAYS if pattern.get(d) not in days]
+        if missing:
+            raise ValueError(f"Week {label!r}: choose a profile for {', '.join(missing)}.")
+        weeks[label] = WeekComponent(Name=f"{name}{SEP}{label}", **{d: days[pattern[d]] for d in DAYS})
+    missing = [m for m in MONTHS if draft["months"].get(m) not in weeks]
+    if missing:
+        raise ValueError(f"Choose a week for {', '.join(missing)}.")
+    year = YearComponent(Name=name, Type=draft["Type"], **{m: weeks[draft["months"][m]] for m in MONTHS})
+    return days, weeks, year
+
+
+def save_schedule(client: Prisma, draft: dict[str, Any], old_name: str | None = None) -> dict[str, Any]:
+    """Create (old_name None) or replace the schedule `old_name`, renaming it to draft["Name"]."""
+    days, weeks, year = _schedule_components(draft)
+    clash = client.year.find_unique(where={"Name": year.Name})
+    if clash is not None and year.Name != old_name:
+        raise ValueError(f"A schedule named {year.Name!r} already exists.")
+    existing = client.year.find_unique(where={"Name": old_name}) if old_name else None
+    if old_name and existing is None:
+        raise LookupError(f"Schedule {old_name!r} not found.")
+
+    with client.tx() as tx:
+        for component_type, components in (("Day", days), ("Week", weeks)):
+            for component in components.values():
+                data = _to_prisma_write_data(component_type, component, tx)
+                _client_accessor(tx, component_type).upsert(
+                    where={"Name": component.Name}, data={"create": data, "update": data}
+                )
+        data = _to_prisma_write_data("Year", year, tx)
+        if existing is None:
+            tx.year.create(data=data)
+        else:
+            tx.year.update(where={"id": existing.id}, data=data)
+        # drop this schedule's own Days/Weeks the draft no longer uses (incl. those of its old name)
+        for component_type, keep in (("Week", weeks.values()), ("Day", days.values())):
+            kept = {c.Name for c in keep}
+            for prefix in {f"{n}{SEP}" for n in (year.Name, old_name) if n}:
+                stale = [
+                    r.Name
+                    for r in _client_accessor(tx, component_type).find_many(where={"Name": {"startswith": prefix}})
+                    if r.Name not in kept and SEP not in r.Name.removeprefix(prefix)
+                ]
+                if stale:
+                    _client_accessor(tx, component_type).delete_many(where={"Name": {"in": stale}})
+    return get_schedule(client, year.Name) or {}

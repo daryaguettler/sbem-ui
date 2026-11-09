@@ -152,13 +152,11 @@
 
     {#if view.howKnown === 'data'}
       <DataRuleEditor {field} {gisColumns} onChange={onFieldChange} />
-      {#if previewLoading}
-        <p class="hint">Updating preview…</p>
-      {:else if preview}
+      {#if preview}
         {@const stats = preview.stats}
         {@const most = Math.max(1, ...Object.values(stats.counts), stats.unmapped_count)}
         <Explain text={help.spread} />
-        <ul class="spread" aria-label="Buildings per value">
+        <ul class="spread" class:stale={previewLoading} aria-label="Buildings per value">
           {#each Object.entries(stats.counts) as [value, count] (value)}
             <li>
               <span class="label">{value}</span>
@@ -174,6 +172,8 @@
             </li>
           {/if}
         </ul>
+      {:else if previewLoading}
+        <p class="hint">Updating preview…</p>
       {/if}
     {:else}
       <p class="subtitle">Estimate <span class="globi">(GloBI: prior)</span> <Explain text={help.estimate} tip /></p>
@@ -312,6 +312,10 @@
     gap: 4px var(--space-2);
     align-items: center;
     font-size: var(--text-sm);
+  }
+
+  .spread.stale {
+    opacity: 0.7;
   }
 
   .spread li {
