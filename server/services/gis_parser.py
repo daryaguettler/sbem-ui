@@ -61,6 +61,52 @@ def _row_has_complete_columns(row: dict[str, Any], column_names: list[str]) -> b
     return all(not _is_missing(row.get(column_name)) for column_name in column_names)
 
 
+RuleSources = list[tuple[str, dict[str, Any]]]
+
+
+def rule_sources(column_mappings: dict[str, str | None] | None, roles: list[dict[str, Any]] | None = None) -> RuleSources:
+    """(source column, role) for every mapped role that has a GloBI value rule."""
+    from services.globi_columns import GLOBI_COLUMN_ROLES
+
+    column_mappings = column_mappings or {}
+    return [
+        (column_mappings[role["key"]], role)
+        for role in roles or GLOBI_COLUMN_ROLES
+        if role.get("rule") and column_mappings.get(role["key"])
+    ]
+
+
+def _row_breaks_rules(row: dict[str, Any], sources: RuleSources) -> bool:
+    from services.globi_columns import breaks_rule
+
+    # Blanks are not rule breaks: GloBI fills them with its defaults.
+    return any(
+        not _is_missing(row.get(source)) and breaks_rule(row.get(source), role) for source, role in sources
+    )
+
+
+def apply_value_mappings(
+    dataset: dict[str, Any],
+    column_mappings: dict[str, str | None],
+    value_mappings: dict[str, dict[str, str]],
+) -> None:
+    """Rewrite mapped source values (e.g. basement "Y") to GloBI values, in rows and features alike."""
+    changes = {
+        column_mappings[role_key]: mapping
+        for role_key, mapping in value_mappings.items()
+        if column_mappings.get(role_key) and mapping
+    }
+    if not changes:
+        return
+    records = dataset.get("rows", []) + [feature.get("properties") or {} for feature in dataset.get("features", [])]
+    for record in records:
+        for column, mapping in changes.items():
+            value = record.get(column)
+            if value is not None and str(value) in mapping:
+                record[column] = mapping[str(value)]
+    dataset["columns"] = _summarize_columns(dataset.get("rows", []))
+
+
 def parse_csv_content(content: bytes) -> dict[str, Any]:
     text = content.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(text))
@@ -132,12 +178,17 @@ def count_incomplete_rows(dataset: dict[str, Any], validate_columns: list[str]) 
     )
 
 
-def drop_incomplete_rows(dataset: dict[str, Any], validate_columns: list[str]) -> dict[str, Any]:
+def drop_incomplete_rows(
+    dataset: dict[str, Any],
+    validate_columns: list[str],
+    sources: RuleSources = (),
+) -> dict[str, Any]:
+    """Drop rows with a blank in any validate column or a value GloBI would reject."""
     rows = dataset.get("rows", [])
     keep_indices = [
         index
         for index, row in enumerate(rows)
-        if _row_has_complete_columns(row, validate_columns)
+        if _row_has_complete_columns(row, validate_columns) and not _row_breaks_rules(row, sources)
     ]
     kept_rows = [rows[index] for index in keep_indices]
     dropped_row_count = len(rows) - len(kept_rows)
@@ -266,6 +317,24 @@ def validate_dataset(
         elif column.get("null_count", 0) > 0:
             issues.append(f"Column '{column_name}' contains missing values.")
 
+    from services.globi_columns import breaks_rule
+
+    sources = rule_sources(column_mappings, roles)
+    for source, role in sources:
+        if source not in columns_by_name:
+            continue
+        bad = [
+            str(row.get(source))
+            for row in dataset.get("rows", [])
+            if not _is_missing(row.get(source)) and breaks_rule(row.get(source), role)
+        ]
+        if bad:
+            examples = ", ".join(sorted(set(bad))[:5])
+            issues.append(
+                f"{role['label']}: {len(bad)} rows have values GloBI will drop ({examples}). {role['rule']}"
+            )
+    invalid_row_count = sum(1 for row in dataset.get("rows", []) if _row_breaks_rules(row, sources))
+
     incomplete_row_count = count_incomplete_rows(dataset, validate_columns)
 
     return {
@@ -275,4 +344,5 @@ def validate_dataset(
         "column_mappings": column_mappings,
         "validated_columns": validate_columns,
         "incomplete_row_count": incomplete_row_count,
+        "invalid_row_count": invalid_row_count,
     }

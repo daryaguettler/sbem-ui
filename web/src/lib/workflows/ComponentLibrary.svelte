@@ -18,6 +18,7 @@
   import { semanticFieldsStore } from '../stores/semanticFieldsStore';
   import { dirtyKinds } from '../stores/projectArtifacts';
   import { partRulesStore } from '../stores/partRulesStore';
+  import { fetchStockPreset } from '../api/partRules';
   import { GENERATED_PREFIX, optionsInUse } from '../utils/partRules';
   import { buildSelectorCombinations, collectSelectors } from '../utils/componentMapTree';
   import Explain from '../components/Explain.svelte';
@@ -49,7 +50,41 @@
   let showGenerated = $state(false);
   const rules = $derived($partRulesStore.rules);
   const generatedCount = $derived(records.filter((r) => r.Name.startsWith(GENERATED_PREFIX)).length);
-  const shownRecords = $derived(showGenerated ? records : records.filter((r) => !r.Name.startsWith(GENERATED_PREFIX)));
+  let query = $state('');
+  const shownRecords = $derived(
+    records.filter(
+      (r) => (showGenerated || !r.Name.startsWith(GENERATED_PREFIX)) && r.Name.toLowerCase().includes(query.trim().toLowerCase())
+    )
+  );
+
+  /** A project started empty can still take the ResStock records (and their ready-made characteristics) later. */
+  let hasStockPreset = $state(true);
+  let importing = $state(false);
+  let importNote = $state<string | null>(null);
+  fetchStockPreset().then((preset) => (hasStockPreset = preset !== null));
+
+  async function addResstock() {
+    importing = true;
+    error = null;
+    try {
+      const response = await fetch('/api/workspace/import-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: 'resstock.yml' }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Import failed.');
+      const added = Object.values(data.added as Record<string, number>).reduce((sum, n) => sum + n, 0);
+      importNote = `Added ${added} ResStock records (names start with resstock_). Its characteristics are now offered under Building Characteristics → Add.`;
+      hasStockPreset = true;
+      await loadTypes();
+      await loadRecords();
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Import failed.';
+    } finally {
+      importing = false;
+    }
+  }
 
   async function loadTypes() {
     loadingTypes = true;
@@ -193,6 +228,17 @@
         Schedule variability <span class="tag tag-warn">in progress</span>
       </button>
     </div>
+    {#if !hasStockPreset}
+      <p class="callout import-callout">
+        <span>Started from an empty library? Add ResStock's US residential records and its ready-made characteristics. Records you already have are kept.</span>
+        <button type="button" class="btn btn-secondary btn-sm" onclick={addResstock} disabled={importing}>
+          {importing ? 'Adding…' : 'Add ResStock library'}
+        </button>
+      </p>
+    {/if}
+    {#if importNote}
+      <p class="status-ok"><Icon name="check" size={14} />{importNote}</p>
+    {/if}
   </header>
 
   {#snippet editor()}
@@ -319,6 +365,7 @@
           <button type="button" class="btn" onclick={openCreate}><Icon name="plus" size={14} />Add {typeLabel(selectedType)}</button>
         </div>
         <Explain text={help.records} />
+        <input class="search" type="search" placeholder="Search names, e.g. resstock_ or Furnace" aria-label="Search records by name" bind:value={query} />
         {#if generatedCount > 0}
           <label class="hint generated-toggle">
             <input type="checkbox" bind:checked={showGenerated} />
@@ -334,7 +381,7 @@
           <p class="hint">Loading records…</p>
         {:else if shownRecords.length === 0}
           <div class="empty empty-box empty-state">
-            <p>No {typeLabel(selectedType)} records yet.</p>
+            <p>{query.trim() ? `No ${typeLabel(selectedType)} records match “${query.trim()}”.` : `No ${typeLabel(selectedType)} records yet.`}</p>
             <button type="button" class="btn btn-secondary" onclick={openCreate}><Icon name="plus" size={14} />Add the first one</button>
           </div>
         {:else}
@@ -369,6 +416,18 @@
 </div>
 
 <style>
+  .import-callout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .search {
+    width: 100%;
+    max-width: 360px;
+  }
+
   /* Tab underlines sit on the header's own bottom rule. */
   .tabs {
     margin: var(--space-3) 0 calc(-1 * var(--space-5));

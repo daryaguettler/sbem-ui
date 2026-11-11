@@ -10,9 +10,11 @@
   import { onMount } from 'svelte';
   import { fetchStockPreset, type StockPreset } from '../../api/partRules';
   import { partRulesStore } from '../../stores/partRulesStore';
+  import { priorTreesStore } from '../../stores/priorTreesStore';
   import { semanticFieldsStore } from '../../stores/semanticFieldsStore';
   import { createEmptyField, ensureTransformationRule } from '../../utils/semanticFieldRules';
   import type { GISColumn, SemanticField } from '../../types/semanticFields';
+  import Select from '../Select.svelte';
 
   /** Where the estimate suggestions come from: the full residential example's sampled fields. */
   const SUGGESTIONS_TEMPLATE = 'residential.yml';
@@ -25,6 +27,33 @@
   let preset = $state<StockPreset | null>(null);
   let picking = $state<StockPreset['characteristics'][number] | null>(null);
   let ticked = $state<string[]>([]);
+  /** Narrow ResStock's options to one state: per characteristic, its homes' share of each option (null: no location data). */
+  let states = $state<string[]>([]);
+  let usState = $state('');
+  let stateShares = $state<Record<string, Record<string, number> | null>>({});
+  /** With a state picked, options at least this common there start ticked. */
+  const COMMON_SHARE = 0.01;
+  const pickingShares = $derived(picking && usState ? stateShares[picking.name] : null);
+  const shownOptions = $derived(
+    picking ? Object.keys(picking.options).filter((option) => !pickingShares || option in pickingShares) : []
+  );
+
+  async function pickState(value: string) {
+    usState = value;
+    stateShares = {};
+    if (!value) return;
+    const response = await fetch(`/api/prior-trees/resstock-state-options?state=${encodeURIComponent(value)}`);
+    if (response.ok) stateShares = (await response.json()).options;
+    if (picking) startPicking(picking);
+  }
+
+  function startPicking(entry: StockPreset['characteristics'][number]) {
+    picking = entry;
+    const shares = usState ? stateShares[entry.name] : null;
+    ticked = shares ? Object.keys(entry.options).filter((option) => (shares[option] ?? 0) >= COMMON_SHARE) : [];
+  }
+
+  const percent = (share: number) => (share < 0.001 ? '<0.1%' : `${(share * 100).toFixed(1)}%`);
 
   const editor = $derived($semanticFieldsStore);
   const taken = $derived(new Set(editor.fields.map((field) => field.name)));
@@ -36,12 +65,61 @@
         !editor.fields.some((field) => field.transformationRule?.sourceColumn === column.name)
     )
   );
+  /** "Based on another characteristic": a parent with values, each mapped to one value of the new one. */
+  const parents = $derived(editor.fields.filter((field) => (field.options?.length ?? 0) > 0));
+  let deriving = $state<SemanticField | null>(null);
+  let derivedName = $state('');
+  let derivedMap = $state<Record<string, string>>({});
+  const derivedValues = $derived([...new Set(Object.values(derivedMap).map((value) => value.trim()))]);
+  const derivedReady = $derived(
+    Boolean(derivedName.trim()) && !taken.has(derivedName.trim()) && !derivedValues.includes('')
+  );
+
+  function startDeriving(parent: SemanticField) {
+    deriving = parent;
+    derivedName = `${parent.name} group`;
+    derivedMap = Object.fromEntries(parent.options.map((option) => [option, option]));
+  }
+
+  /** Saved as an estimate conditioned on the parent whose table gives each parent value one child value. */
+  function fromParent() {
+    if (!deriving || !derivedReady) return;
+    const name = derivedName.trim();
+    priorTreesStore.setJoint({
+      target: name,
+      condition_on: [deriving.name],
+      table: Object.fromEntries(
+        Object.entries(derivedMap).map(([parent, child]) => [
+          parent,
+          Object.fromEntries(derivedValues.map((value) => [value, value === child.trim() ? 1 : 0])),
+        ])
+      ),
+    });
+    add({
+      ...createEmptyField(),
+      name,
+      type: 'stochastic',
+      requiresPrior: true,
+      options: derivedValues,
+      description: `Mapped from ${deriving.name}`,
+    });
+    deriving = null;
+  }
+
   const openSuggestions = $derived(suggestions.filter((entry) => !taken.has(entry.name)));
   const openPreset = $derived((preset?.characteristics ?? []).filter((entry) => !taken.has(entry.name)));
 
   onMount(async () => {
     fetchStockPreset()
-      .then((loaded) => (preset = loaded))
+      .then((loaded) => {
+        preset = loaded;
+        if (loaded) {
+          fetch('/api/prior-trees/resstock-states')
+            .then((response) => response.json())
+            .then((data) => (states = data.states ?? []))
+            .catch(() => {});
+        }
+      })
       .catch(() => {});
     try {
       const response = await fetch(`/api/semantic-fields/templates/${SUGGESTIONS_TEMPLATE}`);
@@ -161,6 +239,48 @@
     {/if}
   </section>
 
+  <section>
+    <h3>Based on another characteristic</h3>
+    <p class="hint">
+      Group or rename the values of one you already have, e.g. typology → residential / commercial. Each building gets
+      the value its own value maps to. Give two values the same name to merge them.
+    </p>
+    {#if deriving}
+      <label class="field">
+        Name
+        <input type="text" bind:value={derivedName} />
+        {#if taken.has(derivedName.trim())}<span class="field-hint">A characteristic with this name exists.</span>{/if}
+      </label>
+      <table class="map">
+        <thead><tr><th>{deriving.name}</th><th>{derivedName || 'New value'}</th></tr></thead>
+        <tbody>
+          {#each Object.keys(derivedMap) as parentValue (parentValue)}
+            <tr>
+              <td>{parentValue}</td>
+              <td><input type="text" aria-label={`Value for ${parentValue}`} bind:value={derivedMap[parentValue]} /></td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      <div class="actions">
+        <button type="button" class="btn btn-sm" disabled={!derivedReady} onclick={fromParent}>
+          Add with {derivedValues.length} value{derivedValues.length === 1 ? '' : 's'}
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick={() => (deriving = null)}>Back</button>
+      </div>
+    {:else if parents.length > 0}
+      <div class="chips">
+        {#each parents as parent (parent.id)}
+          <button type="button" class="chip" onclick={() => startDeriving(parent)}>
+            {parent.name} <span class="chip-meta">· {parent.options.length} values</span>
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <p class="hint">Add a characteristic with values first.</p>
+    {/if}
+  </section>
+
   {#if preset && openPreset.length > 0}
     <section>
       <h3>From ResStock {preset.source.tag}</h3>
@@ -168,11 +288,34 @@
         ResStock's characteristics, each option already a library record for the part it decides. Keep only the
         options your buildings have.
       </p>
+      {#if states.length > 0}
+        <div class="state-pick">
+          <span>Only options found in</span>
+          <Select
+            value={usState}
+            ariaLabel="US state"
+            options={[{ value: '', label: 'All states' }, ...states.map((code) => ({ value: code, label: code }))]}
+            onChange={pickState}
+          />
+        </div>
+      {/if}
       {#if picking}
+        {#if usState && pickingShares === null && picking.name in stateShares}
+          <p class="hint">ResStock's {picking.name} odds don't depend on location, so every option is shown.</p>
+        {:else if pickingShares}
+          <p class="hint">
+            Showing the {shownOptions.length} of {Object.keys(picking.options).length} options found in {usState}, with
+            their share of its homes. Those at {COMMON_SHARE * 100}% or more start ticked.
+          </p>
+        {/if}
         <fieldset class="options">
           <legend>{picking.name}</legend>
-          {#each Object.keys(picking.options) as option (option)}
-            <label><input type="checkbox" value={option} bind:group={ticked} /> {option}</label>
+          {#each shownOptions as option (option)}
+            <label>
+              <input type="checkbox" value={option} bind:group={ticked} />
+              {option}
+              {#if pickingShares}<span class="chip-meta">· {percent(pickingShares[option])}</span>{/if}
+            </label>
           {/each}
         </fieldset>
         <div class="actions">
@@ -188,10 +331,7 @@
               type="button"
               class="chip"
               title="Decides {entry.parts.join(', ')}"
-              onclick={() => {
-                picking = entry;
-                ticked = [];
-              }}
+              onclick={() => startPicking(entry)}
             >
               {entry.name} <span class="chip-meta">· {Object.keys(entry.options).length} options</span>
             </button>
@@ -279,6 +419,25 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .map {
+    margin: var(--space-3) 0;
+    font-size: var(--text-sm);
+  }
+
+  .map td,
+  .map th {
+    padding: var(--space-1) var(--space-2);
+    text-align: left;
+  }
+
+  .state-pick {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
     font-size: var(--text-sm);
   }
 

@@ -5,13 +5,13 @@
  */
 export const HELP = {
   gis: {
-    page: "Upload your building data, match its columns to the model's inputs, and check for missing values.",
+    page: "Upload your building data, match its columns to the model's inputs, and fix values GloBI would reject.",
     upload:
       'CSV or GeoJSON, one row per building. Include an ID, floor count, and every attribute you will classify or stratify by later (year built, use, floor area): columns left out here cannot drive rules or strata in later steps.',
     match:
-      "Pick which of your columns holds each model input. Required inputs must be matched; recommended ones improve results when your data has them.",
+      "Pick which of your columns holds each model input. Required inputs must be matched; recommended ones improve results when your data has them. Each input lists the values GloBI accepts: buildings with any other value are dropped by GloBI, so map them to an accepted value here.",
     missing:
-      'Tick the columns later steps depend on. A building missing a value there cannot be classified, so it is better caught here. Leave optional columns unticked so their gaps do not drop buildings.',
+      'Tick the columns a building cannot do without, such as the ID or a column you will classify by later (year built, use). Ticked columns are checked for blanks and kept in the cleaned file, along with every matched column. GloBI fills blanks in floors, height, WWR, basement and attic with its defaults, so leave those unticked unless you would rather drop such buildings.',
     validate:
       'Validating saves the cleaned dataset that every later step reads. If you drop incomplete rows, check the remaining count is still representative of the stock.',
   },

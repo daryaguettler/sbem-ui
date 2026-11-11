@@ -158,6 +158,26 @@ async def get_resstock_dependencies(characteristic: str):
     return {"available": True, "dependencies": resstock_odds.dependencies(characteristic)}
 
 
+@router.get("/resstock-states")
+async def get_resstock_states():
+    """States ResStock's odds can be narrowed to."""
+    return {"states": sorted(resstock_odds.state_regions())}
+
+
+@router.get("/resstock-state-options")
+async def get_resstock_state_options(state: str):
+    """Per ResStock characteristic, the options some homes in `state` take (null: no geographic data)."""
+    try:
+        return {
+            "options": {
+                path.stem: resstock_odds.options_in_state(path.stem, state)
+                for path in sorted(resstock_odds.ODDS_DIR.glob("*.tsv"))
+            }
+        }
+    except resstock_odds.ResStockOddsError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.post("/registry-suggestions")
 async def get_registry_suggestions(
     body: RegistrySuggestionRequest, workspace: ProjectWorkspace = Depends(get_workspace)

@@ -160,13 +160,17 @@ export type GenerationMethod = 'uniform' | 'empirical' | 'resstock';
 export type ResStockDependencySpec =
   | { mode: 'any' }
   | { mode: 'fixed'; value: string }
+  /** A geographic dependency narrowed to the values found in one US state (e.g. TX's climate zones). */
+  | { mode: 'state'; state: string }
   /** One of the project's characteristics; `mapping` gives the ResStock values each of its values stands for. */
   | { mode: 'field'; field: string; mapping: Record<string, string[]> };
 
 export interface ResStockDependency {
   name: string;
-  /** Commonest first; share = its part of ResStock's homes. */
-  values: Array<{ value: string; share: number }>;
+  /** A location (region, climate zone, census division): its values list the states they cover. */
+  geographic?: boolean;
+  /** Commonest first; share = its part of ResStock's homes; states = those with homes in it. */
+  values: Array<{ value: string; share: number; states?: string[] }>;
 }
 
 export interface GeneratedKey {

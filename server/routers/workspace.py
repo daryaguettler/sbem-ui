@@ -85,6 +85,25 @@ async def get_stock_preset(request: Request):
     return {"preset": yaml.safe_load(path.read_text()) if path and path.exists() else None}
 
 
+class ImportTemplateRequest(BaseModel):
+    #: a templates/projects/*.yml filename, as in CreateWorkspaceRequest
+    template: str
+
+
+@router.post("/import-template")
+async def import_template(request: Request, body: ImportTemplateRequest):
+    """Add a template's library records and files (e.g. ResStock) to the open project."""
+    workspace: ProjectWorkspace | None = getattr(request.app.state, "workspace", None)
+    if workspace is None:
+        raise HTTPException(status_code=400, detail="Open a project first.")
+    template_dir = resolve_template_path("projects", body.template).with_suffix("")
+    try:
+        added = workspace.import_template(template_dir)
+    except WorkspaceError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"added": added}
+
+
 @router.post("/close")
 async def close_workspace(request: Request):
     """Close the currently open workspace."""

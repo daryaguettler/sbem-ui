@@ -1,0 +1,723 @@
+AK:
+  ASHRAE IECC Climate Zone 2004:
+  - 7AK
+  - 8AK
+  Census Division:
+  - Pacific
+  Census Division RECS:
+  - Pacific
+  Custom State:
+  - AK
+  Location Region:
+  - CRAK
+  State:
+  - AK
+AL:
+  ASHRAE IECC Climate Zone 2004:
+  - 2A
+  - 3A
+  Census Division:
+  - East South Central
+  Census Division RECS:
+  - East South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - AL
+AR:
+  ASHRAE IECC Climate Zone 2004:
+  - 3A
+  - 4A
+  Census Division:
+  - West South Central
+  Census Division RECS:
+  - West South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - AR
+AZ:
+  ASHRAE IECC Climate Zone 2004:
+  - 2B
+  - 3B
+  - 4B
+  - 5B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain South
+  Custom State:
+  - Others
+  Location Region:
+  - CR10
+  State:
+  - AZ
+CA:
+  ASHRAE IECC Climate Zone 2004:
+  - 2B
+  - 3B
+  - 3C
+  - 4B
+  - 4C
+  - 5B
+  - 6B
+  Census Division:
+  - Pacific
+  Census Division RECS:
+  - Pacific
+  Custom State:
+  - Others
+  Location Region:
+  - CR11
+  State:
+  - CA
+CO:
+  ASHRAE IECC Climate Zone 2004:
+  - 4B
+  - 5B
+  - 6B
+  - 7B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain North
+  Custom State:
+  - Others
+  Location Region:
+  - CR05
+  State:
+  - CO
+CT:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  Census Division:
+  - New England
+  Census Division RECS:
+  - New England
+  Custom State:
+  - Others
+  Location Region:
+  - CR03
+  State:
+  - CT
+DC:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - DC
+DE:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - DE
+FL:
+  ASHRAE IECC Climate Zone 2004:
+  - 1A
+  - 2A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - FL
+GA:
+  ASHRAE IECC Climate Zone 2004:
+  - 2A
+  - 3A
+  - 4A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - GA
+HI:
+  ASHRAE IECC Climate Zone 2004:
+  - 1A
+  Census Division:
+  - Pacific
+  Census Division RECS:
+  - Pacific
+  Custom State:
+  - Others
+  Location Region:
+  - CRHI
+  State:
+  - HI
+IA:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  - 6A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR02
+  State:
+  - IA
+ID:
+  ASHRAE IECC Climate Zone 2004:
+  - 5B
+  - 6B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain North
+  Custom State:
+  - Others
+  Location Region:
+  - CR05
+  State:
+  - ID
+IL:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - East North Central
+  Census Division RECS:
+  - East North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR04
+  State:
+  - IL
+IN:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - East North Central
+  Census Division RECS:
+  - East North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR04
+  State:
+  - IN
+KS:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - KS
+KY:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  Census Division:
+  - East South Central
+  Census Division RECS:
+  - East South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - KY
+LA:
+  ASHRAE IECC Climate Zone 2004:
+  - 2A
+  - 3A
+  Census Division:
+  - West South Central
+  Census Division RECS:
+  - West South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - LA
+MA:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  Census Division:
+  - New England
+  Census Division RECS:
+  - New England
+  Custom State:
+  - Others
+  Location Region:
+  - CR03
+  State:
+  - MA
+MD:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - MD
+ME:
+  ASHRAE IECC Climate Zone 2004:
+  - 6A
+  - 7A
+  Census Division:
+  - New England
+  Census Division RECS:
+  - New England
+  Custom State:
+  - Others
+  Location Region:
+  - CR03
+  State:
+  - ME
+MI:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  - 6A
+  - 7A
+  Census Division:
+  - East North Central
+  Census Division RECS:
+  - East North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR04
+  State:
+  - MI
+MN:
+  ASHRAE IECC Climate Zone 2004:
+  - 6A
+  - 7A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR02
+  State:
+  - MN
+MO:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - MO
+MS:
+  ASHRAE IECC Climate Zone 2004:
+  - 2A
+  - 3A
+  Census Division:
+  - East South Central
+  Census Division RECS:
+  - East South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - MS
+MT:
+  ASHRAE IECC Climate Zone 2004:
+  - 6B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain North
+  Custom State:
+  - Others
+  Location Region:
+  - CR05
+  State:
+  - MT
+NC:
+  ASHRAE IECC Climate Zone 2004:
+  - 3A
+  - 4A
+  - 5A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - NC
+ND:
+  ASHRAE IECC Climate Zone 2004:
+  - 6A
+  - 7A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR02
+  State:
+  - ND
+NE:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - NE
+NH:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  - 6A
+  Census Division:
+  - New England
+  Census Division RECS:
+  - New England
+  Custom State:
+  - Others
+  Location Region:
+  - CR03
+  State:
+  - NH
+NJ:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - Middle Atlantic
+  Census Division RECS:
+  - Middle Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR07
+  State:
+  - NJ
+NM:
+  ASHRAE IECC Climate Zone 2004:
+  - 3B
+  - 4B
+  - 5B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain South
+  Custom State:
+  - Others
+  Location Region:
+  - CR10
+  State:
+  - NM
+NV:
+  ASHRAE IECC Climate Zone 2004:
+  - 3B
+  - 5B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain South
+  Custom State:
+  - Others
+  Location Region:
+  - CR10
+  State:
+  - NV
+NY:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  - 6A
+  Census Division:
+  - Middle Atlantic
+  Census Division RECS:
+  - Middle Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR07
+  State:
+  - NY
+OH:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - East North Central
+  Census Division RECS:
+  - East North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR04
+  State:
+  - OH
+OK:
+  ASHRAE IECC Climate Zone 2004:
+  - 3A
+  - 4B
+  Census Division:
+  - West South Central
+  Census Division RECS:
+  - West South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - OK
+OR:
+  ASHRAE IECC Climate Zone 2004:
+  - 4C
+  - 5B
+  Census Division:
+  - Pacific
+  Census Division RECS:
+  - Pacific
+  Custom State:
+  - Others
+  Location Region:
+  - CR06
+  State:
+  - OR
+PA:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  - 6A
+  Census Division:
+  - Middle Atlantic
+  Census Division RECS:
+  - Middle Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR07
+  State:
+  - PA
+RI:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  Census Division:
+  - New England
+  Census Division RECS:
+  - New England
+  Custom State:
+  - Others
+  Location Region:
+  - CR03
+  State:
+  - RI
+SC:
+  ASHRAE IECC Climate Zone 2004:
+  - 3A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - SC
+SD:
+  ASHRAE IECC Climate Zone 2004:
+  - 5A
+  - 6A
+  Census Division:
+  - West North Central
+  Census Division RECS:
+  - West North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR02
+  State:
+  - SD
+TN:
+  ASHRAE IECC Climate Zone 2004:
+  - 3A
+  - 4A
+  Census Division:
+  - East South Central
+  Census Division RECS:
+  - East South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - TN
+TX:
+  ASHRAE IECC Climate Zone 2004:
+  - 2A
+  - 2B
+  - 3A
+  - 3B
+  - 4B
+  Census Division:
+  - West South Central
+  Census Division RECS:
+  - West South Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR09
+  State:
+  - TX
+UT:
+  ASHRAE IECC Climate Zone 2004:
+  - 3B
+  - 5B
+  - 6B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain North
+  Custom State:
+  - Others
+  Location Region:
+  - CR05
+  State:
+  - UT
+VA:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - VA
+VT:
+  ASHRAE IECC Climate Zone 2004:
+  - 6A
+  Census Division:
+  - New England
+  Census Division RECS:
+  - New England
+  Custom State:
+  - Others
+  Location Region:
+  - CR03
+  State:
+  - VT
+WA:
+  ASHRAE IECC Climate Zone 2004:
+  - 4C
+  - 5B
+  - 6B
+  Census Division:
+  - Pacific
+  Census Division RECS:
+  - Pacific
+  Custom State:
+  - Others
+  Location Region:
+  - CR06
+  State:
+  - WA
+WI:
+  ASHRAE IECC Climate Zone 2004:
+  - 6A
+  - 7A
+  Census Division:
+  - East North Central
+  Census Division RECS:
+  - East North Central
+  Custom State:
+  - Others
+  Location Region:
+  - CR02
+  State:
+  - WI
+WV:
+  ASHRAE IECC Climate Zone 2004:
+  - 4A
+  - 5A
+  Census Division:
+  - South Atlantic
+  Census Division RECS:
+  - South Atlantic
+  Custom State:
+  - Others
+  Location Region:
+  - CR08
+  State:
+  - WV
+WY:
+  ASHRAE IECC Climate Zone 2004:
+  - 5B
+  - 6B
+  - 7B
+  Census Division:
+  - Mountain
+  Census Division RECS:
+  - Mountain North
+  Custom State:
+  - Others
+  Location Region:
+  - CR05
+  State:
+  - WY

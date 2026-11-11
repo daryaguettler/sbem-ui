@@ -228,6 +228,59 @@ class ProjectWorkspace:
             database_path=self.components_db_path, if_exists="raise", auto_register=False
         )
 
+    def import_template(self, template_dir: Path) -> dict[str, int]:
+        """Add a project template (e.g. ResStock) to this project after it was created.
+
+        Copies the template's files the project lacks (as `create` does), then merges the
+        template's components-lib.db: every row whose id is new is inserted, so records come
+        with the schedules, constructions and materials they point at. Existing rows win.
+        Returns the number of rows added per table.
+        """
+        import sqlite3
+
+        template_db = template_dir / COMPONENTS_DB_FILE
+        db_missing = not self.components_db_path.exists()
+        for source in template_dir.rglob("*"):
+            target = self.root / source.relative_to(template_dir)
+            if source.is_file() and not target.exists():
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, target)
+        if db_missing or not template_db.exists():
+            return {}
+
+        con = sqlite3.connect(self.components_db_path)
+        try:
+            con.execute("ATTACH DATABASE ? AS tpl", (str(template_db),))
+            tables = [
+                name
+                for (name,) in con.execute("SELECT name FROM tpl.sqlite_master WHERE type='table'")
+                if not name.startswith(("_", "sqlite_"))
+            ]
+            # A record the user made with a template record's name but its own id would leave the
+            # template's references to it dangling, so refuse rather than half-merge.
+            clashes = [
+                f"{table} '{name}'"
+                for table in tables
+                if "Name" in [row[1] for row in con.execute(f'PRAGMA tpl.table_info("{table}")')]
+                for (name,) in con.execute(
+                    f'SELECT t.Name FROM tpl."{table}" t JOIN main."{table}" m ON m.Name = t.Name AND m.id != t.id'
+                )
+            ]
+            if clashes:
+                raise WorkspaceError(
+                    "These records already exist under the same name; rename them first: " + ", ".join(clashes[:10])
+                )
+            added: dict[str, int] = {}
+            with con:
+                for table in tables:
+                    cols = ", ".join(f'"{row[1]}"' for row in con.execute(f'PRAGMA tpl.table_info("{table}")'))
+                    cursor = con.execute(f'INSERT OR IGNORE INTO main."{table}" ({cols}) SELECT {cols} FROM tpl."{table}"')
+                    if cursor.rowcount:
+                        added[table] = cursor.rowcount
+            return added
+        finally:
+            con.close()
+
     def prisma_client(self) -> Prisma:
         """A Prisma client bound to this workspace's components-lib.db.
 

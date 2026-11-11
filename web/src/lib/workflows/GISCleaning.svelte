@@ -22,7 +22,9 @@
   let validationIssues: string[] = [];
   let columnMappings: GisColumnMappings = {};
   let validateColumns = new Set<string>();
-  /** "Columns to check" starts open for short files, then stays as the user leaves it. */
+  /** role key -> {value in the user's data: GloBI value}; sent with Validate, which rewrites the rows. */
+  let valueMappings: Record<string, Record<string, string>> = {};
+  /** "Columns that must be filled in" starts open for short files, then stays as the user leaves it. */
   let columnsOpen = false;
   let columnsOpenSet = false;
   $: if (!columnsOpenSet && columns.length) {
@@ -31,6 +33,7 @@
   }
   let dropIncompleteRows = false;
   let incompleteRowCount = 0;
+  let invalidRowCount = 0;
   let droppedRowCount = 0;
   let outputColumns: string[] = [];
   let sourceFormat: string | null = null;
@@ -43,7 +46,7 @@
     const selected = new Set<string>();
     for (const role of roleList) {
       const source = mappings[role.key];
-      if (source && (role.required || role.recommended)) {
+      if (source && role.required) {
         selected.add(source);
       }
     }
@@ -119,6 +122,8 @@
       recommended: Boolean(role.recommended),
       requiredGroup: role.required_group ? String(role.required_group) : undefined,
       description: role.description ? String(role.description) : undefined,
+      rule: role.rule ? String(role.rule) : null,
+      allowedValues: Array.isArray(role.allowed_values) ? role.allowed_values.map(String) : undefined,
     };
   }
 
@@ -185,9 +190,24 @@
     };
 
     const role = roles.find((entry) => entry.key === roleKey);
-    if (sourceColumn && role && (role.required || role.recommended)) {
+    if (sourceColumn && role?.required) {
       validateColumns = new Set([...validateColumns, sourceColumn]);
     }
+  }
+
+  /** Values in the matched column that GloBI does not accept (categorical roles only). */
+  function unknownValues(role: GlobiColumnRole): string[] {
+    const source = columnMappings[role.key];
+    if (!role.allowedValues || !source) return [];
+    const column = columns.find((entry) => entry.name === source);
+    return (column?.uniqueValues ?? []).map(String).filter((value) => !role.allowedValues!.includes(value));
+  }
+
+  function setValueMapping(roleKey: string, value: string, target: string) {
+    const next = { ...(valueMappings[roleKey] ?? {}) };
+    if (target) next[value] = target;
+    else delete next[value];
+    valueMappings = { ...valueMappings, [roleKey]: next };
   }
 
   function toggleValidateColumn(columnName: string, checked: boolean) {
@@ -211,11 +231,15 @@
           column_mappings: columnMappings,
           validate_columns: [...validateColumns],
           drop_incomplete_rows: dropIncompleteRows,
+          value_mappings: valueMappings,
         }),
       });
       const data = await response.json();
       validationIssues = data.validation?.issues || [];
       incompleteRowCount = data.validation?.incomplete_row_count ?? 0;
+      invalidRowCount = data.validation?.invalid_row_count ?? 0;
+      // The server has rewritten the mapped values; the column summaries now show GloBI values.
+      if (response.ok) valueMappings = {};
 
       if (data.dataset) {
         applyDatasetPayload({
@@ -305,7 +329,7 @@
         <Explain text={help.match} />
         <div class="field-grid">
           {#each roles as role}
-            <label class="field">
+            <div class="field">
               <span class="role-label">
                 {role.label}
                 {#if role.required}
@@ -317,24 +341,48 @@
               {#if role.description}
                 <span class="field-hint">{role.description}</span>
               {/if}
+              {#if role.rule}
+                <span class="field-hint">GloBI accepts: {role.rule}</span>
+              {/if}
               <Select
                 value={columnMappings[role.key] || ''}
+                ariaLabel={role.label}
                 options={[
                   { value: '', label: 'Not mapped' },
                   ...columns.map((column) => ({ value: column.name, label: column.name })),
                 ]}
                 onChange={(value) => setMapping(role.key, value)}
               />
-            </label>
+              {#if unknownValues(role).length > 0}
+                <div class="value-map">
+                  <span class="field-hint">GloBI drops buildings with these values. Map each to an accepted value:</span>
+                  {#each unknownValues(role) as value}
+                    <div class="value-row">
+                      <code>{value}</code>
+                      <span aria-hidden="true">→</span>
+                      <Select
+                        value={valueMappings[role.key]?.[value] || ''}
+                        ariaLabel={`GloBI value for ${value}`}
+                        options={[
+                          { value: '', label: 'Leave as is (dropped)' },
+                          ...(role.allowedValues ?? []).map((allowed) => ({ value: allowed, label: allowed })),
+                        ]}
+                        onChange={(target) => setValueMapping(role.key, value, target)}
+                      />
+                    </div>
+                  {/each}
+                </div>
+              {/if}
+            </div>
           {/each}
         </div>
       </div>
 
       <div class="panel" data-tour="gis-missing">
-        <h2>Check for missing values <Explain text={help.missing} tip /></h2>
+        <h2>Columns that must be filled in <Explain text={help.missing} tip /></h2>
         <Explain text={help.missing} />
         <details bind:open={columnsOpen}>
-          <summary>Columns to check ({validateColumns.size} of {columns.length} selected)</summary>
+          <summary>Must be filled in: {validateColumns.size} of {columns.length} columns</summary>
         <div class="validation-grid">
           {#each columns as column}
             <label class="checkbox-row">
@@ -357,10 +405,13 @@
         <Explain text={help.validate} />
         <label class="checkbox-row">
           <input type="checkbox" bind:checked={dropIncompleteRows} />
-          <span>Drop rows with missing values in the checked columns</span>
+          <span>Drop buildings with a blank in a ticked column, or a value GloBI would reject</span>
         </label>
-        {#if incompleteRowCount > 0 && !dropIncompleteRows}
-          <p class="hint">{incompleteRowCount} rows have missing values. Tick the box above to drop them.</p>
+        {#if (incompleteRowCount > 0 || invalidRowCount > 0) && !dropIncompleteRows}
+          <p class="hint">
+            {incompleteRowCount} rows have blanks in ticked columns and {invalidRowCount} have values GloBI would reject. Map
+            the values above, or tick the box to drop these buildings.
+          </p>
         {/if}
         <div class="actions">
           <button type="button" class="btn" onclick={validateDataset} disabled={cleaning} data-tour="gis-validate">
@@ -373,7 +424,7 @@
           {/if}
         </div>
         {#if droppedRowCount > 0}
-          <p class="status-ok"><Icon name="check" size={14} />Dropped {droppedRowCount} incomplete rows. {$gisDataset?.rowCount ?? 0} rows remain.</p>
+          <p class="status-ok"><Icon name="check" size={14} />Dropped {droppedRowCount} rows. {$gisDataset?.rowCount ?? 0} rows remain.</p>
         {/if}
         {#if outputColumns.length > 0 && $gisDataset?.validated}
           <p class="hint">Export includes: {outputColumns.join(', ')}</p>
@@ -453,6 +504,20 @@
     color: var(--text-muted);
     font-size: var(--text-xs);
     font-variant-numeric: tabular-nums;
+  }
+
+  .value-map {
+    display: grid;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+  }
+
+  .value-row {
+    display: grid;
+    grid-template-columns: minmax(60px, auto) auto 1fr;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
   }
 
   .issues {

@@ -16,11 +16,13 @@ from services.globi_columns import (
     suggest_column_mappings,
 )
 from services.gis_parser import (
+    apply_value_mappings,
     build_cleaned_csv,
     build_cleaned_geojson,
     drop_incomplete_rows,
     export_columns,
     parse_gis_upload,
+    rule_sources,
     validate_dataset,
 )
 from services.semantic_transform import apply_semantic_fields_to_rows, build_enriched_properties
@@ -44,6 +46,8 @@ class CleanRequest(BaseModel):
     column_mappings: dict[str, str | None] = Field(default_factory=dict)
     validate_columns: list[str] = Field(default_factory=list)
     drop_incomplete_rows: bool = False
+    # role key -> {source value: GloBI value}, e.g. {"basement": {"Y": "occupied_conditioned"}}
+    value_mappings: dict[str, dict[str, str]] = Field(default_factory=dict)
 
 
 class EnrichedExportRequest(BaseModel):
@@ -121,7 +125,7 @@ def _load_dataset(workspace: ProjectWorkspace, filename: str, content: bytes) ->
     dataset["validated_columns"] = [
         dataset["column_mappings"][role["key"]]
         for role in GLOBI_COLUMN_ROLES
-        if role.get("recommended") and dataset["column_mappings"].get(role["key"])
+        if role.get("required") and dataset["column_mappings"].get(role["key"])
     ]
     dataset["validated"] = False
 
@@ -170,6 +174,8 @@ async def clean_gis_data(request: CleanRequest, workspace: ProjectWorkspace = De
     dataset["validated_columns"] = request.validate_columns
     set_column_mappings(workspace, request.column_mappings)
     set_validated_columns(workspace, request.validate_columns)
+    apply_value_mappings(dataset, request.column_mappings, request.value_mappings)
+    sources = rule_sources(request.column_mappings)
 
     validation = validate_dataset(
         dataset,
@@ -177,13 +183,15 @@ async def clean_gis_data(request: CleanRequest, workspace: ProjectWorkspace = De
         validate_columns=request.validate_columns,
     )
 
-    should_drop = request.drop_incomplete_rows and bool(request.validate_columns)
-    has_null_issues = validation["incomplete_row_count"] > 0 or any(
-        "contains missing values" in issue for issue in validation["issues"]
+    should_drop = request.drop_incomplete_rows and bool(request.validate_columns or sources)
+    has_row_issues = (
+        validation["incomplete_row_count"] > 0
+        or validation["invalid_row_count"] > 0
+        or any("contains missing values" in issue for issue in validation["issues"])
     )
 
-    if should_drop and has_null_issues:
-        dataset = drop_incomplete_rows(dataset, request.validate_columns)
+    if should_drop and has_row_issues:
+        dataset = drop_incomplete_rows(dataset, request.validate_columns, sources)
         if dataset.get("row_count", 0) == 0:
             validation = {
                 **validation,

@@ -142,6 +142,7 @@
 
   function setMode(dep: ResStockDependency, mode: string) {
     if (mode === 'fixed') setSpec(dep.name, { mode: 'fixed', value: dep.values[0]?.value ?? '' });
+    else if (mode === 'state') setSpec(dep.name, { mode: 'state', state: statesOf(dep)[0] ?? '' });
     else if (mode === 'field') setSpec(dep.name, { mode: 'field', field: mappableFields[0]?.name ?? '', mapping: {} });
     else setSpec(dep.name, { mode: 'any' });
   }
@@ -152,6 +153,23 @@
     const current = spec.mapping[userValue] ?? [];
     const next = current.includes(resstockValue) ? current.filter((v) => v !== resstockValue) : [...current, resstockValue];
     setSpec(dependency, { ...spec, mapping: { ...spec.mapping, [userValue]: next } });
+  }
+
+  /** The US states a geographic dependency's values cover. */
+  const statesOf = (dep: ResStockDependency) => [...new Set(dep.values.flatMap((v) => v.states ?? []))].sort();
+  const withStates = (v: ResStockDependency['values'][number]) => (v.states?.length ? `${v.value} — ${v.states.join(', ')}` : v.value);
+
+  /** Mapping a characteristic whose values are state codes (TX, MA, ...): tick each state's own region values. */
+  function fillFromStates(dep: ResStockDependency, userValues: string[]) {
+    const spec = specFor(dep.name);
+    if (spec.mode !== 'field') return;
+    const mapping = { ...spec.mapping };
+    for (const userValue of userValues) {
+      const code = userValue.trim().toUpperCase();
+      const matched = dep.values.filter((v) => v.states?.includes(code)).map((v) => v.value);
+      if (matched.length) mapping[userValue] = matched;
+    }
+    setSpec(dep.name, { ...spec, mapping });
   }
 
   /** The characteristics mapped onto ResStock's dependencies: the odds table's conditions. */
@@ -390,6 +408,14 @@
           <strong>My characteristic</strong> gives one row of odds for each value of one of yours. ResStock's rows are
           weighted by how common each combination is among its homes. This replaces <em>Depends on</em> above.
         </p>
+        {#if resstockDeps.some((dep) => dep.geographic)}
+          <p class="hint">
+            Locations are ResStock's own: CR02–CR11 are its custom regions (groups of states, listed beside each), not
+            census regions. ResStock only publishes these odds at that level, so there are no state- or city-level odds.
+            Pick <strong>A US state</strong> to use the regions covering it (for a city, pick its state), or map a
+            characteristic of yours that holds state codes.
+          </p>
+        {/if}
         {#each resstockDeps as dep (dep.name)}
           {@const spec = specFor(dep.name)}
           <div class="dep">
@@ -400,6 +426,7 @@
                 options={[
                   { value: 'any', label: "Any (ResStock's mix)" },
                   { value: 'fixed', label: 'Fixed value' },
+                  ...(dep.geographic ? [{ value: 'state', label: 'A US state' }] : []),
                   ...(mappableFields.length ? [{ value: 'field', label: 'My characteristic' }] : []),
                 ]}
                 onChange={(mode) => setMode(dep, mode)}
@@ -408,10 +435,20 @@
               {#if spec.mode === 'fixed'}
                 <Select
                   value={spec.value}
-                  options={dep.values.map((v) => ({ value: v.value, label: `${v.value} (${share(v.share)} of homes)` }))}
+                  options={dep.values.map((v) => ({ value: v.value, label: `${withStates(v)} (${share(v.share)} of homes)` }))}
                   onChange={(value) => setSpec(dep.name, { mode: 'fixed', value })}
                   ariaLabel="{dep.name} value"
                 />
+              {:else if spec.mode === 'state'}
+                <Select
+                  value={spec.state}
+                  options={statesOf(dep).map((code) => ({ value: code, label: code }))}
+                  onChange={(state) => setSpec(dep.name, { mode: 'state', state })}
+                  ariaLabel="US state for {dep.name}"
+                />
+                <span class="hint">
+                  Uses {dep.values.filter((v) => v.states?.includes(spec.state)).map((v) => v.value).join(', ') || 'no'}
+                </span>
               {:else if spec.mode === 'field'}
                 <Select
                   value={spec.field}
@@ -424,6 +461,11 @@
             {#if spec.mode === 'field' && spec.field}
               {@const userValues = fields.find((field) => field.name === spec.field)?.options ?? []}
               <p class="hint">Tick the {dep.name} values each {spec.field} value stands for. A value with none ticked uses the overall odds.</p>
+              {#if dep.geographic && userValues.some((value) => statesOf(dep).includes(value.trim().toUpperCase()))}
+                <button type="button" class="btn btn-secondary btn-sm" onclick={() => fillFromStates(dep, userValues)}>
+                  Fill in from state codes
+                </button>
+              {/if}
               <table class="data-table mapping">
                 <tbody>
                   {#each userValues as userValue}
@@ -432,7 +474,7 @@
                       <td>
                         <div class="chips">
                           {#each dep.values as v (v.value)}
-                            <label class="chip" class:on={spec.mapping[userValue]?.includes(v.value)}>
+                            <label class="chip" class:on={spec.mapping[userValue]?.includes(v.value)} title={v.states?.join(', ')}>
                               <input type="checkbox" checked={spec.mapping[userValue]?.includes(v.value) ?? false} onchange={() => toggleMapped(dep.name, userValue, v.value)} />
                               {v.value}
                             </label>
